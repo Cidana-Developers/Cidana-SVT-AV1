@@ -1,7 +1,3 @@
-/*
- * Copyright(c) 2019 Intel Corporation
- * SPDX - License - Identifier: BSD - 2 - Clause - Patent
- */
 
 #ifndef _TEST_RANDOM_H_
 #define _TEST_RANDOM_H_

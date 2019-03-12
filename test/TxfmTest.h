@@ -1,8 +1,3 @@
-/*
- * Copyright(c) 2019 Intel Corporation
- * SPDX - License - Identifier: BSD - 2 - Clause - Patent
- */
-
 #ifndef _TXFM_TEST_H_
 #define _TXFM_TEST_H_
 

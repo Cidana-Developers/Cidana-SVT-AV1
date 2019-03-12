@@ -1,8 +1,4 @@
 /*
- * Copyright(c) 2019 Intel Corporation
- * SPDX - License - Identifier: BSD - 2 - Clause - Patent
- */
-/*
  * Copyright (c) 2016, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 2 Clause License and
@@ -127,7 +123,7 @@ static INLINE int aom_daala_read(daala_reader *r, int prob) {
 static INLINE int daala_read_symbol(daala_reader *r, const aom_cdf_prob *cdf,
                                     int nsymbs) {
     int symb;
-    assert(cdf != NULL);
+    assert(cdf != nullptr);
     symb = od_ec_decode_cdf_q15(&r->ec, cdf, nsymbs);
 
     return symb;
@@ -173,7 +169,31 @@ static INLINE int aom_read_(aom_reader *r, int prob) {
 
 static INLINE int aom_read_bit_(aom_reader *r) {
     int ret;
-    ret = aom_read(r, 128, NULL);  // aom_prob_half
+    ret = aom_read(r, 128, nullptr);  // aom_prob_half
+    return ret;
+}
+
+static INLINE int aom_read_literal_(aom_reader *r, int bits) {
+    int literal = 0, bit;
+
+    for (bit = bits - 1; bit >= 0; bit--)
+        literal |= aom_read_bit(r, nullptr) << bit;
+    return literal;
+}
+
+static INLINE int aom_read_cdf_(aom_reader *r, const aom_cdf_prob *cdf,
+                                int nsymbs ACCT_STR_PARAM) {
+    int ret;
+    ret = daala_read_symbol(r, cdf, nsymbs);
+    return ret;
+}
+
+static INLINE int aom_read_symbol_(aom_reader *r, aom_cdf_prob *cdf,
+                                   int nsymbs ACCT_STR_PARAM) {
+    int ret;
+    ret = aom_read_cdf(r, cdf, nsymbs, ACCT_STR_NAME);
+    if (r->allow_update_cdf)
+        update_cdf(cdf, ret, nsymbs);
     return ret;
 }
 
