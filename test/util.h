@@ -12,7 +12,7 @@
 #endif
 
 #ifndef TEST_GET_PARAM
-#define TEST_GET_PARAM(k) std::tr1::get<k>(GetParam())
+#define TEST_GET_PARAM(k) std::get<k>(GetParam())
 #endif
 
 namespace svt_av1_test_tool {

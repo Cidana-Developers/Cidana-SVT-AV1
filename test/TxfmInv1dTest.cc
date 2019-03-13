@@ -24,10 +24,7 @@ using svt_av1_test_tool::SVTRandom;
 
 namespace {
 class TxfmTestBase {
-  public:
-    virtual ~TxfmTestBase() {
-    }
-
+    // TODO: should be merged into fwd txfm 1d test or removed?
   protected:
     void run_inv_accuracy_check() {
         SVTRandom rnd;
@@ -50,11 +47,10 @@ class TxfmTestBase {
 
             // compare betwenn input and inversed output
             for (int ni = 0; ni < _txfm_size; ++ni) {
-                EXPECT_LE(
-                    abs(_input[ni] -
-                        svt_av1_test_tool::round_shift(
-                            _inv_output[ni],get_msb(_txfm_size) - 1)),
-                    _max_error)
+                EXPECT_LE(abs(_input[ni] -
+                              svt_av1_test_tool::round_shift(
+                                  _inv_output[ni], get_msb(_txfm_size) - 1)),
+                          _max_error)
                     << _err_str;
             }
         }
@@ -69,12 +65,12 @@ class TxfmTestBase {
     std::string _err_str;
 };
 
-typedef std::tr1::tuple<TXFM_TYPE, int, int, std::string> TxfmInv1dParam;
+typedef std::tuple<TXFM_TYPE, int, int, std::string> TxfmInv1dParam;
 
 class AV1InvTxfmTest : public TxfmTestBase,
                        public ::testing::TestWithParam<TxfmInv1dParam> {
   public:
-    virtual void SetUp() {
+    AV1InvTxfmTest() {
         _txfm_type = TEST_GET_PARAM(0);
         _txfm_size = TEST_GET_PARAM(1);
         _max_error = TEST_GET_PARAM(2);
@@ -88,7 +84,7 @@ class AV1InvTxfmTest : public TxfmTestBase,
             memset(_inv_output, 0, sizeof(int32_t) * _txfm_size);
         }
     }
-    virtual void TearDown() {
+    virtual ~AV1InvTxfmTest() {
         if (_input)
             delete[] _input;
         if (_output)
@@ -98,7 +94,7 @@ class AV1InvTxfmTest : public TxfmTestBase,
     }
 };
 
-TEST_P(AV1InvTxfmTest, RunInvAccuracyCheck) {
+TEST_P(AV1InvTxfmTest, run_inv_accuracy_check) {
     run_inv_accuracy_check();
 }
 
