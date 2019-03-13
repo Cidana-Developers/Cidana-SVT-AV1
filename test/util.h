@@ -8,7 +8,7 @@
 
 // Macros
 #ifndef PI
-#define PI 3.141592653589793238462643383279502884
+#define PI 3.141592653589793238462643383279502884f
 #endif
 
 #ifndef TEST_GET_PARAM
@@ -19,15 +19,6 @@ namespace svt_av1_test_tool {
 INLINE int32_t round_shift(int64_t value, int32_t bit) {
     assert(bit >= 1);
     return (int32_t)((value + (1ll << (bit - 1))) >> bit);
-}
-
-INLINE int get_max_bit(int x) {
-    int max_bit = -1;
-    while (x) {
-        x = x >> 1;
-        max_bit++;
-    }
-    return max_bit;
 }
 }  // namespace svt_av1_test_tool
 
