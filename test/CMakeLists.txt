@@ -46,9 +46,7 @@ enable_testing()
 
 file(GLOB all_files
     "*.h"
-    "*.cc"
-    "../Source/Lib/Codec/grainSynthesis.h"
-    "../Source/Lib/Codec/grainSynthesis.c")
+    "*.cc")
 
 file(GLOB lib_all_files
     "../Source/Lib/Codec/*.h"

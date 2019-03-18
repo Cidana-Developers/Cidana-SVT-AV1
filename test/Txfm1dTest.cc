@@ -168,13 +168,13 @@ class TxfmTestBase {
     std::string _err_str;
 };
 
-typedef std::tr1::tuple<TXFM_TYPE, Txfm1dFuncRef, int, int, std::string>
+typedef std::tuple<TXFM_TYPE, Txfm1dFuncRef, int, int, std::string>
     Txfm1dParam;
 
 class AV1FwdTxfmTest : public TxfmTestBase,
                        public ::testing::TestWithParam<Txfm1dParam> {
   public:
-    virtual void SetUp() {
+    AV1FwdTxfmTest() {
         _fwd_txfm_type = TEST_GET_PARAM(0);
         _fwd_txfm_ref = TEST_GET_PARAM(1);
         _txfm_size = TEST_GET_PARAM(2);
@@ -191,7 +191,7 @@ class AV1FwdTxfmTest : public TxfmTestBase,
             memset(_output_ref, 0, sizeof(double) * _txfm_size);
         }
     }
-    virtual void TearDown() {
+    virtual ~AV1FwdTxfmTest() {
         if (_input)
             delete[] _input;
         if (_output)
@@ -203,7 +203,7 @@ class AV1FwdTxfmTest : public TxfmTestBase,
     }
 };
 
-TEST_P(AV1FwdTxfmTest, RunFwdAccuracyCheck) {
+TEST_P(AV1FwdTxfmTest, run_fwd_accuracy_check) {
     run_fwd_accuracy_check();
 }
 
