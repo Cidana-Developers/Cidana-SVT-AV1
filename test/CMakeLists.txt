@@ -33,6 +33,11 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
 option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 -D_ALLOW_KEYWORD_MACROS")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 -D_ALLOW_KEYWORD_MACROS")
+endif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+
 # When other libraries are using a shared version of runtime libraries,
 # Google Test also has to use one.
 option(
@@ -46,9 +51,7 @@ enable_testing()
 
 file(GLOB all_files
     "*.h"
-    "*.cc"
-    "../Source/Lib/Codec/grainSynthesis.h"
-    "../Source/Lib/Codec/grainSynthesis.c")
+    "*.cc")
 
 file(GLOB lib_all_files
     "../Source/Lib/Codec/*.h"
