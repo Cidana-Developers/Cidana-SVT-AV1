@@ -3,8 +3,8 @@
 
 #include <math.h>
 #include <stdio.h>
-#include "gtest/gtest.h"
 #include "EbDefinitions.h"
+#include "gtest/gtest.h"
 
 // Macros
 #ifndef PI

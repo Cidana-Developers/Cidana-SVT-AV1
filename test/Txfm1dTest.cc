@@ -168,8 +168,7 @@ class TxfmTestBase {
     std::string _err_str;
 };
 
-typedef std::tuple<TXFM_TYPE, Txfm1dFuncRef, int, int, std::string>
-    Txfm1dParam;
+typedef std::tuple<TXFM_TYPE, Txfm1dFuncRef, int, int, std::string> Txfm1dParam;
 
 class AV1FwdTxfmTest : public TxfmTestBase,
                        public ::testing::TestWithParam<Txfm1dParam> {
