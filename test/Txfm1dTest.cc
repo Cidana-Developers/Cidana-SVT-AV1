@@ -64,14 +64,13 @@ class AV1FwdTxfmTest : public ::testing::TestWithParam<TxfmFwd1dParam> {
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < _txfm_size; ++ni) {
-                _input[ni] =
-                    (rnd.random_16() & 0x03FF) - (rnd.random_16() & 0x03FF);
+                _input[ni] = rnd.random_10s();
                 _input_ref[ni] = static_cast<double>(_input[ni]);
             }
 
             // calculate in forward transform functions
             fwd_txfm_type_to_func(_txfm_type)(
-                _input, _output, 14, fwd_txfm_range_mult2_list[_txfm_type]);
+                _input, _output, 14, test_txfm_range);
             // calculate in reference forward transform functions
             svt_av1_test_reference::reference_txfm_1d(
                 svt_av1_test_reference::get_txfm1d_types(_txfm_type),

@@ -67,7 +67,7 @@ class AV1FwdTxfmTest2D : public ::testing::TestWithParam<TxfmFwd2dParam> {
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < txfm_size; ++ni) {
-                _input[ni] = rnd.random_16() & 0x03FF;
+                _input[ni] = rnd.random_10();
                 _input_ref[ni] = static_cast<double>(_input[ni]);
             }
 

@@ -55,21 +55,18 @@ class AV1InvTxfmTest : public ::testing::TestWithParam<TxfmInv1dParam> {
     void run_inv_accuracy_check() {
         SVTRandom rnd;
         const int count_test_block = 5000;
-        const int8_t inv_txfm_range[12] = {
-            20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < _txfm_size; ++ni) {
-                _input[ni] =
-                    (rnd.random_16() & 0x03FF) - (rnd.random_16() & 0x03FF);
+                _input[ni] = rnd.random_10s();
             }
 
             // calculate in forward transform functions
             fwd_txfm_type_to_func(_txfm_type)(
-                _input, _output, 14, fwd_txfm_range_mult2_list[_txfm_type]);
+                _input, _output, 14, test_txfm_range);
             // calculate in inverse transform functions
             inv_txfm_type_to_func(_txfm_type)(
-                _output, _inv_output, 14, inv_txfm_range);
+                _output, _inv_output, 14, test_txfm_range);
 
             // compare betwenn input and inversed output
             for (int ni = 0; ni < _txfm_size; ++ni) {

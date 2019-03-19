@@ -7,21 +7,8 @@
 extern "C" {
 #endif
 
-static const int8_t *fwd_txfm_range_mult2_list[TXFM_TYPES] = {
-    fdct4_range_mult2,
-    fdct8_range_mult2,
-    fdct16_range_mult2,
-    fdct32_range_mult2,
-    fdct64_range_mult2,
-    fadst4_range_mult2,
-    fadst8_range_mult2,
-    fadst16_range_mult2,
-    fadst32_range_mult2,
-    fidtx4_range_mult2,
-    fidtx8_range_mult2,
-    fidtx16_range_mult2,
-    fidtx32_range_mult2,
-    fidtx64_range_mult2};
+static const int8_t test_txfm_range[12] = {
+    20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20};
 
 // export forward transform functions
 void av1_fdct4_new(const int32_t *input, int32_t *output, int8_t cos_bit,
@@ -134,50 +121,88 @@ static INLINE TxfmFunc inv_txfm_type_to_func(TXFM_TYPE txfm_type) {
 
 static INLINE TxfmFwd2dFunc fwd_txfm_2d_size_to_func(TxSize txfm_size) {
     switch (txfm_size) {
-    case TX_4X4: return Av1TransformTwoD_4x4_c;      // 4x4 transform
-    case TX_8X8: return Av1TransformTwoD_8x8_c;      // 8x8 transform
-    case TX_16X16: return Av1TransformTwoD_16x16_c;  // 16x16 transform
-    case TX_32X32: return Av1TransformTwoD_32x32_c;  // 32x32 transform
-    case TX_64X64: return Av1TransformTwoD_64x64_c;  // 64x64 transform
-    case TX_4X8: return av1_fwd_txfm2d_4x8_c;        // 4x8 transform
-    case TX_8X4: return av1_fwd_txfm2d_8x4_c;        // 8x4 transform
-    case TX_8X16: return av1_fwd_txfm2d_8x16_c;      // 8x16 transform
-    case TX_16X8: return av1_fwd_txfm2d_16x8_c;      // 16x8 transform
-    case TX_16X32: return av1_fwd_txfm2d_16x32_c;    // 16x32 transform
-    case TX_32X16: return av1_fwd_txfm2d_32x16_c;    // 32x16 transform
-    case TX_32X64: return av1_fwd_txfm2d_32x64_c;    // 32x64 transform
-    case TX_64X32: return av1_fwd_txfm2d_64x32_c;    // 64x32 transform
-    case TX_4X16: return av1_fwd_txfm2d_4x16_c;      // 4x16 transform
-    case TX_16X4: return av1_fwd_txfm2d_16x4_c;      // 16x4 transform
-    case TX_8X32: return av1_fwd_txfm2d_8x32_c;      // 8x32 transform
-    case TX_32X8: return av1_fwd_txfm2d_32x8_c;      // 32x8 transform
-    case TX_16X64: return av1_fwd_txfm2d_16x64_c;    // 16x64 transform
-    case TX_64X16: return av1_fwd_txfm2d_64x16_c;    // 64x16 transform
+    case TX_4X4:
+        return Av1TransformTwoD_4x4_c;  // 4x4 transform
+    case TX_8X8:
+        return Av1TransformTwoD_8x8_c;  // 8x8 transform
+    case TX_16X16:
+        return Av1TransformTwoD_16x16_c;  // 16x16 transform
+    case TX_32X32:
+        return Av1TransformTwoD_32x32_c;  // 32x32 transform
+    case TX_64X64:
+        return Av1TransformTwoD_64x64_c;  // 64x64 transform
+    case TX_4X8:
+        return av1_fwd_txfm2d_4x8_c;  // 4x8 transform
+    case TX_8X4:
+        return av1_fwd_txfm2d_8x4_c;  // 8x4 transform
+    case TX_8X16:
+        return av1_fwd_txfm2d_8x16_c;  // 8x16 transform
+    case TX_16X8:
+        return av1_fwd_txfm2d_16x8_c;  // 16x8 transform
+    case TX_16X32:
+        return av1_fwd_txfm2d_16x32_c;  // 16x32 transform
+    case TX_32X16:
+        return av1_fwd_txfm2d_32x16_c;  // 32x16 transform
+    case TX_32X64:
+        return av1_fwd_txfm2d_32x64_c;  // 32x64 transform
+    case TX_64X32:
+        return av1_fwd_txfm2d_64x32_c;  // 64x32 transform
+    case TX_4X16:
+        return av1_fwd_txfm2d_4x16_c;  // 4x16 transform
+    case TX_16X4:
+        return av1_fwd_txfm2d_16x4_c;  // 16x4 transform
+    case TX_8X32:
+        return av1_fwd_txfm2d_8x32_c;  // 8x32 transform
+    case TX_32X8:
+        return av1_fwd_txfm2d_32x8_c;  // 32x8 transform
+    case TX_16X64:
+        return av1_fwd_txfm2d_16x64_c;  // 16x64 transform
+    case TX_64X16:
+        return av1_fwd_txfm2d_64x16_c;  // 64x16 transform
     default: assert(0); return NULL;
     }
 }
 
 static INLINE std::string fwd_txfm_2d_size_to_name(TxSize txfm_size) {
     switch (txfm_size) {
-    case TX_4X4: return "Av1TransformTwoD_4x4_c";      // 4x4 transform
-    case TX_8X8: return "Av1TransformTwoD_8x8_c";      // 8x8 transform
-    case TX_16X16: return "Av1TransformTwoD_16x16_c";  // 16x16 transform
-    case TX_32X32: return "Av1TransformTwoD_32x32_c";  // 32x32 transform
-    case TX_64X64: return "Av1TransformTwoD_64x64_c";  // 64x64 transform
-    case TX_4X8: return "av1_fwd_txfm2d_4x8_c";        // 4x8 transform
-    case TX_8X4: return "av1_fwd_txfm2d_8x4_c";        // 8x4 transform
-    case TX_8X16: return "av1_fwd_txfm2d_8x16_c";      // 8x16 transform
-    case TX_16X8: return "av1_fwd_txfm2d_16x8_c";      // 16x8 transform
-    case TX_16X32: return "av1_fwd_txfm2d_16x32_c";    // 16x32 transform
-    case TX_32X16: return "av1_fwd_txfm2d_32x16_c";    // 32x16 transform
-    case TX_32X64: return "av1_fwd_txfm2d_32x64_c";    // 32x64 transform
-    case TX_64X32: return "av1_fwd_txfm2d_64x32_c";    // 64x32 transform
-    case TX_4X16: return "av1_fwd_txfm2d_4x16_c";      // 4x16 transform
-    case TX_16X4: return "av1_fwd_txfm2d_16x4_c";      // 16x4 transform
-    case TX_8X32: return "av1_fwd_txfm2d_8x32_c";      // 8x32 transform
-    case TX_32X8: return "av1_fwd_txfm2d_32x8_c";      // 32x8 transform
-    case TX_16X64: return "av1_fwd_txfm2d_16x64_c";    // 16x64 transform
-    case TX_64X16: return "av1_fwd_txfm2d_64x16_c";    // 64x16 transform
+    case TX_4X4:
+        return "Av1TransformTwoD_4x4_c";  // 4x4 transform
+    case TX_8X8:
+        return "Av1TransformTwoD_8x8_c";  // 8x8 transform
+    case TX_16X16:
+        return "Av1TransformTwoD_16x16_c";  // 16x16 transform
+    case TX_32X32:
+        return "Av1TransformTwoD_32x32_c";  // 32x32 transform
+    case TX_64X64:
+        return "Av1TransformTwoD_64x64_c";  // 64x64 transform
+    case TX_4X8:
+        return "av1_fwd_txfm2d_4x8_c";  // 4x8 transform
+    case TX_8X4:
+        return "av1_fwd_txfm2d_8x4_c";  // 8x4 transform
+    case TX_8X16:
+        return "av1_fwd_txfm2d_8x16_c";  // 8x16 transform
+    case TX_16X8:
+        return "av1_fwd_txfm2d_16x8_c";  // 16x8 transform
+    case TX_16X32:
+        return "av1_fwd_txfm2d_16x32_c";  // 16x32 transform
+    case TX_32X16:
+        return "av1_fwd_txfm2d_32x16_c";  // 32x16 transform
+    case TX_32X64:
+        return "av1_fwd_txfm2d_32x64_c";  // 32x64 transform
+    case TX_64X32:
+        return "av1_fwd_txfm2d_64x32_c";  // 64x32 transform
+    case TX_4X16:
+        return "av1_fwd_txfm2d_4x16_c";  // 4x16 transform
+    case TX_16X4:
+        return "av1_fwd_txfm2d_16x4_c";  // 16x4 transform
+    case TX_8X32:
+        return "av1_fwd_txfm2d_8x32_c";  // 8x32 transform
+    case TX_32X8:
+        return "av1_fwd_txfm2d_32x8_c";  // 32x8 transform
+    case TX_16X64:
+        return "av1_fwd_txfm2d_16x64_c";  // 16x64 transform
+    case TX_64X16:
+        return "av1_fwd_txfm2d_64x16_c";  // 64x16 transform
     default: assert(0); return "";
     }
 }
