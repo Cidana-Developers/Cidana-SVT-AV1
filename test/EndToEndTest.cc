@@ -1,4 +1,5 @@
 #include "EbApi.h"
+#include "Y4mVideoSource.h"
 #include "YuvVideosource.h"
 #include "gtest/gtest.h"
 
@@ -13,23 +14,49 @@
                ? 0x2DC6C0                                \
                : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
 
-typedef struct TestVideoVector_s {
+typedef enum TestVideoVectorFormatType {
+    YUM_VIDEO_FILE,
+    Y4M_VIDEO_FILE
+} TestVideoVectorFormatType;
+
+typedef struct TestVideoVector {
     char *file_name;
+    TestVideoVectorFormatType file_format;
+    VideoImageFormat img_format;
     uint32_t width;
     uint32_t height;
     uint8_t bit_depth;
-} TestVideoVector_t;
+} TestVideoVector;
 
-static const TestVideoVector_t video_source_vectors[] = {
-    {"../../test/vectors/hantro_collage_w352h288.yuv", 352, 288, 8}};
+static const TestVideoVector video_source_vectors[] = {
+    {"../../test/vectors/hantro_collage_w352h288.yuv",
+     YUM_VIDEO_FILE,
+     IMG_FMT_420,
+     352,
+     288,
+     8},
+    {"../../test/vectors/screendata.y4m",
+     Y4M_VIDEO_FILE,
+     IMG_FMT_420,
+     640,
+     480,
+     8},
+};
 
-class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
+class EndToEndTest : public ::testing::TestWithParam<TestVideoVector> {
   protected:
     EndToEndTest() : test_vector(GetParam()) {
-        video_source = new YuvVideoSource(test_vector.file_name,
-                                          test_vector.width,
-                                          test_vector.height,
-                                          test_vector.bit_depth);
+        video_source = nullptr;
+        if (test_vector.file_format == YUM_VIDEO_FILE) {
+            video_source = new YuvVideoSource(test_vector.file_name,
+                                              test_vector.img_format,
+                                              test_vector.width,
+                                              test_vector.height,
+                                              test_vector.bit_depth);
+        }
+        if (test_vector.file_format == Y4M_VIDEO_FILE) {
+            video_source = new Y4MVideoSource(test_vector.file_name);
+        }
     };
     virtual ~EndToEndTest(){};
 
@@ -42,6 +69,7 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
         EbBufferHeaderType *input_picture_buffer = nullptr;
         int32_t frame_count = 0;
 
+        printf("End2End, file:%s\r\n", test_vector.file_name);
         // Check input parameters
         ASSERT_GE(test_vector.width, 0) << "Video vector width error.";
         ASSERT_GE(test_vector.height, 0) << "Video vector height error.";
@@ -58,7 +86,7 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
             << "Malloc memory for inputPictureBuffer failed.";
         input_picture_buffer->p_buffer = nullptr;
         input_picture_buffer->size = sizeof(EbBufferHeaderType);
-        input_picture_buffer->p_app_private = NULL;
+        input_picture_buffer->p_app_private = nullptr;
         input_picture_buffer->pic_type = EB_INVALID_PICTURE;
 
         // Output buffer
@@ -76,7 +104,7 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
         output_stream_buffer->size = sizeof(EbBufferHeaderType);
         output_stream_buffer->n_alloc_len = EB_OUTPUTSTREAMBUFFERSIZE_MACRO(
             test_vector.width * test_vector.height);
-        output_stream_buffer->p_app_private = NULL;
+        output_stream_buffer->p_app_private = nullptr;
         output_stream_buffer->pic_type = EB_INVALID_PICTURE;
 
         //
@@ -110,21 +138,23 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
             << "eb_svt_enc_stream_header return null output buffer."
             << return_error;
 
-        bool stop_encoder = false;
-        return_error == video_source->to_begin();
+        return_error == video_source->open_source();
         ASSERT_EQ(return_error, EB_ErrorNone)
             << "Init video source failed, error:" << return_error;
+        uint8_t *frame = nullptr;
+        do {
+            frame = (uint8_t *)video_source->get_next_frame();
 
-        while (stop_encoder == false) {
-            if (stop_encoder == false) {
-                printf("DISP: %d", frame_count);
+            if (frame != nullptr) {
+                printf("DISP: %d, size:%d\n",
+                       frame_count,
+                       video_source->get_frame_size());
                 // Fill in Buffers Header control data
-                input_picture_buffer->p_buffer =
-                    (uint8_t *)video_source->get_current_frame();
+                input_picture_buffer->p_buffer = frame;
                 input_picture_buffer->n_filled_len =
                     video_source->get_frame_size();
                 input_picture_buffer->flags = 0;
-                input_picture_buffer->p_app_private = NULL;
+                input_picture_buffer->p_app_private = nullptr;
                 input_picture_buffer->pts = frame_count++;
                 input_picture_buffer->pic_type = EB_INVALID_PICTURE;
                 // Send the picture
@@ -135,9 +165,9 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
                 headerPtrLast.n_alloc_len = 0;
                 headerPtrLast.n_filled_len = 0;
                 headerPtrLast.n_tick_count = 0;
-                headerPtrLast.p_app_private = NULL;
+                headerPtrLast.p_app_private = nullptr;
                 headerPtrLast.flags = EB_BUFFERFLAG_EOS;
-                headerPtrLast.p_buffer = NULL;
+                headerPtrLast.p_buffer = nullptr;
                 input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
 
                 eb_svt_enc_send_picture(svt_encoder_handle, &headerPtrLast);
@@ -145,18 +175,15 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
 
             // non-blocking call
             EbBufferHeaderType *headerPtr = nullptr;
-            return_error =
-                eb_svt_get_packet(svt_encoder_handle, &headerPtr, stop_encoder);
+            return_error = eb_svt_get_packet(
+                svt_encoder_handle, &headerPtr, (frame == nullptr ? 1 : 0));
             ASSERT_NE(return_error, EB_ErrorMax)
                 << "nError while encoding, code:" << headerPtr->flags;
             // Release the output buffer
-            if (headerPtr != nullptr)
+            if (headerPtr != nullptr) {
                 eb_svt_release_out_buffer(&headerPtr);
-
-            return_error = video_source->to_next();
-            if (return_error != EB_ErrorNone)
-                stop_encoder = true;
-        }
+            }
+        } while ((frame != nullptr));
 
         // Deinit
         return_error = eb_deinit_encoder(svt_encoder_handle);
@@ -178,9 +205,8 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector_s> {
     }
 
   private:
-    YuvVideoSource *video_source;
-    TestVideoVector_s test_vector;
-    bool stop_encoder;
+    VideoSource *video_source;
+    TestVideoVector test_vector;
 };
 
 TEST_P(EndToEndTest, EndToEndTest) {

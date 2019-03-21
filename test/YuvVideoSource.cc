@@ -8,14 +8,17 @@
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 
 YuvVideoSource::YuvVideoSource(const std::string &file_name,
+                               const VideoImageFormat format,
                                const uint32_t width, const uint32_t height,
                                const uint8_t bit_depth)
-    : file_name_(file_name), file_handle_(nullptr), frame_buffer_(nullptr) {
+    : file_name_(file_name), file_handle_(nullptr) {
     width_ = width;
     height_ = height;
     bit_depth_ = bit_depth;
-    frame_count_ = 0;
+    frame_count_ = -1;
     frame_size_ = 0;
+    frame_buffer_ = nullptr;
+    image_format_ = format;
 }
 YuvVideoSource::~YuvVideoSource() {
     if (frame_buffer_ != nullptr) {
@@ -33,7 +36,7 @@ YuvVideoSource::~YuvVideoSource() {
 }
 
 // Prepare stream, and get first frame.
-EbErrorType YuvVideoSource::to_begin() {
+EbErrorType YuvVideoSource::open_source() {
     // Reopen file as necessary
     if (file_handle_ == nullptr) {
         file_handle_ = fopen(file_name_.c_str(), "rb");
@@ -52,66 +55,21 @@ EbErrorType YuvVideoSource::to_begin() {
     // Seek to begin, and get first frame.
     fseek(file_handle_, 0, SEEK_SET);
 
-    frame_count_ = 0;
-    frame_size_ = read_input_frames();
-    if (frame_size_ == 0)
-        return EB_ErrorInsufficientResources;
+    frame_count_ = -1;
 
     return EB_ErrorNone;
 }
 
 // Get next frame.
-EbErrorType YuvVideoSource::to_next() {
-    frame_size_ = read_input_frames();
+EbSvtEncInput *YuvVideoSource::get_next_frame() {
+    frame_size_ = read_input_frame();
     if (frame_size_ == 0)
-        return EB_ErrorInsufficientResources;
+        return nullptr;
     ++frame_count_;
-    return EB_ErrorNone;
-}
-
-EbSvtEncInput *YuvVideoSource::get_current_frame() {
     return frame_buffer_;
 }
 
-EbErrorType YuvVideoSource::allocate_fream_buffer() {
-    // Determine size of each plane
-    const size_t luma_8bit_size = width_ * height_;
-    const size_t chroma8bitSize = luma_8bit_size >> 2;
-
-    // Determine
-    if (frame_buffer_ == nullptr)
-        frame_buffer_ = (EbSvtEncInput *)malloc(sizeof(EbSvtEncInput));
-    else
-        return EB_ErrorNone;
-
-    frame_buffer_->luma = (uint8_t *)malloc(luma_8bit_size);
-    if (!frame_buffer_->luma) {
-        free(frame_buffer_);
-        frame_buffer_ = nullptr;
-        return EB_ErrorInsufficientResources;
-    }
-
-    frame_buffer_->cb = (uint8_t *)malloc(chroma8bitSize);
-    if (!frame_buffer_->cb) {
-        free(frame_buffer_->luma);
-        free(frame_buffer_);
-        frame_buffer_ = nullptr;
-        return EB_ErrorInsufficientResources;
-    }
-
-    frame_buffer_->cr = (uint8_t *)malloc(chroma8bitSize);
-    if (!frame_buffer_->cr) {
-        free(frame_buffer_->cb);
-        free(frame_buffer_->luma);
-        free(frame_buffer_);
-        frame_buffer_ = nullptr;
-        return EB_ErrorInsufficientResources;
-    }
-
-    return EB_ErrorNone;
-}
-
-uint32_t YuvVideoSource::read_input_frames() {
+uint32_t YuvVideoSource::read_input_frame() {
     uint64_t readSize = 0;
     const uint32_t input_padded_width = width_;
     const uint32_t input_padded_height = height_;

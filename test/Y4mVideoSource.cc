@@ -6,10 +6,10 @@ Y4MVideoSource::Y4MVideoSource(const std::string& file_name)
     width_ = 0;
     height_ = 0;
     bit_depth_ = 0;
-    frame_count_ = 0;
+    frame_count_ = -1;
     frame_size_ = 0;
     frame_buffer_ = nullptr;
-    color_space_ = Y4MColor_420;
+    image_format_ = IMG_FMT_420;
 }
 
 Y4MVideoSource::~Y4MVideoSource() {
@@ -28,7 +28,7 @@ Y4MVideoSource::~Y4MVideoSource() {
 }
 
 // Prepare stream, and get first frame.
-EbErrorType Y4MVideoSource::to_begin() {
+EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
     // Reopen file as necessary
     if (file_handle_ == nullptr) {
@@ -54,21 +54,18 @@ EbErrorType Y4MVideoSource::to_begin() {
         return EB_ErrorInsufficientResources;
     }
 
-    frame_count_ = 0;
-    frame_size_ = read_input_frames();
-    if (frame_size_ == 0)
-        return EB_ErrorInsufficientResources;
+    frame_count_ = -1;
 
     return EB_ErrorNone;
 }
 
 // Get next frame.
-EbErrorType Y4MVideoSource::to_next() {
-    frame_size_ = read_input_frames();
+EbSvtEncInput* Y4MVideoSource::get_next_frame() {
+    frame_size_ = read_input_frame();
     if (frame_size_ == 0)
-        return EB_ErrorInsufficientResources;
+        return nullptr;
     ++frame_count_;
-    return EB_ErrorNone;
+    return frame_buffer_;
 }
 
 #define SKIP_TAG                                      \
@@ -134,7 +131,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         {
             SKIP_TAG;
             // TODO:Support other type, support 420 currently.
-            color_space_ = Y4MColor_420;
+            image_format_ = IMG_FMT_420;
             fseek(file_handle_, -1, SEEK_CUR);
 
         } break;
@@ -149,7 +146,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
     return EB_ErrorNone;
 }
 
-uint32_t Y4MVideoSource::read_input_frames() {
+uint32_t Y4MVideoSource::read_input_frame() {
     uint64_t readSize = 0;
     const uint32_t input_padded_width = width_;
     const uint32_t input_padded_height = height_;
