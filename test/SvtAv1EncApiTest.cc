@@ -3,7 +3,7 @@ extern "C" {
 #include "EbAppConfig.h"
 #include "EbAppContext.h"
 }
-#include "EbApi.h"
+#include "EbSvtAv1Enc.h"
 
 // TODO(wenyao): This two functions is copied from
 // EbAppContext.c & EbAppConfig.c.
@@ -49,7 +49,8 @@ EbErrorType CopyConfigurationParameters(EbConfig_t *config,
         config->scene_change_detection;
     callbackData->ebEncParameters.look_ahead_distance =
         config->look_ahead_distance;
-    callbackData->ebEncParameters.framesToBeEncoded = config->framesToBeEncoded;
+    callbackData->ebEncParameters.frames_to_be_encoded =
+        config->frames_to_be_encoded;
     callbackData->ebEncParameters.rate_control_mode = config->rateControlMode;
     callbackData->ebEncParameters.target_bit_rate = config->targetBitRate;
     callbackData->ebEncParameters.max_qp_allowed = config->max_qp_allowed;
@@ -89,20 +90,6 @@ EbErrorType CopyConfigurationParameters(EbConfig_t *config,
         (uint8_t)config->improve_sharpness;
     callbackData->ebEncParameters.high_dynamic_range_input =
         config->high_dynamic_range_input;
-    callbackData->ebEncParameters.access_unit_delimiter =
-        config->access_unit_delimiter;
-    callbackData->ebEncParameters.buffering_period_sei =
-        config->buffering_period_sei;
-    callbackData->ebEncParameters.picture_timing_sei =
-        config->picture_timing_sei;
-    callbackData->ebEncParameters.registered_user_data_sei_flag =
-        config->registered_user_data_sei_flag;
-    callbackData->ebEncParameters.unregistered_user_data_sei_flag =
-        config->unregistered_user_data_sei_flag;
-    callbackData->ebEncParameters.recovery_point_sei_flag =
-        config->recovery_point_sei_flag;
-    callbackData->ebEncParameters.enable_temporal_id =
-        config->enable_temporal_id;
     callbackData->ebEncParameters.encoder_bit_depth = config->encoderBitDepth;
     callbackData->ebEncParameters.compressed_ten_bit_format =
         config->compressedTenBitFormat;
@@ -170,7 +157,7 @@ void EbConfigCtor(EbConfig_t *config_ptr) {
     config_ptr->sourceHeight = 0;
     config_ptr->inputPaddedWidth = 0;
     config_ptr->inputPaddedHeight = 0;
-    config_ptr->framesToBeEncoded = 0;
+    config_ptr->frames_to_be_encoded = 0;
     config_ptr->bufferedInput = -1;
     config_ptr->sequenceBuffer = 0;
     config_ptr->latencyMode = 0;
@@ -231,16 +218,8 @@ void EbConfigCtor(EbConfig_t *config_ptr) {
 
     // Thresholds
     config_ptr->high_dynamic_range_input = 0;
-    config_ptr->access_unit_delimiter = 0;
-    config_ptr->buffering_period_sei = 0;
-    config_ptr->picture_timing_sei = 0;
 
     config_ptr->improve_sharpness = 0;
-    config_ptr->registered_user_data_sei_flag = 0;
-    config_ptr->unregistered_user_data_sei_flag = 0;
-    config_ptr->recovery_point_sei_flag = 0;
-    config_ptr->enable_temporal_id = 1;
-
     // Annex A parameters
     config_ptr->profile = 0;
     config_ptr->tier = 0;
@@ -252,7 +231,6 @@ void EbConfigCtor(EbConfig_t *config_ptr) {
     config_ptr->speed_control_flag = 0;
 
     // Testing
-    config_ptr->testUserData = 0;
     config_ptr->eosFlag = 0;
 
     // Computational Performance Parameters
