@@ -12,19 +12,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}
 include_directories (${PROJECT_SOURCE_DIR}/test/)
 include_directories (${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/googletest/include third_party/googletest/src)
-include_directories(${PROJECT_SOURCE_DIR}/Source/API )
-include_directories(${PROJECT_SOURCE_DIR}/Source/Lib/Common/Codec )
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/C_DEFAULT/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_SSE2/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_SSSE3/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_SSE4_1/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_AVX2/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Encoder/Codec)
-include_directories (${PROJECT_SOURCE_DIR}/Source/App/EncApp)
-include_directories (${PROJECT_SOURCE_DIR}/Source/API)
+include_directories(${PROJECT_SOURCE_DIR}/Source/API)
 
 # Define helper functions and macros used by Google Test.
-include(../third_party/googletest/cmake/internal_utils.cmake)
+include(../../third_party/googletest/cmake/internal_utils.cmake)
 
 # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to
 # make it prominent in the GUI.
@@ -53,51 +44,38 @@ add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1)
 enable_testing()
 
 file(GLOB all_files
+    "../*.h"
     "*.h"
-    "*.cc"
-    "../Source/Lib/Encoder/Codec/*.c"
-    )
+    "*.cc")
 
 if (UNIX)
+        
   # App Source Files
-    add_executable (SvtAv1UnitTests 
+    add_executable (SvtAv1ApiTests 
       ${all_files})
 
     # Link the Encoder App
-     target_link_libraries (SvtAv1UnitTests
-        COMMON_CODEC
-        COMMON_C_DEFAULT
-        COMMON_ASM_SSE2
-        COMMON_ASM_SSSE3
-        COMMON_ASM_SSE4_1
-        COMMON_ASM_AVX2
+     target_link_libraries (SvtAv1ApiTests
+        SvtAv1Enc
         gtest_all 
         pthread
         m)
+        
 endif(UNIX)
 
 if (MSVC OR MSYS OR MINGW OR WIN32)
-    set (lib_list
-    COMMON_CODEC
-    COMMON_C_DEFAULT
-    COMMON_ASM_SSE2
-    COMMON_ASM_SSSE3
-    COMMON_ASM_SSE4_1
-    COMMON_ASM_AVX2
-    gtest_all)
-    
-    cxx_executable_with_flags(SvtAv1UnitTests "${cxx_default}"
+
+    set (lib_list SvtAv1Enc gtest_all)
+                        
+    cxx_executable_with_flags(SvtAv1ApiTests "${cxx_default}"
       "${lib_list}" ${all_files})
 
-    set_target_properties(SvtAv1UnitTests
+    set_target_properties(SvtAv1ApiTests
                         PROPERTIES
                         COMPILE_DEFINITIONS "GTEST_LINKED_AS_SHARED_LIBRARY=1")
-
 endif(MSVC OR MSYS OR MINGW OR WIN32)
 
-install(TARGETS SvtAv1UnitTests RUNTIME DESTINATION bin)
+install(TARGETS SvtAv1ApiTests RUNTIME DESTINATION bin)
 
-add_test(SvtAv1UnitTests ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/SvtAv1UnitTests)
-
-add_subdirectory (api_test)
+add_test(SvtAv1ApiTests ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/SvtAv1ApiTests)
 
