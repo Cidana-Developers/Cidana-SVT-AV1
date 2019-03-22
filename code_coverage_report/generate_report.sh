@@ -18,6 +18,7 @@ lcov --no-external --capture --initial --base-directory ../Cidana-SVT-AV1/ --dir
 # run the unit tests
 cp ../Cidana-SVT-AV1/Bin/Debug/* .
 ./SvtAv1UnitTests
+./SvtAv1ApiTests
 
 # capture
 lcov --no-external --capture --base-directory ../Cidana-SVT-AV1/ --directory . --output-file svt_av1_test.info
