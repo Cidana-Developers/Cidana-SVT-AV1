@@ -220,7 +220,6 @@ void EbConfigCtor(EbConfig_t *config_ptr) {
     config_ptr->high_dynamic_range_input = 0;
 
     config_ptr->improve_sharpness = 0;
-
     // Annex A parameters
     config_ptr->profile = 0;
     config_ptr->tier = 0;
