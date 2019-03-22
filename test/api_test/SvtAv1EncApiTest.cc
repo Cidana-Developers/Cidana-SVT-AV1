@@ -1,25 +1,25 @@
-#include "EbApi.h"
+#include "EbSvtAv1Enc.h"
 #include "gtest/gtest.h"
 
 namespace {
 
 typedef struct {
-    EbComponentType* svtEncoderHandle;
-    EbSvtAv1EncConfiguration ebEncParameters;
+    EbComponentType* enc_handle;
+    EbSvtAv1EncConfiguration enc_params;
 } SvtAv1Context;
 
-TEST(EncoderAPI, NullPointParam) {
+TEST(EncoderAPI, check_null_pointer) {
     SvtAv1Context context = {0};
     // Test null pointer, expect BadParameters
     EXPECT_EQ(EB_ErrorBadParameter, eb_init_handle(nullptr, nullptr, nullptr));
 
     EXPECT_EQ(EB_ErrorBadParameter,
-              eb_init_handle(&context.svtEncoderHandle, nullptr, nullptr));
+              eb_init_handle(&context.enc_handle, nullptr, nullptr));
     EXPECT_EQ(EB_ErrorBadParameter, eb_svt_enc_set_parameter(nullptr, nullptr));
     // TODO(Ryan): Some function will crash with nullptr input,
     // and it will block test on linux platform.
     // EXPECT_EQ(EB_ErrorBadParameter,
-    //          eb_svt_enc_set_parameter(context.svtEncoderHandle,
+    //          eb_svt_enc_set_parameter(context.enc_handle,
     //          nullptr));
     EXPECT_EQ(EB_ErrorBadParameter, eb_init_encoder(nullptr));
     EXPECT_EQ(EB_ErrorBadParameter, eb_svt_enc_stream_header(nullptr, nullptr));
@@ -35,43 +35,43 @@ TEST(EncoderAPI, NullPointParam) {
     SUCCEED();
 }
 
-TEST(EncoderAPI, NormalSetup) {
+TEST(EncoderAPI, check_normal_setup) {
     SvtAv1Context context = {0};
-    int width = 1280;
-    int height = 720;
+    const int width = 1280;
+    const int height = 720;
 
     EXPECT_EQ(
         EB_ErrorNone,
         eb_init_handle(
-            &context.svtEncoderHandle, &context, &context.ebEncParameters))
+            &context.enc_handle, &context, &context.enc_params))
         << "eb_init_handle failed";
     EXPECT_EQ(EB_ErrorNone,
-              eb_svt_enc_set_parameter(context.svtEncoderHandle,
-                                       &context.ebEncParameters))
+              eb_svt_enc_set_parameter(context.enc_handle,
+                                       &context.enc_params))
         << "eb_svt_enc_set_parameter failed";
-    EXPECT_EQ(EB_ErrorNone, eb_init_encoder(context.svtEncoderHandle))
+    EXPECT_EQ(EB_ErrorNone, eb_init_encoder(context.enc_handle))
         << "eb_init_encoder failed";
-    EXPECT_EQ(EB_ErrorNone, eb_deinit_encoder(context.svtEncoderHandle))
+    EXPECT_EQ(EB_ErrorNone, eb_deinit_encoder(context.enc_handle))
         << "eb_deinit_encoder failed";
-    EXPECT_EQ(EB_ErrorNone, eb_deinit_handle(context.svtEncoderHandle))
+    EXPECT_EQ(EB_ErrorNone, eb_deinit_handle(context.enc_handle))
         << "eb_deinit_handle failed";
 }
 
-TEST(EncoderAPI, InvalidHeight) {
+TEST(EncoderAPI, check_invalid_height) {
     SvtAv1Context context = {0};
-    int width = 1280;
-    int height = 0;
+    const int width = 1280;
+    const int height = 0;
 
     ASSERT_EQ(
         EB_ErrorNone,
         eb_init_handle(
-            &context.svtEncoderHandle, &context, &context.ebEncParameters))
+            &context.enc_handle, &context, &context.enc_params))
         << "eb_init_handle failed";
     EXPECT_EQ(EB_ErrorBadParameter,
-              eb_svt_enc_set_parameter(context.svtEncoderHandle,
-                                       &context.ebEncParameters))
+              eb_svt_enc_set_parameter(context.enc_handle,
+                                       &context.enc_params))
         << "eb_svt_enc_set_parameter return wrong";
-    EXPECT_EQ(EB_ErrorNone, eb_deinit_handle(context.svtEncoderHandle))
+    EXPECT_EQ(EB_ErrorNone, eb_deinit_handle(context.enc_handle))
         << "eb_deinit_handle failed";
 }
 

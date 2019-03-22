@@ -12,14 +12,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}
 include_directories (${PROJECT_SOURCE_DIR}/test/)
 include_directories (${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/googletest/include third_party/googletest/src)
-include_directories(${PROJECT_SOURCE_DIR}/Source/API )
-include_directories(${PROJECT_SOURCE_DIR}/Source/App )
-include_directories(${PROJECT_SOURCE_DIR}/Source/Lib/Codec )
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/C_DEFAULT/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_SSE2/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_SSSE3/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_SSE4_1/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_AVX2/)
+include_directories(${PROJECT_SOURCE_DIR}/Source/API)
 
 # Define helper functions and macros used by Google Test.
 include(../../third_party/googletest/cmake/internal_utils.cmake)

@@ -13,13 +13,15 @@ include_directories (${PROJECT_SOURCE_DIR}/test/)
 include_directories (${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/googletest/include third_party/googletest/src)
 include_directories(${PROJECT_SOURCE_DIR}/Source/API )
-include_directories(${PROJECT_SOURCE_DIR}/Source/App )
-include_directories(${PROJECT_SOURCE_DIR}/Source/Lib/Codec )
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/C_DEFAULT/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_SSE2/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_SSSE3/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_SSE4_1/)
-include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/ASM_AVX2/)
+include_directories(${PROJECT_SOURCE_DIR}/Source/Lib/Common/Codec )
+include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/C_DEFAULT/)
+include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_SSE2/)
+include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_SSSE3/)
+include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_SSE4_1/)
+include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Common/ASM_AVX2/)
+include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/Encoder/Codec)
+include_directories (${PROJECT_SOURCE_DIR}/Source/App/EncApp)
+include_directories (${PROJECT_SOURCE_DIR}/Source/API)
 
 # Define helper functions and macros used by Google Test.
 include(../third_party/googletest/cmake/internal_utils.cmake)
@@ -52,15 +54,9 @@ enable_testing()
 
 file(GLOB all_files
     "*.h"
-    "*.cc")
-
-file(GLOB lib_all_files
-    "../Source/Lib/Codec/*.h"
-    "../Source/Lib/Codec/*.c")
-
-add_library(SvtAv1EncStatic STATIC
-    ${lib_all_files}
-)
+    "*.cc"
+    "../Source/Lib/Encoder/Codec/*.c"
+    )
 
 if (UNIX)
   # App Source Files
@@ -69,25 +65,25 @@ if (UNIX)
 
     # Link the Encoder App
      target_link_libraries (SvtAv1UnitTests
-        SvtAv1EncStatic
-        C_DEFAULT
-        ASM_SSE2
-        ASM_SSSE3
-        ASM_SSE4_1
-        ASM_AVX2 
+        COMMON_CODEC
+        COMMON_C_DEFAULT
+        COMMON_ASM_SSE2
+        COMMON_ASM_SSSE3
+        COMMON_ASM_SSE4_1
+        COMMON_ASM_AVX2
         gtest_all 
         pthread
         m)
 endif(UNIX)
 
 if (MSVC OR MSYS OR MINGW OR WIN32)
-  
-    set (lib_list SvtAv1EncStatic 
-    C_DEFAULT
-    ASM_SSE2
-    ASM_SSSE3
-    ASM_SSE4_1
-    ASM_AVX2 
+    set (lib_list
+    COMMON_CODEC
+    COMMON_C_DEFAULT
+    COMMON_ASM_SSE2
+    COMMON_ASM_SSSE3
+    COMMON_ASM_SSE4_1
+    COMMON_ASM_AVX2
     gtest_all)
     
     cxx_executable_with_flags(SvtAv1UnitTests "${cxx_default}"
