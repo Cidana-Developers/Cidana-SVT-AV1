@@ -55,6 +55,7 @@ EbErrorType Y4MVideoSource::open_source() {
     }
 
     frame_count_ = -1;
+    init_monitor();
 
     return EB_ErrorNone;
 }
@@ -65,6 +66,7 @@ EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
     if (frame_size_ == 0)
         return nullptr;
     ++frame_count_;
+    draw_frame();
     return frame_buffer_;
 }
 
