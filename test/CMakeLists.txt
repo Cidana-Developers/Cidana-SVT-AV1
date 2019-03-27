@@ -10,6 +10,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}
 
 # Include Subdirectories
 include_directories (${PROJECT_SOURCE_DIR}/test/)
+include_directories (${PROJECT_SOURCE_DIR}/test/ref)
 include_directories (${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/googletest/include third_party/googletest/src)
 include_directories(${PROJECT_SOURCE_DIR}/Source/API )
@@ -54,7 +55,8 @@ enable_testing()
 
 file(GLOB all_files
     "*.h"
-    "*.cc"
+    "ref/*.h"
+    "ref/*.cc"
     "../Source/Lib/Encoder/Codec/*.c"
     )
 
