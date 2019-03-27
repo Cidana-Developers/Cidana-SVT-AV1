@@ -14,7 +14,7 @@ class YuvVideoSource : public VideoSource {
     // Return EB_ErrorBadParameter as open file failed.
     EbErrorType open_source() override;
     // Get next frame.
-    EbSvtEncInput *get_next_frame() override;
+    EbSvtIOFormat *get_next_frame() override;
 
   private:
     uint32_t read_input_frame();

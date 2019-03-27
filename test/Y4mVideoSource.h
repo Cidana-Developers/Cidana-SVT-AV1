@@ -12,7 +12,7 @@ class Y4MVideoSource : public VideoSource {
     // Return EB_ErrorBadParameter as open file failed.
     EbErrorType open_source() override;
     // Get next frame.
-    EbSvtEncInput *get_next_frame() override;
+    EbSvtIOFormat *get_next_frame() override;
 
   private:
     EbErrorType parse_file_info();

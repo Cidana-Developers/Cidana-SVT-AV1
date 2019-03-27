@@ -1,4 +1,4 @@
-#include "EbApi.h"
+#include "EbSvtAv1Enc.h"
 #include "Y4mVideoSource.h"
 #include "YuvVideosource.h"
 #include "gtest/gtest.h"
@@ -87,7 +87,7 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector> {
         input_picture_buffer->p_buffer = nullptr;
         input_picture_buffer->size = sizeof(EbBufferHeaderType);
         input_picture_buffer->p_app_private = nullptr;
-        input_picture_buffer->pic_type = EB_INVALID_PICTURE;
+        input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
 
         // Output buffer
         output_stream_buffer =
@@ -105,7 +105,7 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector> {
         output_stream_buffer->n_alloc_len = EB_OUTPUTSTREAMBUFFERSIZE_MACRO(
             test_vector.width * test_vector.height);
         output_stream_buffer->p_app_private = nullptr;
-        output_stream_buffer->pic_type = EB_INVALID_PICTURE;
+        output_stream_buffer->pic_type = EB_AV1_INVALID_PICTURE;
 
         //
         // Init handle & encoder
@@ -156,7 +156,7 @@ class EndToEndTest : public ::testing::TestWithParam<TestVideoVector> {
                 input_picture_buffer->flags = 0;
                 input_picture_buffer->p_app_private = nullptr;
                 input_picture_buffer->pts = frame_count++;
-                input_picture_buffer->pic_type = EB_INVALID_PICTURE;
+                input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
                 // Send the picture
                 eb_svt_enc_send_picture(svt_encoder_handle,
                                         input_picture_buffer);

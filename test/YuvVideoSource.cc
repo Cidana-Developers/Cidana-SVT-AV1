@@ -61,7 +61,7 @@ EbErrorType YuvVideoSource::open_source() {
 }
 
 // Get next frame.
-EbSvtEncInput *YuvVideoSource::get_next_frame() {
+EbSvtIOFormat *YuvVideoSource::get_next_frame() {
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;

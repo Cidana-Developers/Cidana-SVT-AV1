@@ -60,7 +60,7 @@ EbErrorType Y4MVideoSource::open_source() {
 }
 
 // Get next frame.
-EbSvtEncInput* Y4MVideoSource::get_next_frame() {
+EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;

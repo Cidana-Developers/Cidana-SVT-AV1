@@ -1,6 +1,6 @@
 #ifndef _SVT_TEST_VIDEO_SOURCE_H_
 #define _SVT_TEST_VIDEO_SOURCE_H_
-#include "EbApi.h"
+#include "EbSvtAv1Enc.h"
 
 typedef enum VideoImageFormat {
     IMG_FMT_420JPEG,
@@ -17,7 +17,7 @@ class VideoSource {
     // Prepare stream.
     virtual EbErrorType open_source() = 0;
     // Get next frame.
-    virtual EbSvtEncInput *get_next_frame() = 0;
+    virtual EbSvtIOFormat *get_next_frame() = 0;
     // Get current frame index.
     virtual uint32_t get_frame_index() {
         return frame_count_;
@@ -51,7 +51,7 @@ class VideoSource {
 
         // Determine
         if (frame_buffer_ == nullptr)
-            frame_buffer_ = (EbSvtEncInput *)malloc(sizeof(EbSvtEncInput));
+            frame_buffer_ = (EbSvtIOFormat *)malloc(sizeof(EbSvtIOFormat));
         else
             return EB_ErrorNone;
 
@@ -86,7 +86,7 @@ class VideoSource {
     uint32_t bit_depth_;
     int32_t frame_count_;
     uint32_t frame_size_;
-    EbSvtEncInput *frame_buffer_;
+    EbSvtIOFormat *frame_buffer_;
     VideoImageFormat image_format_;
 };
 
