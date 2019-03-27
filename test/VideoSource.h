@@ -1,6 +1,9 @@
 #ifndef _SVT_TEST_VIDEO_SOURCE_H_
 #define _SVT_TEST_VIDEO_SOURCE_H_
 #include "EbApi.h"
+#ifdef _WIN32
+#include "SDL.h"
+#endif
 
 typedef enum VideoImageFormat {
     IMG_FMT_420JPEG,
@@ -81,6 +84,42 @@ class VideoSource {
 
         return EB_ErrorNone;
     }
+    virtual void init_monitor() {
+#ifdef _WIN32
+        SDL_Init(SDL_INIT_VIDEO);
+        window = SDL_CreateWindow("Input Monitor",
+                                  SDL_WINDOWPOS_UNDEFINED,
+                                  SDL_WINDOWPOS_UNDEFINED,
+                                  width_,
+                                  height_,
+                                  0);
+
+        renderer = SDL_CreateRenderer(window, -1, 0);
+        // TODO: Check more format
+        texture = SDL_CreateTexture(renderer,
+                                    SDL_PIXELFORMAT_IYUV,
+                                    SDL_TEXTUREACCESS_STREAMING,
+                                    width_,
+                                    height_);
+        monitor_buffer = (uint8_t *)SDL_calloc(1, width_ * height_ * 3 / 2);
+#endif  // ifdef WIN32
+    }
+    virtual void draw_frame() {
+#ifdef _WIN32
+        memcpy(monitor_buffer, frame_buffer_->luma, width_ * height_);
+        memcpy(monitor_buffer + width_ * height_,
+               frame_buffer_->cb,
+               width_ * height_ / 4);
+        memcpy(monitor_buffer + width_ * height_ * 5 / 4,
+               frame_buffer_->cr,
+               width_ * height_ / 4);
+        SDL_UpdateTexture(texture, NULL, monitor_buffer, width_);
+
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
+#endif
+    }
     uint32_t width_;
     uint32_t height_;
     uint32_t bit_depth_;
@@ -88,6 +127,12 @@ class VideoSource {
     uint32_t frame_size_;
     EbSvtEncInput *frame_buffer_;
     VideoImageFormat image_format_;
+#ifdef WIN32
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
+    SDL_Window *window;
+    uint8_t *monitor_buffer;
+#endif
 };
 
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

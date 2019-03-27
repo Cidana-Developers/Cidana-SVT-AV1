@@ -12,6 +12,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}
 include_directories (${PROJECT_SOURCE_DIR}/test/)
 include_directories (${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/googletest/include third_party/googletest/src)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/include)
 include_directories(${PROJECT_SOURCE_DIR}/Source/API )
 include_directories(${PROJECT_SOURCE_DIR}/Source/Lib/Codec )
 include_directories (${PROJECT_SOURCE_DIR}/Source/Lib/C_DEFAULT/)
@@ -88,10 +89,11 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
     ASM_SSE4_1
     ASM_AVX2 
     gtest_all)
-    
     cxx_executable_with_flags(SvtAv1UnitTests "${cxx_default}"
       "${lib_list}" ${all_files})
 
+    target_link_libraries(SvtAv1UnitTests
+		${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/lib/x64/SDL2.lib)
     set_target_properties(SvtAv1UnitTests
                         PROPERTIES
                         COMPILE_DEFINITIONS "GTEST_LINKED_AS_SHARED_LIBRARY=1")
