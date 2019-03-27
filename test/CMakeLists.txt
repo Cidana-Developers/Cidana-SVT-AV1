@@ -55,7 +55,6 @@ enable_testing()
 
 file(GLOB all_files
     "*.h"
-    "*.cc"
     "ref/*.h"
     "ref/*.cc"
     "../Source/Lib/Encoder/Codec/*.c"
