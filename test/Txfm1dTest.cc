@@ -19,105 +19,96 @@
 #include "random.h"
 #include "reference.h"
 #include "util.h"
-
 #include "TxfmTest.h"
 
 using svt_av1_test_tool::SVTRandom;
-
+using svt_av1_test_reference::get_txfm1d_types;
+using svt_av1_test_reference::reference_txfm_1d;
 namespace {
 
-typedef std::tuple<TXFM_TYPE, int, std::string> TxfmFwd1dParam;
+typedef std::tuple<TXFM_TYPE, int> FwdTxfm1dParam;
 
-class AV1FwdTxfmTest : public ::testing::TestWithParam<TxfmFwd1dParam> {
+class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
   public:
-    AV1FwdTxfmTest() {
-        _txfm_type = TEST_GET_PARAM(0);
-        _txfm_size = get_txfm1d_size(_txfm_type);
-        _max_error = TEST_GET_PARAM(1);
-        _err_str = TEST_GET_PARAM(2);
-        if (_txfm_size > 0) {
-            _input = new int32_t[_txfm_size];
-            memset(_input, 0, sizeof(int32_t) * _txfm_size);
-            _output = new int32_t[_txfm_size];
-            memset(_output, 0, sizeof(int32_t) * _txfm_size);
-            _input_ref = new double[_txfm_size];
-            memset(_input_ref, 0, sizeof(double) * _txfm_size);
-            _output_ref = new double[_txfm_size];
-            memset(_output_ref, 0, sizeof(double) * _txfm_size);
+    AV1FwdTxfm1dTest() {
+        txfm_type_ = TEST_GET_PARAM(0);
+        txfm_size_ = get_txfm1d_size(txfm_type_);
+        max_error_ = TEST_GET_PARAM(1);
+        if (txfm_size_ > 0) {
+            input_test_ = new int32_t[txfm_size_];
+            memset(input_test_, 0, sizeof(int32_t) * txfm_size_);
+            output_test_ = new int32_t[txfm_size_];
+            memset(output_test_, 0, sizeof(int32_t) * txfm_size_);
+            input_ref_ = new double[txfm_size_];
+            memset(input_ref_, 0, sizeof(double) * txfm_size_);
+            output_ref_ = new double[txfm_size_];
+            memset(output_ref_, 0, sizeof(double) * txfm_size_);
         }
     }
-    virtual ~AV1FwdTxfmTest() {
-        if (_input)
-            delete[] _input;
-        if (_output)
-            delete[] _output;
-        if (_input_ref)
-            delete[] _input_ref;
-        if (_output_ref)
-            delete[] _output_ref;
+
+    virtual ~AV1FwdTxfm1dTest() {
+        if (input_test_)
+            delete[] input_test_;
+        if (output_test_)
+            delete[] output_test_;
+        if (input_ref_)
+            delete[] input_ref_;
+        if (output_ref_)
+            delete[] output_ref_;
     }
 
-  protected:
     void run_fwd_accuracy_check() {
         SVTRandom rnd;
         const int count_test_block = 5000;
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
-            for (int ni = 0; ni < _txfm_size; ++ni) {
-                _input[ni] = rnd.random_10s();
-                _input_ref[ni] = static_cast<double>(_input[ni]);
+            for (int ni = 0; ni < txfm_size_; ++ni) {
+                input_test_[ni] = rnd.random_10s();
+                input_ref_[ni] = static_cast<double>(input_test_[ni]);
             }
 
             // calculate in forward transform functions
-            fwd_txfm_type_to_func(_txfm_type)(
-                _input, _output, 14, test_txfm_range);
+            fwd_txfm_type_to_func(txfm_type_)(
+                input_test_, output_test_, 14, test_txfm_range);
             // calculate in reference forward transform functions
-            svt_av1_test_reference::reference_txfm_1d(
-                svt_av1_test_reference::get_txfm1d_types(_txfm_type),
-                _input_ref,
-                _output_ref,
-                _txfm_size);
+            reference_txfm_1d(get_txfm1d_types(txfm_type_),
+                              input_ref_,
+                              output_ref_,
+                              txfm_size_);
 
             // compare for the result is in accuracy
-            for (int ni = 0; ni < _txfm_size; ++ni) {
-                ASSERT_LE(abs(_output[ni] -
-                              static_cast<int32_t>(round(_output_ref[ni]))),
-                          _max_error)
-                    << _err_str;
+            for (int ni = 0; ni < txfm_size_; ++ni) {
+                ASSERT_LE(abs(output_test_[ni] -
+                              static_cast<int32_t>(round(output_ref_[ni]))),
+                          max_error_)
+                    << "tx_size: " << txfm_size_ << "tx_type: " << txfm_type_;
             }
         }
     }
 
-    double _max_error;
-    int _txfm_size;
-    TXFM_TYPE _txfm_type;
-    int32_t *_input;
-    int32_t *_output;
-    double *_input_ref;
-    double *_output_ref;
-    std::string _err_str;
+  private:
+    double max_error_;
+    int txfm_size_;
+    TXFM_TYPE txfm_type_;
+    int32_t *input_test_;
+    int32_t *output_test_;
+    double *input_ref_;
+    double *output_ref_;
 };
 
-TEST_P(AV1FwdTxfmTest, run_fwd_accuracy_check) {
+TEST_P(AV1FwdTxfm1dTest, run_fwd_accuracy_check) {
     run_fwd_accuracy_check();
 }
 
 INSTANTIATE_TEST_CASE_P(
-    C, AV1FwdTxfmTest,
+    C, AV1FwdTxfm1dTest,
     ::testing::Values(
-        TxfmFwd1dParam(TXFM_TYPE_DCT4, 7, "av1_fdct4_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_DCT8, 7, "av1_fdct8_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_DCT16, 7, "av1_fdct16_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_DCT32, 7, "av1_fdct32_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_ADST4, 7, "av1_fadst4_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_ADST8, 7, "av1_fadst8_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_ADST16, 7, "av1_fadst16_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_ADST32, 7, "av1_fadst32_new test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_IDENTITY4, 7, "av1_fidentity4_c test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_IDENTITY8, 7, "av1_fidentity8_c test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_IDENTITY16, 7,
-                       "av1_fidentity16_c test failed!"),
-        TxfmFwd1dParam(TXFM_TYPE_IDENTITY32, 7,
-                       "av1_fidentity32_c test failed!")));
-
+        FwdTxfm1dParam(TXFM_TYPE_DCT4, 7), FwdTxfm1dParam(TXFM_TYPE_DCT8, 7),
+        FwdTxfm1dParam(TXFM_TYPE_DCT16, 7), FwdTxfm1dParam(TXFM_TYPE_DCT32, 7),
+        FwdTxfm1dParam(TXFM_TYPE_ADST4, 7), FwdTxfm1dParam(TXFM_TYPE_ADST8, 7),
+        FwdTxfm1dParam(TXFM_TYPE_ADST16, 7),
+        FwdTxfm1dParam(TXFM_TYPE_IDENTITY4, 7),
+        FwdTxfm1dParam(TXFM_TYPE_IDENTITY8, 7),
+        FwdTxfm1dParam(TXFM_TYPE_IDENTITY16, 7),
+        FwdTxfm1dParam(TXFM_TYPE_IDENTITY32, 7)));
 }  // namespace

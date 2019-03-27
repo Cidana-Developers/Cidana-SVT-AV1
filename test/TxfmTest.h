@@ -72,14 +72,14 @@ void av1_iidentity64_c(const int32_t *input, int32_t *output, int8_t cos_bit,
 
 void Av1TransformConfig(TxType tx_type, TxSize tx_size, TXFM_2D_FLIP_CFG *cfg);
 
-typedef void (*TxfmFunc)(const int32_t *input, int32_t *output, int8_t cos_bit,
-                         const int8_t *stage_range);
+typedef void (*Txfm1dFunc)(const int32_t *input, int32_t *output,
+                           int8_t cos_bit, const int8_t *stage_range);
 
 typedef void (*TxfmFwd2dFunc)(int16_t *input, int32_t *output,
                               uint32_t input_stride, TxType transform_type,
                               uint8_t bit_depth);
 
-static INLINE TxfmFunc fwd_txfm_type_to_func(TXFM_TYPE txfm_type) {
+static INLINE Txfm1dFunc fwd_txfm_type_to_func(TXFM_TYPE txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4: return av1_fdct4_new;
     case TXFM_TYPE_DCT8: return av1_fdct8_new;
@@ -99,7 +99,7 @@ static INLINE TxfmFunc fwd_txfm_type_to_func(TXFM_TYPE txfm_type) {
     }
 }
 
-static INLINE TxfmFunc inv_txfm_type_to_func(TXFM_TYPE txfm_type) {
+static INLINE Txfm1dFunc inv_txfm_type_to_func(TXFM_TYPE txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4: return av1_idct4_new;
     case TXFM_TYPE_DCT8: return av1_idct8_new;
