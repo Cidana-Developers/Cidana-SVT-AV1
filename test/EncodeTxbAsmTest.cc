@@ -32,6 +32,8 @@
 
 namespace EncodeTxbAsmTest {
 // test assembly code of av1_get_nz_map_contexts
+// TODO(wenyao): av1_get_nz_map_contexts_c is not availbale, we should discuss
+// this with netflix.
 const int deterministic_seed = 0xa42b;
 extern "C" void av1_get_nz_map_contexts_sse2(const uint8_t *const levels,
                                              const int16_t *const scan,
@@ -85,11 +87,12 @@ class EncodeTxbTest : public ::testing::TestWithParam<GetNzMapContextParam> {
                           eob,
                           (TxSize)tx_size,
                           tx_class,
-                          coeff_contexts_);
+                          coeff_contexts_test_);
 
                 for (int j = 0; j < eob; ++j) {
                     const int pos = scan[j];
-                    ASSERT_EQ(coeff_contexts_ref_[pos], coeff_contexts_[pos])
+                    ASSERT_EQ(coeff_contexts_ref_[pos],
+                              coeff_contexts_test_[pos])
                         << " tx_class " << tx_class << " width " << real_width
                         << " height " << real_height << " eob " << eob;
                 }
@@ -110,22 +113,24 @@ class EncodeTxbTest : public ::testing::TestWithParam<GetNzMapContextParam> {
     void init_coeff_contexts(const int16_t *const scan, const int bwl,
                              const int eob) {
         std::uniform_int_distribution<> uni_dist(0, UINT8_MAX);
-        memset(coeff_contexts_, 0, sizeof(*coeff_contexts_) * MAX_TX_SQUARE);
+        memset(coeff_contexts_test_,
+               0,
+               sizeof(*coeff_contexts_test_) * MAX_TX_SQUARE);
         memset(coeff_contexts_ref_,
                0,
                sizeof(*coeff_contexts_ref_) * MAX_TX_SQUARE);
         // Generate oppsite value for these two buffers
         for (int c = 0; c < eob; ++c) {
             const int pos = scan[c];
-            coeff_contexts_[pos] = uni_dist(gen_) - INT8_MAX;
-            coeff_contexts_ref_[pos] = -coeff_contexts_[pos];
+            coeff_contexts_test_[pos] = uni_dist(gen_) - INT8_MAX;
+            coeff_contexts_ref_[pos] = -coeff_contexts_test_[pos];
         }
     }
 
     uint8_t levels_buf_[TX_PAD_2D];
     uint8_t *levels_;
     DECLARE_ALIGNED(16, int8_t, coeff_contexts_ref_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(16, int8_t, coeff_contexts_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(16, int8_t, coeff_contexts_test_[MAX_TX_SQUARE]);
     std::mt19937 gen_;
     const GetNzMapContextsFunc ref_func_;
 };
@@ -146,6 +151,10 @@ extern "C" void av1_txb_init_levels_avx2(const tran_low_t *const coeff,
                                          const int32_t width,
                                          const int32_t height,
                                          uint8_t *const levels);
+// defined in EbRateDistortionCost.c
+extern "C" void av1_txb_init_levels_c(const tran_low_t *const coeff,
+                                      const int32_t width, const int32_t height,
+                                      uint8_t *const levels);
 
 using TxbInitLevelsFunc = void (*)(const tran_low_t *const coeff,
                                    const int width, const int height,
@@ -159,7 +168,7 @@ class EncodeTxbInitLevelTest
         : gen_(deterministic_seed), ref_func_(&av1_txb_init_levels_c) {
         std::uniform_int_distribution<> uni_dist(0, UINT8_MAX);
         for (int i = 0; i < TX_PAD_2D; i++) {
-            levels_buf_[i] = uni_dist(gen_);
+            levels_buf_test_[i] = uni_dist(gen_);
             levels_buf_ref_[i] = uni_dist(gen_);
         }
     }
@@ -174,7 +183,7 @@ class EncodeTxbInitLevelTest
         const int height = get_txb_high((TxSize)tx_size);
         tran_low_t coeff[MAX_TX_SQUARE];
 
-        levels_ = set_levels(levels_buf_, width);
+        levels_test_ = set_levels(levels_buf_test_, width);
         levels_ref_ = set_levels(levels_buf_ref_, width);
 
         std::uniform_int_distribution<> uni_dist(0, UINT16_MAX);
@@ -182,13 +191,13 @@ class EncodeTxbInitLevelTest
             coeff[i] = uni_dist(gen_) - INT16_MAX;
         }
 
-        ref_func_(coeff, width, height, levels_);
-        test_func(coeff, width, height, levels_ref_);
+        ref_func_(coeff, width, height, levels_ref_);
+        test_func(coeff, width, height, levels_test_);
 
         const int stride = width + TX_PAD_HOR;
         for (int r = 0; r < height + TX_PAD_VER; ++r) {
             for (int c = 0; c < stride; ++c) {
-                ASSERT_EQ(levels_buf_[c + r * stride],
+                ASSERT_EQ(levels_buf_test_[c + r * stride],
                           levels_buf_ref_[c + r * stride])
                     << "[" << r << "," << c << "] " << width << "x" << height;
             }
@@ -197,9 +206,9 @@ class EncodeTxbInitLevelTest
 
   private:
     std::mt19937 gen_;
-    uint8_t levels_buf_[TX_PAD_2D];
+    uint8_t levels_buf_test_[TX_PAD_2D];
     uint8_t levels_buf_ref_[TX_PAD_2D];
-    uint8_t *levels_;
+    uint8_t *levels_test_;
     uint8_t *levels_ref_;
     const TxbInitLevelsFunc ref_func_;
 };
