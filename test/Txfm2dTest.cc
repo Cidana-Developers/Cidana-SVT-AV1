@@ -23,79 +23,79 @@
 #include "TxfmTest.h"
 
 using svt_av1_test_tool::SVTRandom;
+using svt_av1_test_reference::data_amplify;
+using svt_av1_test_reference::reference_txfm_2d;
 
 namespace {
 
-typedef std::tuple<TxSize, TxType, int, std::string> TxfmFwd2dParam;
+typedef std::tuple<TxSize, TxType, int> FwdTxfm2dParam;
 
-class AV1FwdTxfmTest2D : public ::testing::TestWithParam<TxfmFwd2dParam> {
+class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
   public:
-    AV1FwdTxfmTest2D() {
-        _txfm_size = TEST_GET_PARAM(0);
-        _txfm_type = TEST_GET_PARAM(1);
-        _max_error = TEST_GET_PARAM(2);
-        _err_str = TEST_GET_PARAM(3);
-        Av1TransformConfig(_txfm_type, _txfm_size, &_cfg);
-        int txfm_size = tx_size_wide[_cfg.tx_size] * tx_size_high[_cfg.tx_size];
-        if (txfm_size > 0) {
-            _input = new int16_t[txfm_size];
-            memset(_input, 0, sizeof(int16_t) * txfm_size);
-            _output = new int32_t[txfm_size];
-            memset(_output, 0, sizeof(int32_t) * txfm_size);
-            _input_ref = new double[txfm_size];
-            memset(_input_ref, 0, sizeof(double) * txfm_size);
-            _output_ref = new double[txfm_size];
-            memset(_output_ref, 0, sizeof(double) * txfm_size);
-        }
+    AV1FwdTxfm2dTest() {
+        txfm_size_ = TEST_GET_PARAM(0);
+        txfm_type_ = TEST_GET_PARAM(1);
+        max_error_ = TEST_GET_PARAM(2);
+        Av1TransformConfig(txfm_type_, txfm_size_, &cfg_);
+        const int block_size =
+            tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
+
+        input_test_ = new int16_t[block_size];
+        output_test_ = new int32_t[block_size];
+        input_ref_ = new double[block_size];
+        output_ref_ = new double[block_size];
+        // make output different by default.
+        memset(output_ref_, 0, sizeof(double) * block_size);
+        memset(output_test_, 128, sizeof(int32_t) * block_size);
     }
-    ~AV1FwdTxfmTest2D() {
-        if (_input)
-            delete[] _input;
-        if (_output)
-            delete[] _output;
-        if (_input_ref)
-            delete[] _input_ref;
-        if (_output_ref)
-            delete[] _output_ref;
+
+    ~AV1FwdTxfm2dTest() {
+        delete[] input_test_;
+        delete[] output_test_;
+        delete[] input_ref_;
+        delete[] output_ref_;
     }
 
   protected:
     void run_fwd_accuracy_check() {
         SVTRandom rnd;
         const int count_test_block = 1000;
-        int txfm_size = tx_size_wide[_cfg.tx_size] * tx_size_high[_cfg.tx_size];
+        const int block_size = tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
-            for (int ni = 0; ni < txfm_size; ++ni) {
-                _input[ni] = rnd.random_10();
-                _input_ref[ni] = static_cast<double>(_input[ni]);
+            for (int ni = 0; ni < block_size; ++ni) {
+                input_test_[ni] = rnd.random_10();
+                input_ref_[ni] = static_cast<double>(input_test_[ni]);
             }
 
             // calculate in forward transform functions
-            fwd_txfm_2d_size_to_func(_txfm_size)(
-                _input, _output, tx_size_wide[_cfg.tx_size], _txfm_type, 14);
+            fwd_txfm_2d_size_to_func(txfm_size_)(input_test_,
+                                                 output_test_,
+                                                 tx_size_wide[cfg_.tx_size],
+                                                 txfm_type_,
+                                                 14);
+
             // calculate in reference forward transform functions
-            fwd_txfm_2d_reference(_input_ref, _output_ref);
-            svt_av1_test_reference::data_amplify(
-                _output_ref,
-                txfm_size,
-                _cfg.shift[0] + _cfg.shift[1] + _cfg.shift[2]);
+            fwd_txfm_2d_reference(input_ref_, output_ref_);
 
             // compare for the result is in accuracy
             double test_max_error = 0;
-            for (int ni = 0; ni < txfm_size; ++ni) {
-                test_max_error = max(
-                    test_max_error, fabs(_output[ni] - round(_output_ref[ni])));
+            for (int ni = 0; ni < block_size; ++ni) {
+                test_max_error =
+                    max(test_max_error,
+                        fabs(output_test_[ni] - round(output_ref_[ni])));
             }
-            ASSERT_GE(_max_error, test_max_error) << _err_str;
+            ASSERT_GE(max_error_, test_max_error)
+                << "fwd txfm 2d test tx_type: " << txfm_type_
+                << " tx_size: " << txfm_size_ << " loop: " << ti;
         }
     }
 
   private:
     void flip_input(double *input) {
-        int width = tx_size_wide[_cfg.tx_size];
-        int height = tx_size_high[_cfg.tx_size];
-        if (_cfg.lr_flip) {
+        int width = tx_size_wide[cfg_.tx_size];
+        int height = tx_size_high[cfg_.tx_size];
+        if (cfg_.lr_flip) {
             for (int r = 0; r < height; ++r) {
                 for (int c = 0; c < width / 2; ++c) {
                     const double tmp = input[r * width + c];
@@ -104,7 +104,7 @@ class AV1FwdTxfmTest2D : public ::testing::TestWithParam<TxfmFwd2dParam> {
                 }
             }
         }
-        if (_cfg.ud_flip) {
+        if (cfg_.ud_flip) {
             for (int c = 0; c < width; ++c) {
                 for (int r = 0; r < height / 2; ++r) {
                     const double tmp = input[r * width + c];
@@ -117,23 +117,24 @@ class AV1FwdTxfmTest2D : public ::testing::TestWithParam<TxfmFwd2dParam> {
 
     void fwd_txfm_2d_reference(double *input, double *output) {
         flip_input(input);
-        svt_av1_test_reference::reference_txfm_2d(
-            input, output, _txfm_type, _txfm_size);
+        reference_txfm_2d(input, output, txfm_type_, txfm_size_);
+        data_amplify(output_ref_,
+                     txfm_size_,
+                     cfg_.shift[0] + cfg_.shift[1] + cfg_.shift[2]);
     }
 
-  protected:
-    double _max_error;
-    TxSize _txfm_size;
-    TxType _txfm_type;
-    TXFM_2D_FLIP_CFG _cfg;
-    int16_t *_input;
-    int32_t *_output;
-    double *_input_ref;
-    double *_output_ref;
-    std::string _err_str;
+  private:
+    double max_error_;
+    TxSize txfm_size_;
+    TxType txfm_type_;
+    TXFM_2D_FLIP_CFG cfg_;
+    int16_t *input_test_;
+    int32_t *output_test_;
+    double *input_ref_;
+    double *output_ref_;
 };
 
-TEST_P(AV1FwdTxfmTest2D, run_fwd_accuracy_check) {
+TEST_P(AV1FwdTxfm2dTest, run_fwd_accuracy_check) {
     run_fwd_accuracy_check();
 }
 
@@ -159,26 +160,23 @@ static double max_error_ls[TX_SIZES_ALL] = {
     36,   // 64x16 transform
 };
 
-static std::vector<TxfmFwd2dParam> gen_txfm_2d_params() {
-    std::vector<TxfmFwd2dParam> param_vec;
-    for (int s = 0; s < TX_SIZES; /*TX_SIZES_ALL;*/ ++s) {
+static std::vector<FwdTxfm2dParam> gen_txfm_2d_params() {
+    std::vector<FwdTxfm2dParam> param_vec;
+    for (int s = 0; s < TX_SIZES; ++s) {
         const double max_error = max_error_ls[s];
         for (int t = 0; t < TX_TYPES; ++t) {
             const TxType txfm_type = static_cast<TxType>(t);
             const TxSize txfm_size = static_cast<TxSize>(s);
-            const std::string err_str =
-                fwd_txfm_2d_type_to_name(txfm_type) + " X " +
-                fwd_txfm_2d_size_to_name(txfm_size) + " is failed!";
             if (valid_txsize_txtype(txfm_size, txfm_type)) {
                 param_vec.push_back(
-                    TxfmFwd2dParam(txfm_size, txfm_type, max_error, err_str));
+                    FwdTxfm2dParam(txfm_size, txfm_type, max_error));
             }
         }
     }
     return param_vec;
 }
 
-INSTANTIATE_TEST_CASE_P(C, AV1FwdTxfmTest2D,
+INSTANTIATE_TEST_CASE_P(C, AV1FwdTxfm2dTest,
                         ::testing::ValuesIn(gen_txfm_2d_params()));
 
 }  // namespace
