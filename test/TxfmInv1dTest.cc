@@ -21,91 +21,82 @@
 #include "TxfmTest.h"
 
 using svt_av1_test_tool::SVTRandom;
-
+using svt_av1_test_tool::round_shift;
 namespace {
 
-typedef std::tuple<TXFM_TYPE, int, std::string> TxfmInv1dParam;
+typedef std::tuple<TXFM_TYPE, int> InvTxfm1dParam;
 
-class AV1InvTxfmTest : public ::testing::TestWithParam<TxfmInv1dParam> {
+class AV1InvTxfm1dTest : public ::testing::TestWithParam<InvTxfm1dParam> {
   public:
-    AV1InvTxfmTest() {
-        _txfm_type = TEST_GET_PARAM(0);
-        _txfm_size = get_txfm1d_size(_txfm_type);
-        _max_error = TEST_GET_PARAM(1);
-        _err_str = TEST_GET_PARAM(2);
-        if (_txfm_size > 0) {
-            _input = new int32_t[_txfm_size];
-            memset(_input, 0, sizeof(int32_t) * _txfm_size);
-            _output = new int32_t[_txfm_size];
-            memset(_output, 0, sizeof(int32_t) * _txfm_size);
-            _inv_output = new int32_t[_txfm_size];
-            memset(_inv_output, 0, sizeof(int32_t) * _txfm_size);
-        }
-    }
-    virtual ~AV1InvTxfmTest() {
-        if (_input)
-            delete[] _input;
-        if (_output)
-            delete[] _output;
-        if (_inv_output)
-            delete[] _inv_output;
+    AV1InvTxfm1dTest() {
+        txfm_type_ = TEST_GET_PARAM(0);
+        max_error_ = TEST_GET_PARAM(1);
+        txfm_size_ = get_txfm1d_size(txfm_type_);
+
+        input_ = new int32_t[txfm_size_];
+        memset(input_, 0, sizeof(int32_t) * txfm_size_);
+        output_ = new int32_t[txfm_size_];
+        memset(output_, 0, sizeof(int32_t) * txfm_size_);
+        inv_output_ = new int32_t[txfm_size_];
+        memset(inv_output_, 0, sizeof(int32_t) * txfm_size_);
     }
 
-  protected:
+    virtual ~AV1InvTxfm1dTest() {
+        delete[] input_;
+        delete[] output_;
+        delete[] inv_output_;
+    }
+
     void run_inv_accuracy_check() {
         SVTRandom rnd;
         const int count_test_block = 5000;
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
-            for (int ni = 0; ni < _txfm_size; ++ni) {
-                _input[ni] = rnd.random_10s();
+            for (int ni = 0; ni < txfm_size_; ++ni) {
+                input_[ni] = rnd.random_10s();
             }
 
             // calculate in forward transform functions
-            fwd_txfm_type_to_func(_txfm_type)(
-                _input, _output, 14, test_txfm_range);
+            fwd_txfm_type_to_func(txfm_type_)(
+                input_, output_, 14, test_txfm_range);
             // calculate in inverse transform functions
-            inv_txfm_type_to_func(_txfm_type)(
-                _output, _inv_output, 14, test_txfm_range);
+            inv_txfm_type_to_func(txfm_type_)(
+                output_, inv_output_, 14, test_txfm_range);
 
             // compare betwenn input and inversed output
-            for (int ni = 0; ni < _txfm_size; ++ni) {
-                EXPECT_LE(abs(_input[ni] -
-                              svt_av1_test_tool::round_shift(
-                                  _inv_output[ni], get_msb(_txfm_size) - 1)),
-                          _max_error)
-                    << _err_str;
+            for (int ni = 0; ni < txfm_size_; ++ni) {
+                EXPECT_LE(
+                    abs(input_[ni] -
+                        round_shift(inv_output_[ni], get_msb(txfm_size_) - 1)),
+                    max_error_)
+                    << "inv txfm type " << txfm_type_ << " size " << txfm_size_
+                    << " loop: " << ti;
             }
         }
     }
 
-    double _max_error;
-    int _txfm_size;
-    TXFM_TYPE _txfm_type;
-    int32_t *_input;
-    int32_t *_output;
-    int32_t *_inv_output;
-    std::string _err_str;
+  private:
+    double max_error_;
+    int txfm_size_;
+    TXFM_TYPE txfm_type_;
+    int32_t *input_;
+    int32_t *output_;
+    int32_t *inv_output_;
 };
 
-TEST_P(AV1InvTxfmTest, run_inv_accuracy_check) {
+TEST_P(AV1InvTxfm1dTest, run_inv_accuracy_check) {
     run_inv_accuracy_check();
 }
 
 INSTANTIATE_TEST_CASE_P(
-    C, AV1InvTxfmTest,
+    C, AV1InvTxfm1dTest,
     ::testing::Values(
-        TxfmInv1dParam(TXFM_TYPE_DCT4, 2, "inverse DCT4 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_DCT8, 2, "inverse DCT8 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_DCT16, 2, "inverse DCT16 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_DCT32, 2, "inverse DCT32 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_ADST4, 2, "inverse ADST4 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_ADST8, 2, "inverse ADST8 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_ADST16, 2, "inverse ADST16 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_ADST32, 2, "inverse ADST32 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_IDENTITY4, 2, "inverse IDTX4 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_IDENTITY8, 2, "inverse IDTX8 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_IDENTITY16, 2, "inverse IDTX16 test failed!"),
-        TxfmInv1dParam(TXFM_TYPE_IDENTITY32, 2,
-                       "inverse IDTX32 test failed!")));
+        InvTxfm1dParam(TXFM_TYPE_DCT4, 2), InvTxfm1dParam(TXFM_TYPE_DCT8, 2),
+        InvTxfm1dParam(TXFM_TYPE_DCT16, 2), InvTxfm1dParam(TXFM_TYPE_DCT32, 2),
+        InvTxfm1dParam(TXFM_TYPE_ADST4, 2), InvTxfm1dParam(TXFM_TYPE_ADST8, 2),
+        InvTxfm1dParam(TXFM_TYPE_ADST16, 2),
+        InvTxfm1dParam(TXFM_TYPE_IDENTITY4, 2),
+        InvTxfm1dParam(TXFM_TYPE_IDENTITY8, 2),
+        InvTxfm1dParam(TXFM_TYPE_IDENTITY16, 2),
+        InvTxfm1dParam(TXFM_TYPE_IDENTITY32, 2)));
 }  // namespace
