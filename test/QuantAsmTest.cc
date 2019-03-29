@@ -259,8 +259,8 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
     tran_low_t *coeff_;
     QuantizeFunc quant_ref_;
     QuantizeFunc quant_test_;
-    TxSize tx_size_;
-    aom_bit_depth_t bd_;
+    const TxSize tx_size_;
+    const aom_bit_depth_t bd_;
 };
 
 TEST_P(QuantizeTest, ZeroInput) {
@@ -288,11 +288,21 @@ TEST_P(QuantizeTest, MultipleQ) {
     }
 }
 
+#if 1
+INSTANTIATE_TEST_CASE_P(
+    AVX2, QuantizeTest,
+    ::testing::Combine(::testing::Values(static_cast<int>(TX_16X16),
+                                         static_cast<int>(TX_32X32),
+                                         static_cast<int>(TX_64X64)),
+                       ::testing::Values(static_cast<int>(AOM_BITS_8),
+                                         static_cast<int>(AOM_BITS_10))));
+#else
 INSTANTIATE_TEST_CASE_P(
     AVX2, QuantizeTest,
     ::testing::Combine(::testing::Range(static_cast<int>(TX_4X4),
                                         static_cast<int>(TX_SIZES_ALL), 1),
                        ::testing::Values(static_cast<int>(AOM_BITS_8),
                                          static_cast<int>(AOM_BITS_10))));
+#endif
 
 }  // namespace
