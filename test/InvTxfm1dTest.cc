@@ -18,7 +18,7 @@
 #include "EbDefinitions.h"
 #include "EbTransforms.h"
 
-#include "TxfmTest.h"
+#include "TxfmCommon.h"
 
 using svt_av1_test_tool::SVTRandom;
 using svt_av1_test_tool::round_shift;

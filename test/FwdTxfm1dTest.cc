@@ -17,13 +17,13 @@
 #include "EbTransforms.h"
 
 #include "random.h"
-#include "reference.h"
+#include "TxfmRef.h"
 #include "util.h"
-#include "TxfmTest.h"
+#include "TxfmCommon.h"
 
-using svt_av1_test_tool::SVTRandom;
 using svt_av1_test_reference::get_txfm1d_types;
 using svt_av1_test_reference::reference_txfm_1d;
+using svt_av1_test_tool::SVTRandom;
 namespace {
 
 typedef std::tuple<TXFM_TYPE, int> FwdTxfm1dParam;
@@ -105,8 +105,8 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(
         FwdTxfm1dParam(TXFM_TYPE_DCT4, 7), FwdTxfm1dParam(TXFM_TYPE_DCT8, 7),
         FwdTxfm1dParam(TXFM_TYPE_DCT16, 7), FwdTxfm1dParam(TXFM_TYPE_DCT32, 7),
-        FwdTxfm1dParam(TXFM_TYPE_ADST4, 7), FwdTxfm1dParam(TXFM_TYPE_ADST8, 7),
-        FwdTxfm1dParam(TXFM_TYPE_ADST16, 7),
+        FwdTxfm1dParam(TXFM_TYPE_DCT64, 7), FwdTxfm1dParam(TXFM_TYPE_ADST4, 7),
+        FwdTxfm1dParam(TXFM_TYPE_ADST8, 7), FwdTxfm1dParam(TXFM_TYPE_ADST16, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY4, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY8, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY16, 7),

@@ -17,14 +17,14 @@
 #include "EbTransforms.h"
 
 #include "random.h"
-#include "reference.h"
+#include "TxfmRef.h"
 #include "util.h"
 
-#include "TxfmTest.h"
+#include "TxfmCommon.h"
 
-using svt_av1_test_tool::SVTRandom;
 using svt_av1_test_reference::data_amplify;
 using svt_av1_test_reference::reference_txfm_2d;
+using svt_av1_test_tool::SVTRandom;
 
 namespace {
 
@@ -45,8 +45,7 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
         input_ref_ = new double[block_size];
         output_ref_ = new double[block_size];
         // make output different by default.
-        memset(output_ref_, 0, sizeof(double) * block_size);
-        memset(output_test_, 128, sizeof(int32_t) * block_size);
+        memset(output_test_, 0, sizeof(int32_t) * block_size);
     }
 
     ~AV1FwdTxfm2dTest() {
@@ -60,12 +59,14 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
     void run_fwd_accuracy_check() {
         SVTRandom rnd;
         const int count_test_block = 1000;
-        const int block_size = tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
+        const int block_size =
+            tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < block_size; ++ni) {
                 input_test_[ni] = rnd.random_10();
                 input_ref_[ni] = static_cast<double>(input_test_[ni]);
+                output_ref_[ni] = 0;
             }
 
             // calculate in forward transform functions
@@ -73,7 +74,7 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
                                                  output_test_,
                                                  tx_size_wide[cfg_.tx_size],
                                                  txfm_type_,
-                                                 14);
+                                                 8);
 
             // calculate in reference forward transform functions
             fwd_txfm_2d_reference(input_ref_, output_ref_);
@@ -116,10 +117,13 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
     }
 
     void fwd_txfm_2d_reference(double *input, double *output) {
+        const int block_size =
+            tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
+
         flip_input(input);
         reference_txfm_2d(input, output, txfm_type_, txfm_size_);
         data_amplify(output_ref_,
-                     txfm_size_,
+                     block_size,
                      cfg_.shift[0] + cfg_.shift[1] + cfg_.shift[2]);
     }
 
