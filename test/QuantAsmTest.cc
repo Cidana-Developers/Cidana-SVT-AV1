@@ -82,13 +82,13 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
             }
         } else {
             if (tx_size_ == TX_32X32) {
-                quant_ref_ = aom_highbd_quantize_b_c;
+                quant_ref_ = aom_highbd_quantize_b_32x32_c;
                 quant_test_ = aom_highbd_quantize_b_32x32_avx2;
             } else if (tx_size_ == TX_64X64) {
-                quant_ref_ = aom_highbd_quantize_b_32x32_c;
+                quant_ref_ = aom_highbd_quantize_b_64x64_c;
                 quant_test_ = aom_highbd_quantize_b_64x64_avx2;
             } else {
-                quant_ref_ = aom_highbd_quantize_b_64x64_c;
+                quant_ref_ = aom_highbd_quantize_b_c;
                 quant_test_ = aom_highbd_quantize_b_avx2;
             }
         }
