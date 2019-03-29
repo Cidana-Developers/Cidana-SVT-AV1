@@ -2,6 +2,7 @@
 #define _SVT_AV1_E2E_FRAMEWORK_H_
 
 #include "E2eTestVectors.h"
+#include "ReconSink.h"
 
 namespace svt_av1_test_e2e {
 
@@ -32,6 +33,31 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
   protected:
     VideoSource *video_src_;
     SvtAv1Context ctxt_;
+};
+
+class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
+  protected:
+    SvtAv1E2ETestFramework() {
+        recon_sink_ = nullptr;
+    }
+    virtual ~SvtAv1E2ETestFramework() {
+        if (recon_sink_) {
+            delete recon_sink_;
+            recon_sink_ = nullptr;
+        }
+    }
+
+  protected:
+    virtual void run_encode_process() final override;
+
+  protected:
+    // plug-in for test data
+    // recon-data pin
+    virtual void get_recon_frame();
+    // decoder pin
+    // psnr pin
+  protected:
+    ReconSink *recon_sink_;
 };
 
 }  // namespace svt_av1_test_e2e
