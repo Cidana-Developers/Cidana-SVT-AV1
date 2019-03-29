@@ -110,6 +110,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         qtab_ = NULL;
         aom_free(coeff_);
         coeff_ = NULL;
+        aom_clear_system_state();
     }
 
     void InitQuantizer() {
