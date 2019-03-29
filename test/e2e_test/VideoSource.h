@@ -6,17 +6,20 @@
 #endif
 
 typedef enum VideoImageFormat {
-    IMG_FMT_420JPEG,
-    IMG_FMT_420PALDV,
     IMG_FMT_420,
     IMG_FMT_422,
-    IMG_FMT_444
+    IMG_FMT_444,
+    IMG_FMT_420P10_PACKED,
+    IMG_FMT_422P10_PACKED,
+    IMG_FMT_444P10_PACKED
 } VideoImageFormat;
 
 // Abstract base class for test video source
 class VideoSource {
   public:
-    virtual ~VideoSource(){};
+    virtual ~VideoSource() {
+        deinit_monitor();
+    };
     // Prepare stream.
     virtual EbErrorType open_source() = 0;
     // Get next frame.
@@ -33,9 +36,13 @@ class VideoSource {
     virtual uint32_t get_width() {
         return width_;
     };
+    // Get video width
+    virtual uint32_t get_width_with_padding() {
+        return width_with_padding_;
+    };
     // Get video height
-    virtual uint32_t get_height() {
-        return height_;
+    virtual uint32_t get_height_with_padding() {
+        return height_with_padding_;
     };
     // Get video bit_depth
     virtual uint32_t get_bit_depth() {
@@ -49,8 +56,14 @@ class VideoSource {
   protected:
     virtual EbErrorType allocate_fream_buffer() {
         // Determine size of each plane
-        const size_t luma_8bit_size = width_ * height_;
-        const size_t chroma8bitSize = luma_8bit_size >> 2;
+        const size_t luma_8bit_size =
+            width_with_padding_ * height_with_padding_;
+        size_t chroma8bitSize = 0;
+        switch (image_format_) {
+        case IMG_FMT_420: chroma8bitSize = luma_8bit_size >> 2; break;
+        case IMG_FMT_422: chroma8bitSize = luma_8bit_size >> 1; break;
+        case IMG_FMT_444: chroma8bitSize = luma_8bit_size; break;
+        }
 
         // Determine
         if (frame_buffer_ == nullptr)
@@ -120,8 +133,15 @@ class VideoSource {
         SDL_RenderPresent(renderer);
 #endif
     }
+    virtual void deinit_monitor() {
+#ifdef _WIN32
+        SDL_Quit();
+#endif
+    }
     uint32_t width_;
     uint32_t height_;
+    uint32_t width_with_padding_;
+    uint32_t height_with_padding_;
     uint32_t bit_depth_;
     int32_t frame_count_;
     uint32_t frame_size_;

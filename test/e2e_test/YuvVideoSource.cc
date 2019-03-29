@@ -12,8 +12,8 @@ YuvVideoSource::YuvVideoSource(const std::string &file_name,
                                const uint32_t width, const uint32_t height,
                                const uint8_t bit_depth)
     : file_name_(file_name), file_handle_(nullptr) {
-    width_ = width;
-    height_ = height;
+    width_with_padding_ = width_ = width;
+    height_with_padding_ = height_ = height;
     bit_depth_ = bit_depth;
     frame_count_ = -1;
     frame_size_ = 0;
