@@ -34,7 +34,9 @@ void svt_av1_test_e2e::SvtAv1E2ETestBase::SetUp() {
 
     // check for video source
     ASSERT_NE(video_src_, nullptr) << "video source create failed!";
-
+    return_error = video_src_->open_source();
+    ASSERT_EQ(return_error, EB_ErrorNone)
+        << "open_source return error:" << return_error;
     // Check input parameters
     uint32_t width = video_src_->get_width_with_padding();
     uint32_t height = video_src_->get_height_with_padding();
@@ -47,8 +49,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestBase::SetUp() {
     //
     // Init handle
     //
-    return_error =
-        eb_init_handle(&ctxt_.enc_handle, &ctxt_, &ctxt_.enc_params);
+    return_error = eb_init_handle(&ctxt_.enc_handle, &ctxt_, &ctxt_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_init_handle return error:" << return_error;
     ASSERT_NE(ctxt_.enc_handle, nullptr)
@@ -117,8 +118,8 @@ void svt_av1_test_e2e::SvtAv1E2ETestBase::init_test() {
         << "eb_init_encoder return error:" << return_error;
 
     // Get ivf header
-    return_error = eb_svt_enc_stream_header(ctxt_.enc_handle,
-                                            &ctxt_.output_stream_buffer);
+    return_error =
+        eb_svt_enc_stream_header(ctxt_.enc_handle, &ctxt_.output_stream_buffer);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_svt_enc_stream_header return error:" << return_error;
     ASSERT_NE(ctxt_.output_stream_buffer, nullptr)

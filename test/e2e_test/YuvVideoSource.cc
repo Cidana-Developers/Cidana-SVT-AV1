@@ -21,15 +21,6 @@ YuvVideoSource::YuvVideoSource(const std::string &file_name,
     image_format_ = format;
 }
 YuvVideoSource::~YuvVideoSource() {
-    if (frame_buffer_ != nullptr) {
-        if (frame_buffer_->luma != nullptr)
-            free(frame_buffer_->luma);
-        if (frame_buffer_->cb != nullptr)
-            free(frame_buffer_->cb);
-        if (frame_buffer_->cr != nullptr)
-            free(frame_buffer_->cr);
-        free(frame_buffer_);
-    }
     if (file_handle_ != nullptr) {
         fclose(file_handle_);
     }
@@ -46,7 +37,7 @@ EbErrorType YuvVideoSource::open_source() {
         return EB_ErrorBadParameter;
 
     // Prepare buffer
-    if (EB_ErrorNone != allocate_fream_buffer()) {
+    if (EB_ErrorNone != init_frame_buffer()) {
         fclose(file_handle_);
         file_handle_ = nullptr;
         return EB_ErrorInsufficientResources;
