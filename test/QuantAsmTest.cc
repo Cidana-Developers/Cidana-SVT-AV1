@@ -65,10 +65,31 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         : gen_(deterministic_seed),
           tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
           bd_(static_cast<aom_bit_depth_t>(TEST_GET_PARAM(1))) {
-        decltype(dist_nbit_)::param_type param{-(1 << (7 + bd_)),
-                                               (1 << (7 + bd_)) - 1};
+
+        coeff_min_ = -(1 << (7 + bd_));
+        coeff_max_ = (1 << (7 + bd_)) - 1;
+        decltype(dist_nbit_)::param_type param{coeff_min_, coeff_max_};
         dist_nbit_.param(param);
 
+        qtab_ = reinterpret_cast<QuanTable *>(aom_memalign(32, sizeof(*qtab_)));
+        const int n_coeffs = coeff_num();
+        coeff_ = reinterpret_cast<tran_low_t *>(
+            aom_memalign(32, 6 * n_coeffs * sizeof(tran_low_t)));
+        av1_build_quantizer(bd_, 0, 0, 0, 0, 0, &qtab_->quant, &qtab_->dequant);
+
+        setup_func_ptrs();
+    }
+
+    virtual ~QuantizeTest() {
+        aom_free(qtab_);
+        qtab_ = NULL;
+        aom_free(coeff_);
+        coeff_ = NULL;
+        aom_clear_system_state();
+    }
+
+    // ref setup_rtcd_internal() in aom_dsp_rtcd.h
+    void setup_func_ptrs() {
         if (bd_ == AOM_BITS_8) {
             if (tx_size_ == TX_32X32) {
                 quant_ref_ = aom_quantize_b_32x32_c_II;
@@ -94,47 +115,19 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         }
     }
 
-    virtual ~QuantizeTest() {
-    }
-
-    virtual void SetUp() {
-        qtab_ = reinterpret_cast<QuanTable *>(aom_memalign(32, sizeof(*qtab_)));
-        const int n_coeffs = coeff_num();
-        coeff_ = reinterpret_cast<tran_low_t *>(
-            aom_memalign(32, 6 * n_coeffs * sizeof(tran_low_t)));
-        InitQuantizer();
-    }
-
-    virtual void TearDown() {
-        aom_free(qtab_);
-        qtab_ = NULL;
-        aom_free(coeff_);
-        coeff_ = NULL;
-        aom_clear_system_state();
-    }
-
-    void InitQuantizer() {
-        av1_build_quantizer(bd_, 0, 0, 0, 0, 0, &qtab_->quant, &qtab_->dequant);
-    }
-
-    void QuantizeRun(bool is_loop, int q = 0, int test_num = 1) {
+    void run_quantize(bool is_random_input, int q = 0, int test_num = 1) {
         tran_low_t *coeff_ptr = coeff_;
         const intptr_t n_coeffs = coeff_num();
         const int32_t skip_block = 0;
 
         tran_low_t *qcoeff_ref = coeff_ptr + n_coeffs;
         tran_low_t *dqcoeff_ref = qcoeff_ref + n_coeffs;
-
         tran_low_t *qcoeff_test = dqcoeff_ref + n_coeffs;
         tran_low_t *dqcoeff_test = qcoeff_test + n_coeffs;
         uint16_t *eob = (uint16_t *)(dqcoeff_test + n_coeffs);
 
-        // Testing uses 2-D DCT scan order table
         const SCAN_ORDER *const sc = &av1_scan_orders[tx_size_][DCT_DCT];
-
-        // Testing uses luminance quantization table
         const int16_t *zbin = qtab_->quant.y_zbin[q];
-
         const int16_t *round = 0;
         const int16_t *quant = 0;
         round = qtab_->quant.y_round[q];
@@ -144,8 +137,10 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         const int16_t *dequant = qtab_->dequant.y_dequant_QTX[q];
 
         for (int i = 0; i < test_num; ++i) {
-            if (is_loop)
-                FillCoeffRandom();
+            if (is_random_input) {
+                fill_coeff_const(0, n_coeffs, 0);
+                fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs);
+            }
 
             memset(qcoeff_ref, 0, 5 * n_coeffs * sizeof(*qcoeff_ref));
 
@@ -194,97 +189,68 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         }
     }
 
-    void CompareResults(const tran_low_t *buf_ref, const tran_low_t *buf_test,
-                        int size, const char *text, int q, int number) {
-        int i;
-        for (i = 0; i < size; ++i) {
-            ASSERT_EQ(buf_ref[i], buf_test[i])
-                << text << " mismatch on test: " << number
-                << " at position: " << i << " Q: " << q;
-        }
-    }
-
     int coeff_num() const {
         return av1_get_max_eob(tx_size_);
     }
 
-    void FillCoeff(tran_low_t c) {
-        const int n_coeffs = coeff_num();
-        for (int i = 0; i < n_coeffs; ++i) {
+    void fill_coeff_const(int i_begin, int i_end, tran_low_t c) {
+        for (int i = i_begin; i < i_end; ++i) {
             coeff_[i] = c;
         }
     }
 
-    void FillCoeffRandom() {
-        const int n_coeffs = coeff_num();
-        FillCoeffZero();
-        int num = dist_nbit_(gen_) % n_coeffs;
-        for (int i = 0; i < num; ++i) {
+    void fill_coeff_random(int i_begin, int i_end) {
+        for (int i = i_begin; i < i_end; ++i) {
             coeff_[i] = dist_nbit_(gen_);
         }
-    }
-
-    void FillCoeffRandomRows(int num) {
-        FillCoeffZero();
-        for (int i = 0; i < num; ++i) {
-            coeff_[i] = dist_nbit_(gen_);
-        }
-    }
-
-    void FillCoeffZero() {
-        FillCoeff(0);
-    }
-
-    void FillCoeffConstant() {
-        tran_low_t c = dist_nbit_(gen_);
-        FillCoeff(c);
-    }
-
-    void FillDcOnly() {
-        FillCoeffZero();
-        coeff_[0] = dist_nbit_(gen_);
-    }
-
-    void FillDcLargeNegative() {
-        FillCoeffZero();
-        // Generate a qcoeff which contains 512/-512 (0x0100/0xFE00) to catch
-        // issues like BUG=883 where the constant being compared was incorrectly
-        // initialized.
-        coeff_[0] = -8191;
     }
 
     std::mt19937 gen_;
     std::uniform_int_distribution<> dist_nbit_;
     QuanTable *qtab_;
     tran_low_t *coeff_;
+    tran_low_t coeff_min_;
+    tran_low_t coeff_max_;
     QuantizeFunc quant_ref_;
     QuantizeFunc quant_test_;
     const TxSize tx_size_;
     const aom_bit_depth_t bd_;
 };
 
-TEST_P(QuantizeTest, ZeroInput) {
-    FillCoeffZero();
-    QuantizeRun(false);
+TEST_P(QuantizeTest, input_zero_all) {
+    fill_coeff_const(0, coeff_num(), 0);
+    run_quantize(false, 0, 1);
 }
 
-TEST_P(QuantizeTest, LargeNegativeInput) {
-    FillDcLargeNegative();
-    QuantizeRun(false, 0, 1);
+TEST_P(QuantizeTest, input_dcac_minmax) {
+    fill_coeff_const(2, coeff_num(), 0);
+    fill_coeff_const(0, 1, coeff_min_);
+    fill_coeff_const(1, 2, coeff_min_);
+    run_quantize(false, 0, 1);
+    fill_coeff_const(0, 1, coeff_min_);
+    fill_coeff_const(1, 2, coeff_max_);
+    run_quantize(false, 0, 1);
+    fill_coeff_const(0, 1, coeff_max_);
+    fill_coeff_const(1, 2, coeff_min_);
+    run_quantize(false, 0, 1);
+    fill_coeff_const(0, 1, coeff_max_);
+    fill_coeff_const(1, 2, coeff_max_);
+    run_quantize(false, 0, 1);
 }
 
-TEST_P(QuantizeTest, DcOnlyInput) {
-    FillDcOnly();
-    QuantizeRun(false, 0, 1);
+TEST_P(QuantizeTest, input_random_dc_only) {
+    fill_coeff_const(1, coeff_num(), 0);
+    fill_coeff_random(0, 1);
+    run_quantize(false, 0, 1);
 }
 
-TEST_P(QuantizeTest, RandomInput) {
-    QuantizeRun(true, 0, kTestNum);
+TEST_P(QuantizeTest, input_random_all_q_0) {
+    run_quantize(true, 0, kTestNum);
 }
 
-TEST_P(QuantizeTest, MultipleQ) {
+TEST_P(QuantizeTest, input_random_all_q_all) {
     for (int q = 0; q < QINDEX_RANGE; ++q) {
-        QuantizeRun(true, q, kTestNum);
+        run_quantize(true, q, kTestNum);
     }
 }
 
