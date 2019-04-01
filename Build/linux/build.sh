@@ -24,7 +24,7 @@ function build {
         -DCMAKE_ASM_NASM_COMPILER=$CMAKE_ASSEMBLER  \
 
     # Compile the Library
-    make -j $(nproc) SvtAv1EncApp SvtAv1DecApp SvtAv1UnitTests SvtAv1ApiTests
+    make -j $(nproc) SvtAv1EncApp SvtAv1DecApp SvtAv1UnitTests SvtAv1ApiTests SvtAv1E2ETests
     cd ..
 }
 
