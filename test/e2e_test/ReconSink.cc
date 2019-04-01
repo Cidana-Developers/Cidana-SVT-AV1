@@ -46,7 +46,7 @@ class ReconSinkFile : public ReconSink {
                 for (size_t i = max_frame_ts_; i < mug->time_stamp + 1; ++i) {
                     fwrite(mug->mug_buf, 1, mug->mug_size, recon_file_);
                 }
-				max_frame_ts_ = mug->time_stamp;
+                max_frame_ts_ = mug->time_stamp;
             }
 
             rewind(recon_file_);
