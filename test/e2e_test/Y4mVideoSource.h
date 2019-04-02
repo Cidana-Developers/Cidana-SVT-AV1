@@ -6,7 +6,9 @@
 
 class Y4MVideoSource : public VideoSource {
   public:
-    Y4MVideoSource(const std::string &file_name);
+    Y4MVideoSource(const std::string &file_name, const VideoImageFormat format,
+                   const uint32_t width, const uint32_t height,
+                   const uint8_t bit_depth);
     ~Y4MVideoSource();
     // Prepare stream, and get first frame.
     // Return EB_ErrorBadParameter as open file failed.

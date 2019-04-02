@@ -1,15 +1,24 @@
 #include "Y4mVideoSource.h"
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 
-Y4MVideoSource::Y4MVideoSource(const std::string& file_name)
+Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
+                               const VideoImageFormat format,
+                               const uint32_t width, const uint32_t height,
+                               const uint8_t bit_depth)
     : file_name_(file_name), file_handle_(nullptr) {
-    width_ = 0;
-    height_ = 0;
-    bit_depth_ = 0;
+    width_ = width;
+    width_with_padding_ = width_;
+    if (width_ % 8 != 0)
+        width_with_padding_ += +(8 - width_ % 8);
+    height_ = height;
+    height_with_padding_ = height_;
+    if (height_ % 8 != 0)
+        height_with_padding_ += (8 - height_ % 8);
+    bit_depth_ = bit_depth;
     frame_count_ = -1;
     frame_size_ = 0;
     frame_buffer_ = nullptr;
-    image_format_ = IMG_FMT_420;
+    image_format_ = format;
     packed_ten_bit_mode = true;
 }
 
@@ -22,11 +31,10 @@ Y4MVideoSource::~Y4MVideoSource() {
 // Prepare stream, and get first frame.
 EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
-    // Reopen file as necessary
-    if (file_handle_ == nullptr) {
-        file_handle_ = fopen(file_name_.c_str(), "rb");
-    }
+    if (file_handle_ != nullptr)
+        return EB_ErrorNone;
 
+    file_handle_ = fopen(file_name_.c_str(), "rb");
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
 
@@ -96,10 +104,10 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         case 'W':  // Width
         {
             fscanf(file_handle_, "%d ", &width_);
+            fseek(file_handle_, -1, SEEK_CUR);
             width_with_padding_ = width_;
             if (width_ % 8 != 0)
                 width_with_padding_ += +(8 - width_ % 8);
-            fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'H':  // Height
         {
@@ -176,11 +184,15 @@ uint32_t Y4MVideoSource::read_input_frame() {
     uint8_t* eb_input_ptr = nullptr;
     uint32_t filled_len = 0;
     char frame_header[6] = {0};
-    if (file_handle_ == nullptr)
+    if (file_handle_ == nullptr) {
+        printf("Error file handle\r\n");
         return 0;
+    }
 
-    if (feof(file_handle_) != 0)
+    if (feof(file_handle_) != 0) {
+        printf("Reach file end\r\n");
         return 0;
+    }
 
     int nread = fread(frame_header, 1, 6, file_handle_);
     // if (6 != fread(frame_header, 1, 6, file_handle_))

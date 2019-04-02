@@ -126,7 +126,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestBase::init_test() {
         << "eb_svt_enc_stream_header return null output buffer."
         << return_error;
 
-    return_error == video_src_->open_source();
+    return_error = video_src_->open_source();
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "Init video source failed, error:" << return_error;
 }
@@ -151,7 +151,11 @@ VideoSource *svt_av1_test_e2e::SvtAv1E2ETestBase::prepare_video_src(
                                        vector.bit_depth);
         break;
     case Y4M_VIDEO_FILE:
-        video_src = new Y4MVideoSource(vector.file_name);
+        video_src = new Y4MVideoSource(vector.file_name,
+                                       vector.img_format,
+                                       vector.width,
+                                       vector.height,
+                                       vector.bit_depth);
         break;
     default: assert(0); break;
     }
