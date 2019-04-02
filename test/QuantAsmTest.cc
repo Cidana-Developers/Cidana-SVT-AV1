@@ -65,7 +65,6 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         : gen_(deterministic_seed),
           tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
           bd_(static_cast<aom_bit_depth_t>(TEST_GET_PARAM(1))) {
-
         coeff_min_ = -(1 << (7 + bd_));
         coeff_max_ = (1 << (7 + bd_)) - 1;
         decltype(dist_nbit_)::param_type param{coeff_min_, coeff_max_};
@@ -82,9 +81,9 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
 
     virtual ~QuantizeTest() {
         aom_free(qtab_);
-        qtab_ = NULL;
+        qtab_ = nullptr;
         aom_free(coeff_);
-        coeff_ = NULL;
+        coeff_ = nullptr;
         aom_clear_system_state();
     }
 
@@ -124,7 +123,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         tran_low_t *dqcoeff_ref = qcoeff_ref + n_coeffs;
         tran_low_t *qcoeff_test = dqcoeff_ref + n_coeffs;
         tran_low_t *dqcoeff_test = qcoeff_test + n_coeffs;
-        uint16_t *eob = (uint16_t *)(dqcoeff_test + n_coeffs);
+        uint16_t *eob = reinterpret_cast<uint16_t *>(dqcoeff_test + n_coeffs);
 
         const SCAN_ORDER *const sc = &av1_scan_orders[tx_size_][DCT_DCT];
         const int16_t *zbin = qtab_->quant.y_zbin[q];
