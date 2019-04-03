@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include "VideoSource.h"
+#include "VideoMonitor.h"
 
 class Y4MVideoSource : public VideoSource {
   public:
@@ -15,11 +16,17 @@ class Y4MVideoSource : public VideoSource {
     EbErrorType open_source() override;
     // Get next frame.
     EbSvtIOFormat *get_next_frame() override;
+    // Get frame ny index.
+    EbSvtIOFormat *get_frame_by_index(const uint32_t index) override;
 
   private:
     EbErrorType parse_file_info();
     uint32_t read_input_frame();
     std::string file_name_;
     FILE *file_handle_;
+    uint32_t file_length_;
+    uint32_t frame_length_;
+    uint32_t header_length_;
+    VideoMonitor *monitor;
 };
 #endif  //_SVT_TEST_Y4M_VIDEO_SOURCE_H_

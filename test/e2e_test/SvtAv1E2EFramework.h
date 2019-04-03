@@ -3,6 +3,7 @@
 
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
+#include "VideoMonitor.h"
 
 namespace svt_av1_test_e2e {
 
@@ -39,11 +40,16 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
   protected:
     SvtAv1E2ETestFramework() {
         recon_sink_ = nullptr;
+        monitor_ = nullptr;
     }
     virtual ~SvtAv1E2ETestFramework() {
         if (recon_sink_) {
             delete recon_sink_;
             recon_sink_ = nullptr;
+        }
+        if (monitor_) {
+            delete monitor_;
+            monitor_ = nullptr;
         }
     }
 
@@ -58,6 +64,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     // psnr pin
   protected:
     ReconSink *recon_sink_;
+    VideoMonitor *monitor_;
 };
 
 }  // namespace svt_av1_test_e2e

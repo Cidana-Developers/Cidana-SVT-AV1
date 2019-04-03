@@ -213,6 +213,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
+    if (monitor_ == nullptr) {
+        monitor_ = new VideoMonitor(video_src_->get_width_with_padding(),
+                                    video_src_->get_height_with_padding(),
+                                    video_src_->get_bit_depth(),
+                                    true);
+    }
     do {
         ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
         ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
@@ -238,6 +244,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             new_mug->tag = recon_frame.flags;
             printf("recon image frame: %d\n", new_mug->time_stamp);
             recon_sink_->fill_mug(new_mug);
+            uint32_t luma_len = video_src_->get_width_with_padding() *
+                                video_src_->get_height_with_padding();
+            monitor_->draw_frame(new_mug->mug_buf,
+                                 new_mug->mug_buf + luma_len,
+
+                                 new_mug->mug_buf + luma_len * 5 / 4);
         }
     } while (true);
 }
