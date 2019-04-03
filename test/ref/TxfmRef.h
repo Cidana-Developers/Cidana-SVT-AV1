@@ -1,4 +1,21 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
 
+/******************************************************************************
+ * @file TxfmRef.h
+ *
+ * @brief reference implementation for txfm, including :
+ * - reference_dct_1d
+ * - reference_adst_1d
+ * - reference_idtx_1d
+ * - reference_txfm_1d
+ * - reference_txfm_2d
+ *
+ * @author Cidana-Edmond, Cidana-Wenyao
+ *
+ ******************************************************************************/
 #ifndef _TEST_REFERENCE_H_
 #define _TEST_REFERENCE_H_
 

@@ -1,9 +1,25 @@
-#include "gtest/gtest.h"
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+
+/******************************************************************************
+ * @file QuantAsmTest.c
+ *
+ * @brief Unit test for forward 1d transform functions:
+ * - av1_fdct{4, 8, 16, 32, 64}_new
+ * - av1_fadst{4, 8, 16}_new
+ * - av1_fidentity{4, 8, 16, 32}_new
+ *
+ * @author Cidana-Edmond, Cidana-Wenyao
+ *
+ ******************************************************************************/
 
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <new>
+#include "gtest/gtest.h"
 
 // workaround to eliminate the compiling warning on linux
 // The macro will conflict with definition in gtest.h
@@ -24,37 +40,35 @@
 using svt_av1_test_reference::get_txfm1d_types;
 using svt_av1_test_reference::reference_txfm_1d;
 using svt_av1_test_tool::SVTRandom;
-namespace {
-
-typedef std::tuple<TXFM_TYPE, int> FwdTxfm1dParam;
-
+namespace FwdTxfm1dTest {
+/**
+ * @brief Unit test for quantize avx2 functions:
+ * - av1_fdct{4, 8, 16, 32, 64}_new
+ * - av1_fadst{4, 8, 16}_new
+ * - av1_fidentity{4, 8, 16, 32}_new
+ *
+ * Test strategy:
+ * Verify these tx function by comparing with reference implementation.
+ * Feed the same data and check the difference between test output
+ * and reference output.
+ *
+ * Expected result:
+ * The difference should be smaller than the max_error, which is specified
+ * by algorithm analysis.
+ *
+ * Test coverage:
+ * The input to this kind of function should residual buffer or intermedia
+ * data in 2d fwd functions. For 8-bit, it should be in 10bit.
+ *
+ * Test cases:
+ * - C/AV1FwdTxfm1dTest.run_fwd_accuracy_check
+ */
+using FwdTxfm1dParam = std::tuple<TXFM_TYPE, int>;
 class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
   public:
-    AV1FwdTxfm1dTest() {
-        txfm_type_ = TEST_GET_PARAM(0);
+    AV1FwdTxfm1dTest()
+        : txfm_type_(TEST_GET_PARAM(0)), max_error_(TEST_GET_PARAM(1)) {
         txfm_size_ = get_txfm1d_size(txfm_type_);
-        max_error_ = TEST_GET_PARAM(1);
-        if (txfm_size_ > 0) {
-            input_test_ = new int32_t[txfm_size_];
-            memset(input_test_, 0, sizeof(int32_t) * txfm_size_);
-            output_test_ = new int32_t[txfm_size_];
-            memset(output_test_, 0, sizeof(int32_t) * txfm_size_);
-            input_ref_ = new double[txfm_size_];
-            memset(input_ref_, 0, sizeof(double) * txfm_size_);
-            output_ref_ = new double[txfm_size_];
-            memset(output_ref_, 0, sizeof(double) * txfm_size_);
-        }
-    }
-
-    virtual ~AV1FwdTxfm1dTest() {
-        if (input_test_)
-            delete[] input_test_;
-        if (output_test_)
-            delete[] output_test_;
-        if (input_ref_)
-            delete[] input_ref_;
-        if (output_ref_)
-            delete[] output_ref_;
     }
 
     void run_fwd_accuracy_check() {
@@ -65,6 +79,8 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
             for (int ni = 0; ni < txfm_size_; ++ni) {
                 input_test_[ni] = rnd.random_10s();
                 input_ref_[ni] = static_cast<double>(input_test_[ni]);
+                output_test_[ni] = 0;
+                output_ref_[ni] = 255;  // setup different output
             }
 
             // calculate in forward transform functions
@@ -87,13 +103,14 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
     }
 
   private:
-    double max_error_;
-    int txfm_size_;
-    TXFM_TYPE txfm_type_;
-    int32_t *input_test_;
-    int32_t *output_test_;
-    double *input_ref_;
-    double *output_ref_;
+    const int max_error_;       /**< max error allowed */
+    int txfm_size_;             /**< transform size, max transform is DCT64 */
+    const TXFM_TYPE txfm_type_; /**< tx type, including dct, iadst, idtx */
+    static const int max_txfm_size_ = 64;
+    DECLARE_ALIGNED(32, int32_t, input_test_[max_txfm_size_]);
+    DECLARE_ALIGNED(32, int32_t, output_test_[max_txfm_size_]);
+    DECLARE_ALIGNED(32, double, input_ref_[max_txfm_size_]);
+    DECLARE_ALIGNED(32, double, output_ref_[max_txfm_size_]);
 };
 
 TEST_P(AV1FwdTxfm1dTest, run_fwd_accuracy_check) {
@@ -111,4 +128,4 @@ INSTANTIATE_TEST_CASE_P(
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY8, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY16, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY32, 7)));
-}  // namespace
+}  // namespace FwdTxfm1dTest

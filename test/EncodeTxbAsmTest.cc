@@ -29,17 +29,13 @@
 #include "EbTransforms.h"
 #include "EncodeTxbRef.h"
 #include "util.h"
+#include "aom_dsp_rtcd.h"
 
 namespace EncodeTxbAsmTest {
 // test assembly code of av1_get_nz_map_contexts
 // TODO(wenyao): av1_get_nz_map_contexts_c is not availbale, we should discuss
 // this with netflix.
 const int deterministic_seed = 0xa42b;
-extern "C" void av1_get_nz_map_contexts_sse2(const uint8_t *const levels,
-                                             const int16_t *const scan,
-                                             const uint16_t eob, TxSize tx_size,
-                                             const TX_CLASS tx_class,
-                                             int8_t *const coeff_contexts);
 using GetNzMapContextsFunc = void (*)(const uint8_t *const levels,
                                       const int16_t *const scan,
                                       const uint16_t eob, const TxSize tx_size,
@@ -147,15 +143,6 @@ INSTANTIATE_TEST_CASE_P(
                        ::testing::Range(0, static_cast<int>(TX_SIZES_ALL), 1)));
 
 // test assembly code of av1_txb_init_levels
-extern "C" void av1_txb_init_levels_avx2(const tran_low_t *const coeff,
-                                         const int32_t width,
-                                         const int32_t height,
-                                         uint8_t *const levels);
-// defined in EbRateDistortionCost.c
-extern "C" void av1_txb_init_levels_c(const tran_low_t *const coeff,
-                                      const int32_t width, const int32_t height,
-                                      uint8_t *const levels);
-
 using TxbInitLevelsFunc = void (*)(const tran_low_t *const coeff,
                                    const int width, const int height,
                                    uint8_t *const levels);
