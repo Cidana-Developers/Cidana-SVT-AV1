@@ -10,22 +10,11 @@ typedef enum TestVideoVectorFormatType {
     Y4M_VIDEO_FILE
 } TestVideoVectorFormatType;
 
-typedef struct TestVideoVector {
-    char *file_name;
-    TestVideoVectorFormatType file_format;
-    VideoImageFormat img_format;
-    uint32_t width;
-    uint32_t height;
-    uint8_t bit_depth;
-} TestVideoVector;
+typedef std::tuple<std::string, TestVideoVectorFormatType, VideoImageFormat,
+                   uint32_t, uint32_t, uint8_t>
+    TestVideoVector;
 
 static const TestVideoVector video_src_vectors[] = {
-    //     {"../../test/vectors/hantro_collage_w352h288.yuv",
-    //      YUM_VIDEO_FILE,
-    //      IMG_FMT_420,
-    //      352,
-    //      288,
-    //      8},
     {"../../test/vectors/park_joy_90p_8_420.y4m",
      Y4M_VIDEO_FILE,
      IMG_FMT_420,
@@ -79,6 +68,15 @@ static const TestVideoVector video_src_vectors[] = {
      IMG_FMT_444,
      1280,
      720,
+     8},
+};
+
+static const TestVideoVector recon_file_vectors[] = {
+    {"../../test/vectors/hantro_collage_w352h288.yuv",
+     YUM_VIDEO_FILE,
+     IMG_FMT_420,
+     352,
+     288,
      8},
 };
 

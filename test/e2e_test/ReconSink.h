@@ -17,15 +17,15 @@ class ReconSink {
     } ReconSinkType;
 
     typedef struct ReconMug {
-        uint32_t mug_size;
-        uint32_t filled_size;
         uint32_t tag;
         uint64_t time_stamp;
+        uint32_t mug_size;
+        uint32_t filled_size;
         uint8_t* mug_buf;
     } ReconMug;
 
   public:
-    ReconSink(VideoFrameParam param) {
+    ReconSink(const VideoFrameParam &param) {
         sink_type_ = RECON_SINK_BUFFER;
         video_param_ = param;
         frame_size_ = calculate_frame_size(video_param_);
@@ -90,7 +90,7 @@ class ReconSink {
     int frame_count_;
 };
 
-ReconSink* CreateReconSink(VideoFrameParam fmt, const char* file_path);
-ReconSink* CreateReconSink(VideoFrameParam fmt);
+ReconSink* CreateReconSink(const VideoFrameParam &param, const char* file_path);
+ReconSink* CreateReconSink(const VideoFrameParam &param);
 
 #endif  // !_RECON_SINK_H_

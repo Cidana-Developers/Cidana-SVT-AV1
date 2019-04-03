@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <vector>
+#include <algorithm>
 #include "ReconSink.h"
 
 #if _WIN32
@@ -13,19 +14,21 @@
 #endif
 
 static void delete_mug(ReconSink::ReconMug *mug) {
-	if (mug) {
-		if (mug->mug_buf) {
-			delete[] mug->mug_buf;
-		}
-		delete mug;
-	}
+    if (mug) {
+        if (mug->mug_buf) {
+            delete[] mug->mug_buf;
+        }
+        delete mug;
+    }
 }
 
 class ReconSinkFile : public ReconSink {
   public:
-    ReconSinkFile(VideoFrameParam fmt, const char *file_path) : ReconSink(fmt) {
+    ReconSinkFile(const VideoFrameParam &param, const char *file_path)
+        : ReconSink(param) {
         sink_type_ = RECON_SINK_FILE;
-        FOPEN(recon_file_, file_path, "rwb");
+        max_frame_ts_ = 0;
+        FOPEN(recon_file_, file_path, "wb");
     }
     virtual ~ReconSinkFile() {
         if (recon_file_) {
@@ -37,12 +40,20 @@ class ReconSinkFile : public ReconSink {
     virtual void fill_mug(ReconMug *mug) override {
         if (recon_file_ && mug->filled_size &&
             mug->filled_size <= mug->mug_size) {
+            if (mug->time_stamp >=
+                max_frame_ts_) {  // new frame is larger than max timestamp
+                fseeko64(recon_file_, 0, SEEK_END);
+                for (size_t i = max_frame_ts_; i < mug->time_stamp + 1; ++i) {
+                    fwrite(mug->mug_buf, 1, mug->mug_size, recon_file_);
+                }
+                max_frame_ts_ = mug->time_stamp;
+            }
+
             rewind(recon_file_);
             uint64_t frameNum = mug->time_stamp;
             while (frameNum > 0) {
                 int ret = fseeko64(recon_file_, mug->filled_size, SEEK_CUR);
                 if (ret != 0) {
-                    // printf("Error in fseeko64  returnVal %i\n", ret);
                     return;
                 }
                 frameNum--;
@@ -50,6 +61,7 @@ class ReconSinkFile : public ReconSink {
 
             fwrite(mug->mug_buf, 1, mug->filled_size, recon_file_);
         }
+        delete_mug(mug);
     }
     virtual const ReconMug *take_mug(uint64_t time_stamp) override {
         if (recon_file_ == nullptr)
@@ -81,11 +93,19 @@ class ReconSinkFile : public ReconSink {
         return mug;
     }
     virtual void pour_mug(ReconMug *mug) override {
-		delete_mug(mug);
+        delete_mug(mug);
     }
 
   public:
     FILE *recon_file_;
+    uint32_t max_frame_ts_;
+};
+
+class ReconSinkBufferSort_ASC {
+  public:
+    bool operator()(ReconSink::ReconMug *a, ReconSink::ReconMug *b) const {
+        return a->time_stamp < b->time_stamp;
+    };
 };
 
 class ReconSinkBuffer : public ReconSink {
@@ -97,29 +117,36 @@ class ReconSinkBuffer : public ReconSink {
     virtual ~ReconSinkBuffer() {
         while (mug_list_.size() > 0) {
             delete_mug(mug_list_.back());
-			mug_list_.pop_back();
+            mug_list_.pop_back();
         }
     }
     virtual void fill_mug(ReconMug *mug) override {
         mug_list_.push_back(mug);
+        std::sort(
+            mug_list_.begin(), mug_list_.end(), ReconSinkBufferSort_ASC());
     }
     virtual const ReconMug *take_mug(uint64_t time_stamp) override {
         if (time_stamp < mug_list_.size())
             return mug_list_.at(time_stamp);
-		return nullptr;
+        return nullptr;
     }
     virtual void pour_mug(ReconMug *mug) override {
-		std::vector<ReconMug *>::iterator it = std::find(mug_list_.begin(), mug_list_.end(), mug);
-		delete_mug(*it);
-		mug_list_.erase(it);
+        std::vector<ReconMug *>::iterator it =
+            std::find(mug_list_.begin(), mug_list_.end(), mug);
+        if (it != mug_list_.end()) {  // if the mug is in list
+            delete_mug(*it);
+            mug_list_.erase(it);
+        } else  // only delete the mug not in list
+            delete_mug(mug);
     }
 
   public:
     std::vector<ReconMug *> mug_list_;
 };
 
-ReconSink *CreateReconSink(VideoFrameParam fmt, const char *file_path) {
-    ReconSinkFile *new_sink = new ReconSinkFile(fmt, file_path);
+ReconSink *CreateReconSink(const VideoFrameParam &param,
+                           const char *file_path) {
+    ReconSinkFile *new_sink = new ReconSinkFile(param, file_path);
     if (new_sink) {
         if (new_sink->recon_file_ == nullptr) {
             delete new_sink;
@@ -129,6 +156,6 @@ ReconSink *CreateReconSink(VideoFrameParam fmt, const char *file_path) {
     return new_sink;
 }
 
-ReconSink *CreateReconSink(VideoFrameParam fmt) {
-	return new ReconSinkBuffer(fmt);
+ReconSink *CreateReconSink(const VideoFrameParam &param) {
+    return new ReconSinkBuffer(param);
 }
