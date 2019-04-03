@@ -77,7 +77,7 @@ const int g_loop_count = 10;
  *
  * Test cases:
  * - AVX2/QuantizeTest.input_zero_all
- * - AVX2/QuantizeTest.input_dcac_minmax
+ * - AVX2/QuantizeTest.input_dcac_minmax_q_n
  * - AVX2/QuantizeTest.input_random_dc_only
  * - AVX2/QuantizeTest.input_random_all_q_0
  * - AVX2/QuantizeTest.input_random_all_q_all
@@ -243,11 +243,11 @@ TEST_P(QuantizeTest, input_zero_all) {
 }
 
 /**
- * @brief AVX2/QuantizeTest.input_dcac_minmax
+ * @brief AVX2/QuantizeTest.input_dcac_minmax_q_n
  *
  * test output data consistency of quantize C and avx2 functions with
  * input coef: combine dc min/max with 1st ac min/max, other ac all 0
- * q_index: 0
+ * q_index: 0 ~ QINDEX_RANGE, step 25
  */
 TEST_P(QuantizeTest, input_dcac_minmax_q_n) {
     fill_coeff_const(2, coeff_num(), 0);
