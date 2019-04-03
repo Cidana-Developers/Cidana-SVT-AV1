@@ -88,6 +88,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         : gen_(deterministic_seed),
           tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
           bd_(static_cast<aom_bit_depth_t>(TEST_GET_PARAM(1))) {
+        n_coeffs_ = av1_get_max_eob(tx_size_);
         coeff_min_ = -(1 << (7 + bd_));
         coeff_max_ = (1 << (7 + bd_)) - 1;
         decltype(dist_nbit_)::param_type param{coeff_min_, coeff_max_};
@@ -136,7 +137,6 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
      * quant/dequant/eob are exactly same between C output and avx2 outptu
      */
     void run_quantize(int q) {
-        const intptr_t n_coeffs = coeff_num();
         const int32_t skip_block = 0;
         const SCAN_ORDER *const sc = &av1_scan_orders[tx_size_][DCT_DCT];
         const int16_t *zbin = qtab_quants_.y_zbin[q];
@@ -151,7 +151,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         memset(dqcoeff_test_, 0, sizeof(dqcoeff_test_));
 
         quant_ref_(coeff_in_,
-                   n_coeffs,
+                   n_coeffs_,
                    skip_block,
                    zbin,
                    round,
@@ -165,7 +165,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
                    sc->iscan);
 
         quant_test_(coeff_in_,
-                    n_coeffs,
+                    n_coeffs_,
                     skip_block,
                     zbin,
                     round,
@@ -178,23 +178,19 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
                     sc->scan,
                     sc->iscan);
 
-        for (int j = 0; j < n_coeffs; ++j) {
+        for (int j = 0; j < n_coeffs_; ++j) {
             ASSERT_EQ(qcoeff_ref_[j], qcoeff_test_[j])
                 << "Q mismatch at position: " << j << ", Q: " << q
                 << " coeff: " << coeff_in_[j];
         }
 
-        for (int j = 0; j < n_coeffs; ++j) {
+        for (int j = 0; j < n_coeffs_; ++j) {
             ASSERT_EQ(dqcoeff_ref_[j], dqcoeff_test_[j])
                 << "Dq mismatch at position: " << j << ", Q: " << q
                 << " coeff: " << coeff_in_[j];
         }
 
         ASSERT_EQ(eob_ref_, eob_test_) << "eobs mismatch, Q: " << q;
-    }
-
-    int coeff_num() const {
-        return av1_get_max_eob(tx_size_);
     }
 
     void fill_coeff_const(int i_begin, int i_end, tran_low_t c) {
@@ -220,6 +216,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
     QuantizeFunc quant_test_;  /**< test target quantize function */
     const TxSize tx_size_;     /**< input param tx_size */
     const aom_bit_depth_t bd_; /**< input param 8bit or 10bit */
+    int n_coeffs_;             /**< coeff number */
     uint16_t eob_ref_;         /**< output ref eob */
     uint16_t eob_test_;        /**< output test eob */
 
@@ -238,7 +235,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
  * q_index: 0
  */
 TEST_P(QuantizeTest, input_zero_all) {
-    fill_coeff_const(0, coeff_num(), 0);
+    fill_coeff_const(0, n_coeffs_, 0);
     run_quantize(0);
 }
 
@@ -250,7 +247,7 @@ TEST_P(QuantizeTest, input_zero_all) {
  * q_index: 0 ~ QINDEX_RANGE, step 25
  */
 TEST_P(QuantizeTest, input_dcac_minmax_q_n) {
-    fill_coeff_const(2, coeff_num(), 0);
+    fill_coeff_const(2, n_coeffs_, 0);
     for (int q = 0; q < QINDEX_RANGE; q += 25) {
         fill_coeff_const(0, 1, coeff_min_);
         fill_coeff_const(1, 2, coeff_min_);
@@ -275,7 +272,7 @@ TEST_P(QuantizeTest, input_dcac_minmax_q_n) {
  * q_index: 0
  */
 TEST_P(QuantizeTest, input_random_dc_only) {
-    fill_coeff_const(1, coeff_num(), 0);
+    fill_coeff_const(1, n_coeffs_, 0);
     fill_coeff_random(0, 1);
     run_quantize(0);
 }
@@ -288,10 +285,9 @@ TEST_P(QuantizeTest, input_random_dc_only) {
  * q_index: 0
  */
 TEST_P(QuantizeTest, input_random_all_q_0) {
-    const intptr_t n_coeffs = coeff_num();
     for (int i = 0; i < g_loop_count; ++i) {
-        fill_coeff_const(0, n_coeffs, 0);
-        fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs);
+        fill_coeff_const(0, n_coeffs_, 0);
+        fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs_);
         run_quantize(0);
     }
 }
@@ -304,11 +300,10 @@ TEST_P(QuantizeTest, input_random_all_q_0) {
  * q_index: from 0 to QINDEX_RANGE-1
  */
 TEST_P(QuantizeTest, input_random_all_q_all) {
-    const intptr_t n_coeffs = coeff_num();
     for (int q = 0; q < QINDEX_RANGE; ++q) {
         for (int i = 0; i < g_loop_count; ++i) {
-            fill_coeff_const(0, n_coeffs, 0);
-            fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs);
+            fill_coeff_const(0, n_coeffs_, 0);
+            fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs_);
             run_quantize(q);
         }
     }
