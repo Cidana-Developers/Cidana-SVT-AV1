@@ -220,14 +220,14 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
     QuantizeFunc quant_test_;  /**< test target quantize function */
     const TxSize tx_size_;     /**< input param tx_size */
     const aom_bit_depth_t bd_; /**< input param 8bit or 10bit */
+    uint16_t eob_ref_;         /**< output ref eob */
+    uint16_t eob_test_;        /**< output test eob */
 
     DECLARE_ALIGNED(32, tran_low_t, coeff_in_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, tran_low_t, qcoeff_ref_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, tran_low_t, dqcoeff_ref_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, tran_low_t, qcoeff_test_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, tran_low_t, dqcoeff_test_[MAX_TX_SQUARE]);
-    uint16_t eob_ref_;
-    uint16_t eob_test_;
 };
 
 /**
@@ -249,20 +249,22 @@ TEST_P(QuantizeTest, input_zero_all) {
  * input coef: combine dc min/max with 1st ac min/max, other ac all 0
  * q_index: 0
  */
-TEST_P(QuantizeTest, input_dcac_minmax) {
+TEST_P(QuantizeTest, input_dcac_minmax_q_n) {
     fill_coeff_const(2, coeff_num(), 0);
-    fill_coeff_const(0, 1, coeff_min_);
-    fill_coeff_const(1, 2, coeff_min_);
-    run_quantize(0);
-    fill_coeff_const(0, 1, coeff_min_);
-    fill_coeff_const(1, 2, coeff_max_);
-    run_quantize(0);
-    fill_coeff_const(0, 1, coeff_max_);
-    fill_coeff_const(1, 2, coeff_min_);
-    run_quantize(0);
-    fill_coeff_const(0, 1, coeff_max_);
-    fill_coeff_const(1, 2, coeff_max_);
-    run_quantize(0);
+    for (int q = 0; q < QINDEX_RANGE; q += 25) {
+        fill_coeff_const(0, 1, coeff_min_);
+        fill_coeff_const(1, 2, coeff_min_);
+        run_quantize(q);
+        fill_coeff_const(0, 1, coeff_min_);
+        fill_coeff_const(1, 2, coeff_max_);
+        run_quantize(q);
+        fill_coeff_const(0, 1, coeff_max_);
+        fill_coeff_const(1, 2, coeff_min_);
+        run_quantize(q);
+        fill_coeff_const(0, 1, coeff_max_);
+        fill_coeff_const(1, 2, coeff_max_);
+        run_quantize(q);
+    }
 }
 
 /**
