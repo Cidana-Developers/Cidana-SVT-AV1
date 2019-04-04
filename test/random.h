@@ -1,3 +1,16 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+/******************************************************************************
+ * @file random.h
+ *
+ * @brief Random generator for svt-av1 unit tests
+ * - wrap C++11 random generator for different range.
+ *
+ * @author Cidana-Edmond, Cidana-Wenyao <wenyao.liu@cidana.com>
+ *
+ ******************************************************************************/
 
 #ifndef _TEST_RANDOM_H_
 #define _TEST_RANDOM_H_

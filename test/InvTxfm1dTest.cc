@@ -4,9 +4,9 @@
  */
 
 /******************************************************************************
- * @file QuantAsmTest.c
+ * @file InvTxfm1dTest.cc
  *
- * @brief Unit test for forward 1d transform functions:
+ * @brief Unit test for inverse 1d transform functions:
  * - av1_idct{4, 8, 16, 32, 64}_new
  * - av1_iadst{4, 8, 16}_new
  * - av1_iidentity{4, 8, 16, 32}_new
@@ -39,8 +39,10 @@
 using svt_av1_test_tool::SVTRandom;
 using svt_av1_test_tool::round_shift;
 namespace {
+
+using InvTxfm1dParam = std::tuple<TXFM_TYPE, int>;
 /**
- * @brief Unit test for quantize avx2 functions:
+ * @brief Unit test for inverse 1d tx functions:
  * - av1_idct{4, 8, 16, 32, 64}_new
  * - av1_iadst{4, 8, 16}_new
  * - av1_iidentity{4, 8, 16, 32}_new
@@ -48,7 +50,7 @@ namespace {
  * Test strategy:
  * Verify by running forward transform and inverse transform in pairs
  * and check the max error between input and inv_output, which
- * should be smaller then 2;
+ * should be smaller than 2;
  *
  * Expected result:
  * The difference should be smaller than the max_error, which is specified
@@ -61,7 +63,6 @@ namespace {
  * Test cases:
  * - C/AV1InvTxfm1dTest.run_inv_accuracy_check
  */
-using InvTxfm1dParam = std::tuple<TXFM_TYPE, int>;
 class AV1InvTxfm1dTest : public ::testing::TestWithParam<InvTxfm1dParam> {
   public:
     AV1InvTxfm1dTest()

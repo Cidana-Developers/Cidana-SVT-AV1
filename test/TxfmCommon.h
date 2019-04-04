@@ -4,13 +4,13 @@
  */
 
 /******************************************************************************
- * @file FwdTxfm2dTest.c
+ * @file TxfmCommon.h
  *
- * @brief Unit test for forward 2d transform functions:
- * - Av1TransformTwoD_{4x4, 8x8, 16x16, 32x32, 64x64}
- * - av1_fwd_txfm2d_{rectangle}
+ * @brief declaration of fwd/inv txfm functions, including:
+ * - 1d fwd/inv txfm function
+ * - map type and size to function;
  *
- * @author Cidana-Edmond, Cidana-Wenyao <wenyao.liu@cidana.com>
+ * @author Cidana-Edmond, Cidana-Wenyao
  *
  ******************************************************************************/
 #ifndef _TXFM_TEST_H_

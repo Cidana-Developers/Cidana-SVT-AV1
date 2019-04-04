@@ -4,7 +4,7 @@
  */
 
 /******************************************************************************
- * @file QuantAsmTest.c
+ * @file FwdTxfm1dTest.cc
  *
  * @brief Unit test for forward 1d transform functions:
  * - av1_fdct{4, 8, 16, 32, 64}_new
@@ -42,7 +42,7 @@ using svt_av1_test_reference::reference_txfm_1d;
 using svt_av1_test_tool::SVTRandom;
 namespace FwdTxfm1dTest {
 /**
- * @brief Unit test for quantize avx2 functions:
+ * @brief Unit test for forward 1d tx functions:
  * - av1_fdct{4, 8, 16, 32, 64}_new
  * - av1_fadst{4, 8, 16}_new
  * - av1_fidentity{4, 8, 16, 32}_new

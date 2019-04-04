@@ -43,31 +43,34 @@ using svt_av1_test_tool::SVTRandom;
 
 namespace {
 
-typedef std::tuple<TxSize, TxType, int> FwdTxfm2dParam;
-
+using FwdTxfm2dParam = std::tuple<TxSize, TxType, int>;
+/**
+ * @brief Unit test for forward 2d tx functions:
+ * - Av1TransformTwoD_{4x4, 8x8, 16x16, 32x32, 64x64}
+ * - av1_fwd_txfm2d_{rectangle}
+ *
+ * Test strategy:
+ * Verify these tx function by comparing with reference implementation.
+ * Feed the same data and check the difference between test output
+ * and reference output.
+ *
+ * Expected result:
+ * The difference should be smaller than the max_error, which is specified
+ * by algorithm analysis.
+ *
+ * Test coverage:
+ * The input to this kind of function should be residual.
+ *
+ * Test cases:
+ * - C/AV1FwdTxfm2dTest.run_fwd_accuracy_check
+ */
 class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
   public:
-    AV1FwdTxfm2dTest() {
-        txfm_size_ = TEST_GET_PARAM(0);
-        txfm_type_ = TEST_GET_PARAM(1);
-        max_error_ = TEST_GET_PARAM(2);
+    AV1FwdTxfm2dTest()
+        : txfm_size_(TEST_GET_PARAM(0)),
+          txfm_type_(TEST_GET_PARAM(1)),
+          max_error_(TEST_GET_PARAM(2)) {
         Av1TransformConfig(txfm_type_, txfm_size_, &cfg_);
-        const int block_size =
-            tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
-
-        input_test_ = new int16_t[block_size];
-        output_test_ = new int32_t[block_size];
-        input_ref_ = new double[block_size];
-        output_ref_ = new double[block_size];
-        // make output different by default.
-        memset(output_test_, 0, sizeof(int32_t) * block_size);
-    }
-
-    ~AV1FwdTxfm2dTest() {
-        delete[] input_test_;
-        delete[] output_test_;
-        delete[] input_ref_;
-        delete[] output_ref_;
     }
 
   protected:
@@ -82,6 +85,7 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
                 input_test_[ni] = rnd.random_10();
                 input_ref_[ni] = static_cast<double>(input_test_[ni]);
                 output_ref_[ni] = 0;
+                output_test_[ni] = 255;
             }
 
             // calculate in forward transform functions
@@ -100,10 +104,10 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
                 test_max_error =
                     max(test_max_error,
                         fabs(output_test_[ni] - round(output_ref_[ni])));
+                ASSERT_GE(max_error_, test_max_error)
+                    << "fwd txfm 2d test tx_type: " << txfm_type_
+                    << " tx_size: " << txfm_size_ << " loop: " << ti;
             }
-            ASSERT_GE(max_error_, test_max_error)
-                << "fwd txfm 2d test tx_type: " << txfm_type_
-                << " tx_size: " << txfm_size_ << " loop: " << ti;
         }
     }
 
@@ -143,14 +147,15 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
     }
 
   private:
-    double max_error_;
-    TxSize txfm_size_;
-    TxType txfm_type_;
+    const double max_error_;
+    const TxSize txfm_size_;
+    const TxType txfm_type_;
     TXFM_2D_FLIP_CFG cfg_;
-    int16_t *input_test_;
-    int32_t *output_test_;
-    double *input_ref_;
-    double *output_ref_;
+    static const int max_block_size_ = 64 * 64;
+    DECLARE_ALIGNED(32, int16_t, input_test_[max_block_size_]);
+    DECLARE_ALIGNED(32, int32_t, output_test_[max_block_size_]);
+    DECLARE_ALIGNED(32, double, input_ref_[max_block_size_]);
+    DECLARE_ALIGNED(32, double, output_ref_[max_block_size_]);
 };
 
 TEST_P(AV1FwdTxfm2dTest, run_fwd_accuracy_check) {

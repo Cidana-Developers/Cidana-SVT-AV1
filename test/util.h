@@ -1,3 +1,16 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+
+/******************************************************************************
+ * @file util.h
+ *
+ * @brief common utils
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
 #ifndef _TEST_UTIL_H_
 #define _TEST_UTIL_H_
 
