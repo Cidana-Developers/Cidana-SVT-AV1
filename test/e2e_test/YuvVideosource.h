@@ -15,8 +15,9 @@ class YuvVideoSource : public VideoSource {
     EbErrorType open_source() override;
     // Get next frame.
     EbSvtIOFormat *get_next_frame() override;
-
-  private:
+    // Get frame ny index.
+    EbSvtIOFormat *get_frame_by_index(const uint32_t index) override { return nullptr; };
+  private: 
     uint32_t read_input_frame();
     std::string file_name_;
     FILE *file_handle_;

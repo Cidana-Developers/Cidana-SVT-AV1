@@ -8,6 +8,7 @@
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
 #include "RefDecoder.h"
+#include "VideoMonitor.h"
 
 namespace svt_av1_test_e2e {
 
@@ -62,6 +63,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
         recon_sink_ = nullptr;
         refer_dec_ = nullptr;
         output_file_ = nullptr;
+        monitor_ = nullptr;
     }
     virtual ~SvtAv1E2ETestFramework() {
         if (recon_sink_) {
@@ -75,6 +77,10 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
         if (output_file_) {
             delete output_file_;
             output_file_ = nullptr;
+            if (monitor_) {
+                delete monitor_;
+                monitor_ = nullptr;
+            }
         }
     }
 
@@ -90,10 +96,11 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     // recon-data pin
     virtual void get_recon_frame();
     // psnr pin
-  protected:
+    // protected:
     ReconSink *recon_sink_;
     RefDecoder *refer_dec_;
     IvfFile *output_file_;
+    VideoMonitor *monitor_;
 };
 
 }  // namespace svt_av1_test_e2e

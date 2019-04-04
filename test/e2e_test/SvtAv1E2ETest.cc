@@ -10,11 +10,6 @@ using namespace svt_av1_test_e2e;
 using namespace svt_av1_e2e_test_vector;
 
 class SvtAv1E2ESimpleTest : public SvtAv1E2ETestFramework {
-protected:
-	void init_test_output_file(std::string path){
-		output_file_ = new IvfFile(path);
-		SvtAv1E2ETestFramework::init_test();
-	}
 };
 
 TEST_P(SvtAv1E2ESimpleTest, run_smoking_test) {
@@ -23,13 +18,24 @@ TEST_P(SvtAv1E2ESimpleTest, run_smoking_test) {
     close_test();
 }
 
-TEST_P(SvtAv1E2ESimpleTest, run_smoking_with_output_test) {
-	init_test_output_file("output.av1");
+INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
+                        ::testing::ValuesIn(video_src_vectors));
+
+class SvtAv1E2ESimpleFileTest : public SvtAv1E2ETestFramework {
+protected:
+	virtual void init_test() final override {
+		output_file_ = new IvfFile("output.av1");
+		SvtAv1E2ETestFramework::init_test();
+	}
+};
+
+TEST_P(SvtAv1E2ESimpleFileTest, run_smoking_with_output_test) {
+	init_test();
 	run_encode_process();
 	close_test();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
+INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleFileTest,
                         ::testing::ValuesIn(smoking_vectors));
 
 class SvtAv1E2EReconFileTest : public SvtAv1E2ETestFramework {
@@ -114,4 +120,4 @@ TEST_P(SvtAv1E2EConformanceTest, DISABLE_run_conformance_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
-	::testing::ValuesIn(recon_file_vectors));
+	::testing::ValuesIn(smoking_vectors));

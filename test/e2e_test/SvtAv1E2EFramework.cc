@@ -162,7 +162,11 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
                                        std::get<5>(vector));
         break;
     case Y4M_VIDEO_FILE:
-        video_src = new Y4MVideoSource(std::get<0>(vector));
+        video_src = new Y4MVideoSource(std::get<0>(vector),
+                                       std::get<2>(vector),
+                                       std::get<3>(vector),
+                                       std::get<4>(vector),
+                                       std::get<5>(vector));
         break;
     default: assert(0); break;
     }
@@ -187,6 +191,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
 
     uint8_t *frame = nullptr;
     bool file_eos = false;
+	int ref_frame_count = 0;
     do {
         frame = (uint8_t *)video_src_->get_next_frame();
         if (frame != nullptr) {
@@ -245,7 +250,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
                                                  headerPtr->n_filled_len) ==
                         RefDecoder::REF_CODEC_OK) {
                         VideoFrame ref_frame;
-                        int ref_frame_count = 0;
+						memset(&ref_frame, 0, sizeof(ref_frame));
                         while (refer_dec_->get_frame(ref_frame) ==
                                RefDecoder::REF_CODEC_OK) {
                             // TODO: output video frame should send to compare
@@ -464,6 +469,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
+    if (monitor_ == nullptr) {
+        monitor_ = new VideoMonitor(video_src_->get_width_with_padding(),
+                                    video_src_->get_height_with_padding(),
+                                    video_src_->get_bit_depth(),
+                                    true);
+    }
     do {
         ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
         ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
@@ -491,6 +502,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             new_mug->tag = recon_frame.flags;
             printf("recon image frame: %d\n", new_mug->time_stamp);
             recon_sink_->fill_mug(new_mug);
+            uint32_t luma_len = video_src_->get_width_with_padding() *
+                                video_src_->get_height_with_padding();
+            monitor_->draw_frame(new_mug->mug_buf,
+                                 new_mug->mug_buf + luma_len,
+
+                                 new_mug->mug_buf + luma_len * 5 / 4);
         }
     } while (true);
 }

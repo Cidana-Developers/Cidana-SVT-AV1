@@ -1,32 +1,44 @@
 #include "Y4mVideoSource.h"
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 
-Y4MVideoSource::Y4MVideoSource(const std::string& file_name)
+Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
+                               const VideoImageFormat format,
+                               const uint32_t width, const uint32_t height,
+                               const uint8_t bit_depth)
     : file_name_(file_name), file_handle_(nullptr) {
-    width_ = 0;
-    height_ = 0;
-    bit_depth_ = 0;
-    frame_count_ = -1;
+    width_ = width;
+    width_with_padding_ = width_;
+    if (width_ % 8 != 0)
+        width_with_padding_ += +(8 - width_ % 8);
+    height_ = height;
+    height_with_padding_ = height_;
+    if (height_ % 8 != 0)
+        height_with_padding_ += (8 - height_ % 8);
+    bit_depth_ = bit_depth;
+    frame_count_ = 0;
+    current_frame_index_ = -1;
     frame_size_ = 0;
     frame_buffer_ = nullptr;
-    image_format_ = IMG_FMT_420;
+    image_format_ = format;
     packed_ten_bit_mode = true;
+    monitor = nullptr;
 }
 
 Y4MVideoSource::~Y4MVideoSource() {
     if (file_handle_ != nullptr) {
         fclose(file_handle_);
     }
+    if (monitor != nullptr)
+        delete monitor;
 }
 
 // Prepare stream, and get first frame.
 EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
-    // Reopen file as necessary
-    if (file_handle_ == nullptr) {
-        file_handle_ = fopen(file_name_.c_str(), "rb");
-    }
+    if (file_handle_ != nullptr)
+        return EB_ErrorNone;
 
+    file_handle_ = fopen(file_name_.c_str(), "rb");
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
 
@@ -46,10 +58,28 @@ EbErrorType Y4MVideoSource::open_source() {
         return EB_ErrorInsufficientResources;
     }
 
-    frame_count_ = -1;
-    init_monitor();
+    current_frame_index_ = -1;
+    monitor = new VideoMonitor(width_with_padding_,
+                               height_with_padding_,
+                               bit_depth_,
+                               packed_ten_bit_mode);
 
     return EB_ErrorNone;
+}
+
+EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
+    if (index > frame_count_) {
+        return nullptr;
+    }
+    // Seek to index frame
+    fseek(file_handle_, index * frame_length_ + header_length_, SEEK_SET);
+    frame_size_ = read_input_frame();
+    if (frame_size_ == 0)
+        return nullptr;
+    current_frame_index_ = index;
+    monitor->draw_frame(
+        frame_buffer_->luma, frame_buffer_->cb, frame_buffer_->cr);
+    return frame_buffer_;
 }
 
 // Get next frame.
@@ -57,8 +87,9 @@ EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
-    ++frame_count_;
-    draw_frame();
+    ++current_frame_index_;
+    monitor->draw_frame(
+        frame_buffer_->luma, frame_buffer_->cb, frame_buffer_->cr);
     return frame_buffer_;
 }
 
@@ -76,6 +107,13 @@ EbErrorType Y4MVideoSource::parse_file_info() {
     char first_char;
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
+
+    // Get file length
+    fseek(file_handle_, 0, SEEK_END);
+    file_length_ = ftell(file_handle_);
+
+    // Seek to begin
+    fseek(file_handle_, 0, SEEK_SET);
 
     // Check file header "YUV4MPEG2 "
     if (9 != fread(buffer, 1, 9, file_handle_)) {
@@ -96,10 +134,10 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         case 'W':  // Width
         {
             fscanf(file_handle_, "%d ", &width_);
+            fseek(file_handle_, -1, SEEK_CUR);
             width_with_padding_ = width_;
             if (width_ % 8 != 0)
                 width_with_padding_ += +(8 - width_ % 8);
-            fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'H':  // Height
         {
@@ -168,6 +206,41 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         default: break;
         }
     } while (!feof(file_handle_) && (first_char != 0xA));
+
+    // Get header lenght
+    header_length_ = ftell(file_handle_);
+    frame_length_ = width_ * height_;
+
+    // Calculate frame length
+    switch (image_format_) {
+    case IMG_FMT_420P10_PACKED: {
+        frame_length_ *= 2;
+    }
+    case IMG_FMT_420: {
+        frame_length_ = frame_length_ * 3 / 2;
+    } break;
+    case IMG_FMT_422P10_PACKED: frame_length_ *= 2;
+    case IMG_FMT_422: {
+        frame_length_ = frame_length_ * 2;
+    } break;
+    case IMG_FMT_444P10_PACKED: frame_length_ *= 2;
+    case IMG_FMT_444: {
+        frame_length_ = frame_length_ * 3;
+    } break;
+    default: break;
+    }
+    frame_length_ += 6;  // FRAME header
+
+    // Calculate frame count
+    frame_count_ = (file_length_ - header_length_) / frame_length_;
+
+    printf("File len:%d; frame w:%d, h:%d, len:%d; frame count:%d\r\n",
+           file_length_,
+           width_,
+           height_,
+           frame_length_,
+           frame_count_);
+
     return EB_ErrorNone;
 }
 
@@ -176,15 +249,18 @@ uint32_t Y4MVideoSource::read_input_frame() {
     uint8_t* eb_input_ptr = nullptr;
     uint32_t filled_len = 0;
     char frame_header[6] = {0};
-    if (file_handle_ == nullptr)
+    if (file_handle_ == nullptr) {
+        printf("Error file handle\r\n");
         return 0;
+    }
 
-    if (feof(file_handle_) != 0)
+    if (feof(file_handle_) != 0) {
+        printf("Reach file end\r\n");
         return 0;
+    }
 
-    int nread = fread(frame_header, 1, 6, file_handle_);
-    // if (6 != fread(frame_header, 1, 6, file_handle_))
-    // return 0;
+    if (6 != fread(frame_header, 1, 6, file_handle_))
+        return 0;
 
     // Check frame header
     if (!((strncmp("FRAME", frame_header, 5) == 0) && frame_header[5] == 0xA)) {

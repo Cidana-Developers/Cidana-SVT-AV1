@@ -15,7 +15,8 @@ YuvVideoSource::YuvVideoSource(const std::string &file_name,
     width_with_padding_ = width_ = width;
     height_with_padding_ = height_ = height;
     bit_depth_ = bit_depth;
-    frame_count_ = -1;
+    frame_count_ = 0;
+    current_frame_index_ = -1;
     frame_size_ = 0;
     frame_buffer_ = nullptr;
     image_format_ = format;
@@ -46,7 +47,7 @@ EbErrorType YuvVideoSource::open_source() {
     // Seek to begin, and get first frame.
     fseek(file_handle_, 0, SEEK_SET);
 
-    frame_count_ = -1;
+    current_frame_index_ = -1;
 
     return EB_ErrorNone;
 }
@@ -56,7 +57,7 @@ EbSvtIOFormat *YuvVideoSource::get_next_frame() {
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
-    ++frame_count_;
+    ++current_frame_index_;
     return frame_buffer_;
 }
 

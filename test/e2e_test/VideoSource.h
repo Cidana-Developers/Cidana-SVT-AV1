@@ -2,25 +2,22 @@
 #define _SVT_TEST_VIDEO_SOURCE_H_
 #include "EbSvtAv1Enc.h"
 #include "VideoFrame.h"
-#ifdef _WIN32
-#include "SDL.h"
-#endif
-
 
 // Abstract base class for test video source
 class VideoSource {
   public:
     virtual ~VideoSource() {
-        deinit_monitor();
         deinit_frame_buffer();
     };
     // Prepare stream.
     virtual EbErrorType open_source() = 0;
     // Get next frame.
     virtual EbSvtIOFormat *get_next_frame() = 0;
+    // Get frame ny index.
+    virtual EbSvtIOFormat *get_frame_by_index(const uint32_t index ) = 0;
     // Get current frame index.
     virtual uint32_t get_frame_index() {
-        return frame_count_;
+        return current_frame_index_;
     };
     // Get current frame size in byte
     virtual uint32_t get_frame_size() {
@@ -177,79 +174,17 @@ class VideoSource {
 
         return EB_ErrorNone;
     }
-    virtual void init_monitor() {
-#ifdef _WIN32
-        SDL_Init(SDL_INIT_VIDEO);
-        window = SDL_CreateWindow("Input Monitor",
-                                  SDL_WINDOWPOS_UNDEFINED,
-                                  SDL_WINDOWPOS_UNDEFINED,
-                                  width_with_padding_,
-                                  height_with_padding_,
-                                  0);
-
-        renderer = SDL_CreateRenderer(window, -1, 0);
-        // TODO: Check more format
-        texture = SDL_CreateTexture(renderer,
-                                    SDL_PIXELFORMAT_IYUV,
-                                    SDL_TEXTUREACCESS_STREAMING,
-                                    width_with_padding_,
-                                    height_with_padding_);
-        monitor_buffer = (uint8_t *)SDL_calloc(
-            1, width_with_padding_ * height_with_padding_ * 3);
-#endif  // ifdef WIN32
-    }
-    virtual void draw_frame() {
-#ifdef _WIN32
-        const unsigned int luma_len =
-            width_with_padding_ * height_with_padding_;
-        if (bit_depth_ == 8 || ((bit_depth_ == 10) && !packed_ten_bit_mode)) {
-            memcpy(monitor_buffer, frame_buffer_->luma, luma_len);
-            memcpy(monitor_buffer + luma_len, frame_buffer_->cb, luma_len / 4);
-            memcpy(monitor_buffer + luma_len * 5 / 4,
-                   frame_buffer_->cr,
-                   luma_len / 4);
-        } else if (bit_depth_ == 10 && packed_ten_bit_mode) {
-            for (int i = 0; i < luma_len; i++) {
-                uint16_t w = ((uint16_t *)frame_buffer_->luma)[i];
-                monitor_buffer[i] = w >> 2 & 0xFF;
-            }
-            for (int i = 0; i < (luma_len >> 2); i++) {
-                uint16_t w = ((uint16_t *)frame_buffer_->cb)[i];
-                monitor_buffer[luma_len + i] = w >> 2 & 0xFF;
-            }
-            for (int i = 0; i < (luma_len >> 2); i++) {
-                uint16_t w = ((uint16_t *)frame_buffer_->cr)[i];
-                monitor_buffer[(luma_len * 5 / 4) + i] = w >> 2 & 0xFF;
-            }
-        }
-        SDL_UpdateTexture(texture, NULL, monitor_buffer, width_);
-
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
-#endif
-    }
-    virtual void deinit_monitor() {
-#ifdef _WIN32
-        SDL_Quit();
-#endif
-    }
     uint32_t width_;
     uint32_t height_;
     uint32_t width_with_padding_;
     uint32_t height_with_padding_;
     uint32_t bit_depth_;
-    int32_t frame_count_;
+    uint32_t frame_count_;
+    int32_t current_frame_index_;
     uint32_t frame_size_;
     EbSvtIOFormat *frame_buffer_;
     VideoImageFormat image_format_;
     bool packed_ten_bit_mode;
-#ifdef WIN32
-    SDL_Renderer *renderer;
-    SDL_Texture *texture;
-    SDL_Window *window;
-    uint8_t *monitor_buffer;
-#endif
 };
 
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

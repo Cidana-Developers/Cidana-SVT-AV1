@@ -97,8 +97,7 @@ class RefDecoder {
         return REF_CODEC_OK;
     }
     RefDecoderErr get_frame(VideoFrame &frame) {
-        aom_codec_iter_t iter = nullptr;
-		aom_image_t *img = aom_codec_get_frame(&codec_, &iter);
+		aom_image_t *img = aom_codec_get_frame(&codec_, (aom_codec_iter_t *)&frame.context);
         if (img == nullptr) {
             return REF_CODEC_NEED_MORE_INPUT;
         }
