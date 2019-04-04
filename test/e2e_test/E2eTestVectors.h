@@ -1,3 +1,7 @@
+/*
+* Copyright(c) 2019 Intel Corporation
+* SPDX - License - Identifier: BSD - 2 - Clause - Patent
+*/
 #ifndef _E2E_TEST_VECTOR_
 #define _E2E_TEST_VECTOR_
 
@@ -62,6 +66,14 @@ static const TestVideoVector recon_file_vectors[] = {
      8},
 };
 
+static const TestVideoVector smoking_vectors[] = {
+	{"../../test/vectors/screendata.y4m",
+	 Y4M_VIDEO_FILE,
+	 IMG_FMT_420,
+	 640,
+	 480,
+	 8},
+};
 }  // namespace svt_av1_e2e_test_vector
 
 #endif  // _E2E_TEST_VECTOR_

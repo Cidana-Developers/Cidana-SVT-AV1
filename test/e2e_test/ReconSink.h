@@ -1,13 +1,11 @@
+/*
+* Copyright(c) 2019 Intel Corporation
+* SPDX - License - Identifier: BSD - 2 - Clause - Patent
+*/
 #ifndef _RECON_SINK_H_
 #define _RECON_SINK_H_
 
-#include "VideoSource.h"
-
-typedef struct VideoFrameParam {
-    VideoImageFormat format;
-    uint32_t width;
-    uint32_t height;
-} VideoFrameParam;
+#include "VideoFrame.h"
 
 class ReconSink {
   public:
@@ -25,7 +23,7 @@ class ReconSink {
     } ReconMug;
 
   public:
-    ReconSink(const VideoFrameParam &param) {
+    ReconSink(const VideoFrameParam& param) {
         sink_type_ = RECON_SINK_BUFFER;
         video_param_ = param;
         frame_size_ = calculate_frame_size(video_param_);
@@ -57,6 +55,7 @@ class ReconSink {
     }
     virtual void fill_mug(ReconMug* mug) = 0;
     virtual const ReconMug* take_mug(uint64_t time_stamp) = 0;
+    virtual const ReconMug* take_mug_inorder(uint32_t index) = 0;
     virtual void pour_mug(ReconMug* mug) = 0;
 
   protected:
@@ -90,7 +89,7 @@ class ReconSink {
     int frame_count_;
 };
 
-ReconSink* CreateReconSink(const VideoFrameParam &param, const char* file_path);
-ReconSink* CreateReconSink(const VideoFrameParam &param);
+ReconSink* create_recon_sink(const VideoFrameParam& param, const char* file_path);
+ReconSink* create_recon_sink(const VideoFrameParam& param);
 
 #endif  // !_RECON_SINK_H_

@@ -13,20 +13,21 @@ include_directories (${PROJECT_SOURCE_DIR}/test/)
 include_directories (${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/googletest/include third_party/googletest/src)
 include_directories(${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/include)
+include_directories(${PROJECT_SOURCE_DIR}/third_party/aom/inc)
 include_directories(${PROJECT_SOURCE_DIR}/Source/API)
+
+# Link Subdirectories
+if (MSVC OR MSYS OR MINGW OR WIN32)
+link_directories(${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/lib/x64)
+link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/msvc)
+endif(MSVC OR MSYS OR MINGW OR WIN32)
+if (UNIX)
+link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/linux)
+endif(UNIX)
+
 
 # Define helper functions and macros used by Google Test.
 include(../../third_party/googletest/cmake/internal_utils.cmake)
-
-# BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to
-# make it prominent in the GUI.
-if (UNIX)
-option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." OFF)
-endif()
-
-if (MSVC OR MSYS OR MINGW OR WIN32)
-option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
-endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 -D_ALLOW_KEYWORD_MACROS")
@@ -59,7 +60,8 @@ if (UNIX)
         SvtAv1Enc
         gtest_all 
         pthread
-        m)
+        m
+		aom)
         
 endif(UNIX)
 
@@ -69,8 +71,7 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
                         
     cxx_executable_with_flags(SvtAv1E2ETests "${cxx_default}"
       "${lib_list}" ${all_files})
-    target_link_libraries(SvtAv1E2ETests
-		${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/lib/x64/SDL2.lib)
+    target_link_libraries(SvtAv1E2ETests SDL2.lib aom.lib)
     set_target_properties(SvtAv1E2ETests
                         PROPERTIES
                         COMPILE_DEFINITIONS "GTEST_LINKED_AS_SHARED_LIBRARY=1")

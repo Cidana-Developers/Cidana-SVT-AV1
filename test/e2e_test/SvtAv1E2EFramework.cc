@@ -1,3 +1,7 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
 #include "EbSvtAv1Enc.h"
 #include "Y4mVideoSource.h"
 #include "YuvVideosource.h"
@@ -14,6 +18,16 @@
          : (resolution_size) < (INPUT_SIZE_1080p_TH)     \
                ? 0x2DC6C0                                \
                : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
+
+#if _WIN32
+#define fseeko64 _fseeki64
+#define ftello64 _ftelli64
+#define FOPEN(f, s, m) fopen_s(&f, s, m)
+#else
+#define fseeko64 fseek
+#define ftello64 ftell
+#define FOPEN(f, s, m) f = fopen(s, m)
+#endif
 
 using namespace svt_av1_test_e2e;
 
@@ -32,7 +46,7 @@ SvtAv1E2ETestBase::~SvtAv1E2ETestBase() {
 void SvtAv1E2ETestBase::SetUp() {
     EbErrorType return_error = EB_ErrorNone;
 
-	// check for video source
+    // check for video source
     ASSERT_NE(video_src_, nullptr) << "video source create failed!";
     return_error = video_src_->open_source();
     ASSERT_EQ(return_error, EB_ErrorNone)
@@ -157,7 +171,22 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
     EbErrorType return_error = EB_ErrorNone;
+
+    // Get ivf header
+    // TODO: fix me, eb_svt_enc_stream_header not implemented
+    //   EbBufferHeaderType *output_header = nullptr;
+    //   EXPECT_EQ(EB_ErrorNone,
+    //             return_error =
+    //                 eb_svt_enc_stream_header(ctxt_.enc_handle,
+    //                 &output_header))
+    //       << "eb_svt_enc_stream_header error:: " << return_error;
+    // if (output_header && output_file_) {
+    if (output_file_) {
+        write_output_header();
+    }
+
     uint8_t *frame = nullptr;
+    bool file_eos = false;
     do {
         frame = (uint8_t *)video_src_->get_next_frame();
         if (frame != nullptr) {
@@ -171,11 +200,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
             ctxt_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
             // Send the picture
             EXPECT_EQ(EB_ErrorNone,
-                      eb_svt_enc_send_picture(ctxt_.enc_handle,
-                                              ctxt_.input_picture_buffer))
+                      return_error = eb_svt_enc_send_picture(
+                          ctxt_.enc_handle, ctxt_.input_picture_buffer))
                 << "eb_svt_enc_send_picture error at: "
                 << ctxt_.input_picture_buffer->pts;
         } else {
+            file_eos = true;
             EbBufferHeaderType headerPtrLast;
             headerPtrLast.n_alloc_len = 0;
             headerPtrLast.n_filled_len = 0;
@@ -185,7 +215,8 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
             headerPtrLast.p_buffer = nullptr;
             ctxt_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
             EXPECT_EQ(EB_ErrorNone,
-                      eb_svt_enc_send_picture(ctxt_.enc_handle, &headerPtrLast))
+                      return_error = eb_svt_enc_send_picture(ctxt_.enc_handle,
+                                                             &headerPtrLast))
                 << "eb_svt_enc_send_picture EOS error";
         }
 
@@ -196,16 +227,240 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
 
         // non-blocking call
         EbBufferHeaderType *headerPtr = nullptr;
-        return_error = eb_svt_get_packet(
-            ctxt_.enc_handle, &headerPtr, (frame == nullptr ? 1 : 0));
-        ASSERT_NE(return_error, EB_ErrorMax)
-            << "Error while encoding, code:" << headerPtr->flags;
-        // Release the output buffer
-        if (headerPtr != nullptr) {
-            eb_svt_release_out_buffer(&headerPtr);
-        }
-        // TODO: plug-in decoder to verify the compressed data
-    } while ((frame != nullptr));
+        do {
+            return_error = eb_svt_get_packet(
+                ctxt_.enc_handle, &headerPtr, (frame == nullptr ? 1 : 0));
+            ASSERT_NE(return_error, EB_ErrorMax)
+                << "Error while encoding, code:" << headerPtr->flags;
+
+            // process the output buffer
+            if (headerPtr) {
+                printf("Decode Order:\tdts:\t%ld\tpts:\t%ld\tSliceType:\t%d\n",
+                       (long int)headerPtr->dts,
+                       (long int)headerPtr->pts,
+                       (int)headerPtr->pic_type);
+                if (refer_dec_) {
+                    // input the compressed data into decoder
+                    if (refer_dec_->process_data(headerPtr->p_buffer,
+                                                 headerPtr->n_filled_len) ==
+                        RefDecoder::REF_CODEC_OK) {
+                        VideoFrame ref_frame;
+                        int ref_frame_count = 0;
+                        while (refer_dec_->get_frame(ref_frame) ==
+                               RefDecoder::REF_CODEC_OK) {
+                            // TODO: output video frame should send to compare
+                            // tools
+                            if (recon_sink_) {
+                                // TODO: send to comfomance compare tool with
+                                // recon frame
+                            } else {
+                                // TODO: send to PSNR tool with source video
+                                // frame
+                            }
+                            printf("ref_frame_count %d\n", ref_frame_count++);
+                        }
+                    }
+                } else {
+                    if (output_file_) {
+                        write_compress_data(headerPtr);
+                    }
+                }
+                if (headerPtr->flags & EB_BUFFERFLAG_EOS) {
+                    printf("EOS\n");
+                    break;
+                }
+            } else
+                break;
+
+            // Release the output buffer
+            if (headerPtr != nullptr) {
+                eb_svt_release_out_buffer(&headerPtr);
+            }
+        } while (file_eos);
+    } while (frame);
+}
+
+#define LONG_ENCODE_FRAME_ENCODE 4000
+#define SPEED_MEASUREMENT_INTERVAL 2000
+#define START_STEADY_STATE 1000
+#define AV1_FOURCC 0x31305641  // used for ivf header
+#define IVF_STREAM_HEADER_SIZE 32
+#define IVF_FRAME_HEADER_SIZE 12
+#define OBU_FRAME_HEADER_SIZE 3
+#define TD_SIZE 2
+static __inline void mem_put_le32(void *vmem, int32_t val) {
+    uint8_t *mem = (uint8_t *)vmem;
+
+    mem[0] = (uint8_t)((val >> 0) & 0xff);
+    mem[1] = (uint8_t)((val >> 8) & 0xff);
+    mem[2] = (uint8_t)((val >> 16) & 0xff);
+    mem[3] = (uint8_t)((val >> 24) & 0xff);
+}
+#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
+static __inline void mem_put_le16(void *vmem, int32_t val) {
+    uint8_t *mem = (uint8_t *)vmem;
+
+    mem[0] = (uint8_t)((val >> 0) & 0xff);
+    mem[1] = (uint8_t)((val >> 8) & 0xff);
+}
+
+void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_output_header() {
+    char header[IVF_STREAM_HEADER_SIZE];
+    header[0] = 'D';
+    header[1] = 'K';
+    header[2] = 'I';
+    header[3] = 'F';
+    mem_put_le16(header + 4, 0);                                // version
+    mem_put_le16(header + 6, 32);                               // header size
+    mem_put_le32(header + 8, AV1_FOURCC);                       // fourcc
+    mem_put_le16(header + 12, ctxt_.enc_params.source_width);   // width
+    mem_put_le16(header + 14, ctxt_.enc_params.source_height);  // height
+    if (ctxt_.enc_params.frame_rate_denominator != 0 &&
+        ctxt_.enc_params.frame_rate_numerator != 0) {
+        mem_put_le32(header + 16,
+                     ctxt_.enc_params.frame_rate_numerator);  // rate
+        mem_put_le32(header + 20,
+                     ctxt_.enc_params.frame_rate_denominator);  // scale
+    } else {
+        mem_put_le32(header + 16,
+                     (ctxt_.enc_params.frame_rate >> 16) * 1000);  // rate
+        mem_put_le32(header + 20, 1000);                           // scale
+    }
+    mem_put_le32(header + 24, 0);  // length
+    mem_put_le32(header + 28, 0);  // unused
+    if (output_file_ && output_file_->file)
+        fwrite(header, 1, IVF_STREAM_HEADER_SIZE, output_file_->file);
+}
+
+static void update_prev_ivf_header(
+    svt_av1_test_e2e::SvtAv1E2ETestFramework::IvfFile *ivf) {
+    char header[4];  // only for the number of bytes
+    if (ivf && ivf->file && ivf->byte_count_since_ivf != 0) {
+        fseeko64(
+            ivf->file,
+            (-(int32_t)(ivf->byte_count_since_ivf + IVF_FRAME_HEADER_SIZE)),
+            SEEK_CUR);
+        mem_put_le32(&header[0], (int32_t)(ivf->byte_count_since_ivf));
+        fwrite(header, 1, 4, ivf->file);
+        fseeko64(ivf->file,
+                 (ivf->byte_count_since_ivf + IVF_FRAME_HEADER_SIZE - 4),
+                 SEEK_CUR);
+        ivf->byte_count_since_ivf = 0;
+    }
+}
+
+static void write_ivf_frame_header(
+    svt_av1_test_e2e::SvtAv1E2ETestFramework::IvfFile *ivf,
+    uint32_t byte_count) {
+    char header[IVF_FRAME_HEADER_SIZE];
+    int32_t write_location = 0;
+
+    mem_put_le32(&header[write_location], (int32_t)byte_count);
+    write_location = write_location + 4;
+    mem_put_le32(&header[write_location],
+                 (int32_t)((ivf->ivf_count) & 0xFFFFFFFF));
+    write_location = write_location + 4;
+    mem_put_le32(&header[write_location], (int32_t)((ivf->ivf_count) >> 32));
+    write_location = write_location + 4;
+
+    ivf->byte_count_since_ivf = (byte_count);
+
+    ivf->ivf_count++;
+    fflush(stdout);
+
+    if (ivf->file)
+        fwrite(header, 1, IVF_FRAME_HEADER_SIZE, ivf->file);
+}
+
+void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
+    const EbBufferHeaderType *output) {
+#if TILES
+    EbBool has_tiles =
+        (EbBool)(ctxt_.enc_params.tile_columns || ctxt_.enc_params.tile_rows);
+#else
+    EbBool has_tiles = (EbBool)EB_FALSE;
+#endif
+    uint8_t obu_frame_header_size =
+        has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
+
+    switch (output->flags &
+            0x00000006) {  // Check for the flags EB_BUFFERFLAG_HAS_TD and
+                           // EB_BUFFERFLAG_SHOW_EXT
+
+    case (EB_BUFFERFLAG_HAS_TD | EB_BUFFERFLAG_SHOW_EXT):
+
+        // terminate previous ivf packet, update the combined size of packets
+        // sent
+        update_prev_ivf_header(output_file_);
+
+        // Write a new IVF frame header to file as a TD is in the packet
+        write_ivf_frame_header(
+            output_file_,
+            output->n_filled_len - (obu_frame_header_size + TD_SIZE));
+        fwrite(output->p_buffer,
+               1,
+               output->n_filled_len - (obu_frame_header_size + TD_SIZE),
+               output_file_->file);
+
+        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
+        // packet to show another frame, a new IVF is needed
+        write_ivf_frame_header(output_file_, (obu_frame_header_size + TD_SIZE));
+        fwrite(output->p_buffer + output->n_filled_len -
+                   (obu_frame_header_size + TD_SIZE),
+               1,
+               (obu_frame_header_size + TD_SIZE),
+               output_file_->file);
+
+        break;
+
+    case (EB_BUFFERFLAG_HAS_TD):
+
+        // terminate previous ivf packet, update the combined size of packets
+        // sent
+        update_prev_ivf_header(output_file_);
+
+        // Write a new IVF frame header to file as a TD is in the packet
+        write_ivf_frame_header(output_file_, output->n_filled_len);
+        fwrite(output->p_buffer, 1, output->n_filled_len, output_file_->file);
+
+        break;
+
+    case (EB_BUFFERFLAG_SHOW_EXT):
+
+        // this case means that there's only one TD in this packet and is
+        // relater
+        fwrite(output->p_buffer,
+               1,
+               output->n_filled_len - (obu_frame_header_size + TD_SIZE),
+               output_file_->file);
+        // this packet will be part of the previous IVF header
+        output_file_->byte_count_since_ivf +=
+            (output->n_filled_len - (obu_frame_header_size + TD_SIZE));
+
+        // terminate previous ivf packet, update the combined size of packets
+        // sent
+        update_prev_ivf_header(output_file_);
+
+        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
+        // packet to show another frame, a new IVF is needed
+        write_ivf_frame_header(output_file_, (obu_frame_header_size + TD_SIZE));
+        fwrite(output->p_buffer + output->n_filled_len -
+                   (obu_frame_header_size + TD_SIZE),
+               1,
+               (obu_frame_header_size + TD_SIZE),
+               output_file_->file);
+
+        break;
+
+    default:
+
+        // This is a packet without a TD, write it straight to file
+        fwrite(output->p_buffer, 1, output->n_filled_len, output_file_->file);
+
+        // this packet will be part of the previous IVF header
+        output_file_->byte_count_since_ivf += (output->n_filled_len);
+        break;
+    }
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
@@ -229,6 +484,8 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             recon_sink_->pour_mug(new_mug);
             break;
         } else {
+            ASSERT_EQ(recon_frame.n_filled_len, new_mug->mug_size)
+                << "recon frame size incorrect@" << recon_frame.pts;
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;
@@ -236,4 +493,10 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             recon_sink_->fill_mug(new_mug);
         }
     } while (true);
+}
+
+svt_av1_test_e2e::SvtAv1E2ETestFramework::IvfFile::IvfFile(std::string path) {
+    FOPEN(file, path.c_str(), "wb");
+    byte_count_since_ivf = 0;
+    ivf_count = 0;
 }

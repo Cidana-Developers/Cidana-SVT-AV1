@@ -1,6 +1,12 @@
+/*
+* Copyright(c) 2019 Intel Corporation
+* SPDX - License - Identifier: BSD - 2 - Clause - Patent
+*/
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
+#include <iterator>
+#include <functional>
 #include "ReconSink.h"
 
 #if _WIN32
@@ -12,6 +18,7 @@
 #define ftello64 ftell
 #define FOPEN(f, s, m) f = fopen(s, m)
 #endif
+
 
 static void delete_mug(ReconSink::ReconMug *mug) {
     if (mug) {
@@ -92,6 +99,9 @@ class ReconSinkFile : public ReconSink {
 
         return mug;
     }
+    virtual const ReconMug *take_mug_inorder(uint32_t index) override {
+        return take_mug(index);
+    }
     virtual void pour_mug(ReconMug *mug) override {
         delete_mug(mug);
     }
@@ -126,8 +136,16 @@ class ReconSinkBuffer : public ReconSink {
             mug_list_.begin(), mug_list_.end(), ReconSinkBufferSort_ASC());
     }
     virtual const ReconMug *take_mug(uint64_t time_stamp) override {
-        if (time_stamp < mug_list_.size())
-            return mug_list_.at(time_stamp);
+		for each (ReconMug *mug in mug_list_)
+		{
+			if (mug->time_stamp == time_stamp)
+				return mug;
+		}
+        return nullptr;
+    }
+    virtual const ReconMug *take_mug_inorder(uint32_t index) override {
+        if (index < mug_list_.size())
+            return mug_list_.at(index);
         return nullptr;
     }
     virtual void pour_mug(ReconMug *mug) override {
@@ -144,7 +162,7 @@ class ReconSinkBuffer : public ReconSink {
     std::vector<ReconMug *> mug_list_;
 };
 
-ReconSink *CreateReconSink(const VideoFrameParam &param,
+ReconSink *create_recon_sink(const VideoFrameParam &param,
                            const char *file_path) {
     ReconSinkFile *new_sink = new ReconSinkFile(param, file_path);
     if (new_sink) {
@@ -156,6 +174,6 @@ ReconSink *CreateReconSink(const VideoFrameParam &param,
     return new_sink;
 }
 
-ReconSink *CreateReconSink(const VideoFrameParam &param) {
+ReconSink *create_recon_sink(const VideoFrameParam &param) {
     return new ReconSinkBuffer(param);
 }

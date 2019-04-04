@@ -1,8 +1,13 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
 #ifndef _SVT_AV1_E2E_FRAMEWORK_H_
 #define _SVT_AV1_E2E_FRAMEWORK_H_
 
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
+#include "RefDecoder.h"
 
 namespace svt_av1_test_e2e {
 
@@ -36,28 +41,59 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
 };
 
 class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
+  public:
+    typedef struct IvfFile {
+        FILE *file;
+        uint64_t byte_count_since_ivf;
+        uint64_t ivf_count;
+        IvfFile(std::string path);
+        ~IvfFile() {
+            if (file) {
+                fclose(file);
+                file = nullptr;
+            }
+            byte_count_since_ivf = 0;
+            ivf_count = 0;
+        }
+    } IvfFile;
+
   protected:
     SvtAv1E2ETestFramework() {
         recon_sink_ = nullptr;
+        refer_dec_ = nullptr;
+        output_file_ = nullptr;
     }
     virtual ~SvtAv1E2ETestFramework() {
         if (recon_sink_) {
             delete recon_sink_;
             recon_sink_ = nullptr;
         }
+        if (refer_dec_) {
+            delete refer_dec_;
+            refer_dec_ = nullptr;
+        }
+        if (output_file_) {
+            delete output_file_;
+            output_file_ = nullptr;
+        }
     }
 
   protected:
     virtual void run_encode_process() final override;
 
+  private:
+    void write_output_header();
+    void write_compress_data(const EbBufferHeaderType *output);
+
   protected:
     // plug-in for test data
     // recon-data pin
     virtual void get_recon_frame();
-    // decoder pin
     // psnr pin
   protected:
     ReconSink *recon_sink_;
+    RefDecoder *refer_dec_;
+    IvfFile *output_file_;
 };
 
 }  // namespace svt_av1_test_e2e

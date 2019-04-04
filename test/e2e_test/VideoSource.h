@@ -1,18 +1,11 @@
 #ifndef _SVT_TEST_VIDEO_SOURCE_H_
 #define _SVT_TEST_VIDEO_SOURCE_H_
 #include "EbSvtAv1Enc.h"
+#include "VideoFrame.h"
 #ifdef _WIN32
 #include "SDL.h"
 #endif
 
-typedef enum VideoImageFormat {
-    IMG_FMT_420,
-    IMG_FMT_422,
-    IMG_FMT_444,
-    IMG_FMT_420P10_PACKED,
-    IMG_FMT_422P10_PACKED,
-    IMG_FMT_444P10_PACKED
-} VideoImageFormat;
 
 // Abstract base class for test video source
 class VideoSource {
