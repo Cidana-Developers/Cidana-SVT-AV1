@@ -33,7 +33,7 @@
 #include "util.h"
 #include "aom_dsp_rtcd.h"
 
-namespace EncodeTxbAsmTest {
+namespace {
 
 const int deterministic_seed = 0xa42b;
 static INLINE int32_t get_txb_wide(TxSize tx_size) {
@@ -132,4 +132,4 @@ INSTANTIATE_TEST_CASE_P(
     AVX2, EncodeTxbInitLevelTest,
     ::testing::Combine(::testing::Values(&av1_txb_init_levels_avx2),
                        ::testing::Range(0, static_cast<int>(TX_SIZES_ALL), 1)));
-}  // namespace EncodeTxbAsmTest
+}  // namespace
