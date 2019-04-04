@@ -151,11 +151,10 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
     const TxSize txfm_size_;
     const TxType txfm_type_;
     TXFM_2D_FLIP_CFG cfg_;
-    static const int max_block_size_ = 64 * 64;
-    DECLARE_ALIGNED(32, int16_t, input_test_[max_block_size_]);
-    DECLARE_ALIGNED(32, int32_t, output_test_[max_block_size_]);
-    DECLARE_ALIGNED(32, double, input_ref_[max_block_size_]);
-    DECLARE_ALIGNED(32, double, output_ref_[max_block_size_]);
+    DECLARE_ALIGNED(32, int16_t, input_test_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, double, input_ref_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, double, output_ref_[MAX_TX_SQUARE]);
 };
 
 TEST_P(AV1FwdTxfm2dTest, run_fwd_accuracy_check) {
