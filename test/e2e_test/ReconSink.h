@@ -5,6 +5,8 @@
 #ifndef _RECON_SINK_H_
 #define _RECON_SINK_H_
 
+#include <stdint.h>
+#include <memory.h>
 #include "VideoFrame.h"
 
 class ReconSink {

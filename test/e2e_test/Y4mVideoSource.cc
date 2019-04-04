@@ -1,3 +1,5 @@
+#include <memory.h>
+#include <stdlib.h>
 #include "Y4mVideoSource.h"
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 

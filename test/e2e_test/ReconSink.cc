@@ -17,11 +17,6 @@
 #define FOPEN(f, s, m) f = fopen(s, m)
 #endif
 
-#ifndef FOR_EACH
-#define FOR_EACH for \
-    each
-#endif  // !FOR_EACH
-
 static void delete_mug(ReconSink::ReconMug *mug) {
     if (mug) {
         if (mug->mug_buf) {
@@ -154,9 +149,9 @@ class ReconSinkBuffer : public ReconSink {
             delete_mug(mug);
     }
     virtual const ReconMug *take_mug(uint64_t time_stamp) override {
-        FOR_EACH(ReconMug * mug in mug_list_) {
-            if (mug->time_stamp == time_stamp)
-                return mug;
+        for (ReconMug * mug : mug_list_) {
+             if (mug->time_stamp == time_stamp)
+                return mug;           
         }
         return nullptr;
     }
