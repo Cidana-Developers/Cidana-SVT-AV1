@@ -105,10 +105,9 @@ class AV1InvTxfm1dTest : public ::testing::TestWithParam<InvTxfm1dParam> {
     const int max_error_;       /**< max error allowed */
     int txfm_size_;             /**< transform size, max transform is DCT64 */
     const TXFM_TYPE txfm_type_; /**< tx type, including dct, iadst, idtx */
-    static const int max_txfm_size_ = 64;
-    DECLARE_ALIGNED(32, int32_t, input_[max_txfm_size_]);
-    DECLARE_ALIGNED(32, int32_t, output_[max_txfm_size_]);
-    DECLARE_ALIGNED(32, int32_t, inv_output_[max_txfm_size_]);
+    DECLARE_ALIGNED(32, int32_t, input_[MAX_TX_SIZE]);
+    DECLARE_ALIGNED(32, int32_t, output_[MAX_TX_SIZE]);
+    DECLARE_ALIGNED(32, int32_t, inv_output_[MAX_TX_SIZE]);
 };
 
 TEST_P(AV1InvTxfm1dTest, run_inv_accuracy_check) {

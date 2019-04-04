@@ -106,11 +106,10 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
     const int max_error_;       /**< max error allowed */
     int txfm_size_;             /**< transform size, max transform is DCT64 */
     const TXFM_TYPE txfm_type_; /**< tx type, including dct, iadst, idtx */
-    static const int max_txfm_size_ = 64;
-    DECLARE_ALIGNED(32, int32_t, input_test_[max_txfm_size_]);
-    DECLARE_ALIGNED(32, int32_t, output_test_[max_txfm_size_]);
-    DECLARE_ALIGNED(32, double, input_ref_[max_txfm_size_]);
-    DECLARE_ALIGNED(32, double, output_ref_[max_txfm_size_]);
+    DECLARE_ALIGNED(32, int32_t, input_test_[MAX_TX_SIZE]);
+    DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SIZE]);
+    DECLARE_ALIGNED(32, double, input_ref_[MAX_TX_SIZE]);
+    DECLARE_ALIGNED(32, double, output_ref_[MAX_TX_SIZE]);
 };
 
 TEST_P(AV1FwdTxfm1dTest, run_fwd_accuracy_check) {
