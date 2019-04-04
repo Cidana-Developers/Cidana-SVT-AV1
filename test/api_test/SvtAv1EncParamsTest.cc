@@ -1,3 +1,17 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+
+/******************************************************************************
+ * @file SvtAv1EncParamsTest.cc
+ *
+ * @brief SVT-AV1 encoder parameter configuration test
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #include "EbSvtAv1Enc.h"
 #include "gtest/gtest.h"
 #include "params.h"
@@ -7,7 +21,21 @@ using namespace svt_av1_test_params;
 using namespace svt_av1_test;
 
 namespace {
-
+/**
+ * @brief SVT-AV1 encoder parameter configuration test
+ *
+ * Test strategy:
+ * Feed default values, vaild values and invalid values of individual param
+ * to the encoder and check if encoder return correctly.
+ *
+ * Expect result:
+ * For default value and valid values, encoder should return EB_ErrorNone.
+ * For invalid value, encoder should return EB_ErrorBadParameter.
+ *
+ * Test coverage:
+ * Almost all the encoder parameters except frame_rate_numerator and
+ * frame_rate_denominator
+ */
 class EncParamTestBase : public ::testing::Test {
   public:
     EncParamTestBase() {
@@ -271,173 +299,4 @@ PARAM_TEST(EncParamTileColsTest);
 DEFINE_PARAM_TEST_CLASS(EncParamTileRowsTest, tile_rows);
 PARAM_TEST(EncParamTileRowsTest);
 #endif
-
-#define DEFINE_2PARAM_TEST_CLASS(test_name, param1_name, param2_name)          \
-    class test_name : public EncParamTestBase {                                \
-      public:                                                                  \
-        virtual void run_default_param_check() override {                      \
-            EncParamTestBase::SetUp();                                         \
-            ASSERT_EQ(ctxt_.enc_params.param1_name,                            \
-                      GET_DEFAULT_PARAM(param1_name));                         \
-            ASSERT_EQ(ctxt_.enc_params.param2_name,                            \
-                      GET_DEFAULT_PARAM(param2_name));                         \
-            EncParamTestBase::TearDown();                                      \
-        }                                                                      \
-        virtual void run_valid_param_check() override {                        \
-            /*test parameters combine in valid vector*/                        \
-            for (size_t i = 0; i < SIZE_VALID_PARAM(param1_name); ++i) {       \
-                for (size_t j = 0; j < SIZE_VALID_PARAM(param2_name); ++j) {   \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_VALID_PARAM(param1_name, i);                       \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_VALID_PARAM(param2_name, j);                       \
-                    EXPECT_EQ(EB_ErrorNone,                                    \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-            }                                                                  \
-        }                                                                      \
-        virtual void run_invalid_param_check() override {                      \
-            /*test parameter1 in valid vector and parameter2 in invalid        \
-             * vector*/                                                        \
-            for (size_t i = 0; i < SIZE_VALID_PARAM(param1_name); ++i) {       \
-                for (size_t j = 0; j < SIZE_INVALID_PARAM(param2_name); ++j) { \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_VALID_PARAM(param1_name, i);                       \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_INVALID_PARAM(param2_name, j);                     \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-            }                                                                  \
-            /*test parameter1 in invalid vector and parameter2 in              \
-             * valid/invalid vector*/                                          \
-            for (size_t i = 0; i < SIZE_INVALID_PARAM(param1_name); ++i) {     \
-                for (size_t j = 0; j < SIZE_VALID_PARAM(param2_name); ++j) {   \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_INVALID_PARAM(param1_name, i);                     \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_VALID_PARAM(param2_name, j);                       \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-                for (size_t j = 0; j < SIZE_INVALID_PARAM(param2_name); ++j) { \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_INVALID_PARAM(param1_name, i);                     \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_INVALID_PARAM(param2_name, j);                     \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-            }                                                                  \
-        }                                                                      \
-        virtual void run_special_param_check() override {                      \
-            /*test parameters combine in special vector*/                      \
-            for (size_t i = 0; i < SIZE_SPECIAL_PARAM(param1_name); ++i) {     \
-                for (size_t j = 0; j < SIZE_SPECIAL_PARAM(param1_name); ++j) { \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_SPECIAL_PARAM(param1_name, i);                     \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_SPECIAL_PARAM(param2_name, j);                     \
-                    EXPECT_EQ(EB_ErrorNone,                                    \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-            }                                                                  \
-            /*test parameter1 in special vector and parameter2 in              \
-             * valid/invalid vector*/                                          \
-            for (size_t i = 0; i < SIZE_SPECIAL_PARAM(param1_name); ++i) {     \
-                for (size_t j = 0; j < SIZE_VALID_PARAM(param2_name); ++j) {   \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_SPECIAL_PARAM(param1_name, i);                     \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_VALID_PARAM(param2_name, j);                       \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-                for (size_t j = 0; j < SIZE_INVALID_PARAM(param2_name); ++j) { \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_SPECIAL_PARAM(param1_name, i);                     \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_INVALID_PARAM(param2_name, j);                     \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-            }                                                                  \
-            /*test parameter1 in valid/invalid vector and parameter2 in        \
-             * special vector*/                                                \
-            for (size_t i = 0; i < SIZE_INVALID_PARAM(param2_name); ++i) {     \
-                for (size_t j = 0; j < SIZE_VALID_PARAM(param1_name); ++j) {   \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param2_name =                             \
-                        GET_INVALID_PARAM(param2_name, i);                     \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_VALID_PARAM(param1_name, j);                       \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-                for (size_t j = 0; j < SIZE_INVALID_PARAM(param1_name); ++j) { \
-                    EncParamTestBase::SetUp();                                 \
-                    ctxt_.enc_params.param1_name =                             \
-                        GET_INVALID_PARAM(param1_name, j);                     \
-                    EXPECT_EQ(EB_ErrorBadParameter,                            \
-                              eb_svt_enc_set_parameter(ctxt_.enc_handle,       \
-                                                       &ctxt_.enc_params))     \
-                    PRINT_2PARAM_FATAL(ctxt_.enc_params.param1_name,           \
-                                       ctxt_.enc_params.param2_name);          \
-                    EncParamTestBase::TearDown();                              \
-                }                                                              \
-            }                                                                  \
-        }                                                                      \
-                                                                               \
-      protected:                                                               \
-        virtual void SetUp() override {                                        \
-            /* skip EncParamTestBase::SetUp() */                               \
-        }                                                                      \
-        virtual void TearDown() override {                                     \
-            /* skip EncParamTestBase::TearDown() */                            \
-        }                                                                      \
-    };
-
-DEFINE_2PARAM_TEST_CLASS(EncParamFrameRate2Test, frame_rate_numerator,
-                         frame_rate_denominator);
-PARAM_TEST(EncParamFrameRate2Test);
-
 }  // namespace

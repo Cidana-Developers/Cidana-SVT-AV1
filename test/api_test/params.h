@@ -1,3 +1,18 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+
+/******************************************************************************
+ * @file params.h
+ *
+ * @brief Define the default values, valid values and invalid values for
+ * individual params of encoder configuration.
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #ifndef _TEST_PARAMS_H_
 #define _TEST_PARAMS_H_
 
@@ -6,7 +21,7 @@
 #include "gtest/gtest.h"
 #include "EbDefinitions.h"
 
-using namespace std;
+using std::vector;
 
 namespace svt_av1_test_params {
 
