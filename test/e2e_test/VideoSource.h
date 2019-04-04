@@ -43,6 +43,11 @@ class VideoSource {
     virtual VideoImageFormat get_image_format() {
         return image_format_;
     }
+	// Get total frame count.
+	virtual uint32_t get_frame_count() {
+		return frame_count_;
+	}
+
 
   protected:
     bool is_ten_bit_mode() {

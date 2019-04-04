@@ -62,7 +62,7 @@ TEST_P(SvtAv1E2EReconFileTest, run_recon_collect_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconFileTest,
-	::testing::ValuesIn(recon_file_vectors));
+	::testing::ValuesIn(smoking_vectors));
 
 class SvtAv1E2EReconBufferTest : public SvtAv1E2ETestFramework {
 protected:
@@ -88,7 +88,7 @@ TEST_P(SvtAv1E2EReconBufferTest, run_recon_collect_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
-	::testing::ValuesIn(recon_file_vectors));
+	::testing::ValuesIn(smoking_vectors));
 
 
 class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {

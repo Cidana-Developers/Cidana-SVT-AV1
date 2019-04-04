@@ -1,12 +1,10 @@
 /*
-* Copyright(c) 2019 Intel Corporation
-* SPDX - License - Identifier: BSD - 2 - Clause - Patent
-*/
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
-#include <iterator>
-#include <functional>
 #include "ReconSink.h"
 
 #if _WIN32
@@ -19,6 +17,10 @@
 #define FOPEN(f, s, m) f = fopen(s, m)
 #endif
 
+#ifndef FOR_EACH
+#define FOR_EACH for \
+    each
+#endif  // !FOR_EACH
 
 static void delete_mug(ReconSink::ReconMug *mug) {
     if (mug) {
@@ -36,6 +38,7 @@ class ReconSinkFile : public ReconSink {
         sink_type_ = RECON_SINK_FILE;
         max_frame_ts_ = 0;
         FOPEN(recon_file_, file_path, "wb");
+        record_list_.clear();
     }
     virtual ~ReconSinkFile() {
         if (recon_file_) {
@@ -43,10 +46,12 @@ class ReconSinkFile : public ReconSink {
             fclose(recon_file_);
             recon_file_ = nullptr;
         }
+        record_list_.clear();
     }
     virtual void fill_mug(ReconMug *mug) override {
         if (recon_file_ && mug->filled_size &&
-            mug->filled_size <= mug->mug_size) {
+            mug->filled_size <= mug->mug_size &&
+            mug->time_stamp < (uint64_t)frame_count_) {
             if (mug->time_stamp >=
                 max_frame_ts_) {  // new frame is larger than max timestamp
                 fseeko64(recon_file_, 0, SEEK_END);
@@ -65,8 +70,9 @@ class ReconSinkFile : public ReconSink {
                 }
                 frameNum--;
             }
-
             fwrite(mug->mug_buf, 1, mug->filled_size, recon_file_);
+			fflush(recon_file_);
+            record_list_.push_back((uint32_t)mug->time_stamp);
         }
         delete_mug(mug);
     }
@@ -105,10 +111,19 @@ class ReconSinkFile : public ReconSink {
     virtual void pour_mug(ReconMug *mug) override {
         delete_mug(mug);
     }
+    virtual bool is_compelete() override {
+        if (record_list_.size() < frame_count_)
+            return false;
+        std::sort(record_list_.begin(), record_list_.end());
+        if (record_list_.at(frame_count_ - 1) != frame_count_ - 1)
+            return false;
+        return true;
+    }
 
   public:
     FILE *recon_file_;
     uint32_t max_frame_ts_;
+    std::vector<uint32_t> record_list_;
 };
 
 class ReconSinkBufferSort_ASC {
@@ -131,16 +146,18 @@ class ReconSinkBuffer : public ReconSink {
         }
     }
     virtual void fill_mug(ReconMug *mug) override {
-        mug_list_.push_back(mug);
-        std::sort(
-            mug_list_.begin(), mug_list_.end(), ReconSinkBufferSort_ASC());
+        if (mug->time_stamp < (uint64_t)frame_count_) {
+            mug_list_.push_back(mug);
+            std::sort(
+                mug_list_.begin(), mug_list_.end(), ReconSinkBufferSort_ASC());
+        } else  // drop the frames out of limitation
+            delete_mug(mug);
     }
     virtual const ReconMug *take_mug(uint64_t time_stamp) override {
-		for each (ReconMug *mug in mug_list_)
-		{
-			if (mug->time_stamp == time_stamp)
-				return mug;
-		}
+        FOR_EACH(ReconMug * mug in mug_list_) {
+            if (mug->time_stamp == time_stamp)
+                return mug;
+        }
         return nullptr;
     }
     virtual const ReconMug *take_mug_inorder(uint32_t index) override {
@@ -157,13 +174,22 @@ class ReconSinkBuffer : public ReconSink {
         } else  // only delete the mug not in list
             delete_mug(mug);
     }
+    virtual bool is_compelete() override {
+        if (mug_list_.size() < frame_count_)
+            return false;
+
+        ReconMug *mug = mug_list_.at(frame_count_ - 1);
+        if (mug == nullptr || mug->time_stamp != frame_count_ - 1)
+            return false;
+        return true;
+    }
 
   public:
     std::vector<ReconMug *> mug_list_;
 };
 
 ReconSink *create_recon_sink(const VideoFrameParam &param,
-                           const char *file_path) {
+                             const char *file_path) {
     ReconSinkFile *new_sink = new ReconSinkFile(param, file_path);
     if (new_sink) {
         if (new_sink->recon_file_ == nullptr) {

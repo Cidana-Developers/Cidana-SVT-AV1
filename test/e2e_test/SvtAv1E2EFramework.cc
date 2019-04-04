@@ -123,6 +123,7 @@ void SvtAv1E2ETestBase::TearDown() {
 
 void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
+    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
     return_error =
         eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
@@ -176,113 +177,122 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
     EbErrorType return_error = EB_ErrorNone;
 
-    // Get ivf header
-    // TODO: fix me, eb_svt_enc_stream_header not implemented
-    //   EbBufferHeaderType *output_header = nullptr;
-    //   EXPECT_EQ(EB_ErrorNone,
-    //             return_error =
-    //                 eb_svt_enc_stream_header(ctxt_.enc_handle,
-    //                 &output_header))
-    //       << "eb_svt_enc_stream_header error:: " << return_error;
-    // if (output_header && output_file_) {
+    uint32_t frame_count = video_src_->get_frame_count();
+    ASSERT_GT(frame_count, 0) << "video srouce file does not contain frame!!";
+    if (recon_sink_) {
+        recon_sink_->set_frame_count(frame_count);
+    }
+
     if (output_file_) {
         write_output_header();
     }
 
     uint8_t *frame = nullptr;
-    bool file_eos = false;
-	int ref_frame_count = 0;
+    bool src_file_eos = false;
+    bool enc_file_eos = false;
+    bool rec_file_eos = recon_sink_ ? false : true;
+    int ref_frame_count = 0;
     do {
-        frame = (uint8_t *)video_src_->get_next_frame();
-        if (frame != nullptr) {
-            // Fill in Buffers Header control data
-            ctxt_.input_picture_buffer->p_buffer = frame;
-            ctxt_.input_picture_buffer->n_filled_len =
-                video_src_->get_frame_size();
-            ctxt_.input_picture_buffer->flags = 0;
-            ctxt_.input_picture_buffer->p_app_private = nullptr;
-            ctxt_.input_picture_buffer->pts = video_src_->get_frame_index();
-            ctxt_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
-            // Send the picture
-            EXPECT_EQ(EB_ErrorNone,
-                      return_error = eb_svt_enc_send_picture(
-                          ctxt_.enc_handle, ctxt_.input_picture_buffer))
-                << "eb_svt_enc_send_picture error at: "
-                << ctxt_.input_picture_buffer->pts;
-        } else {
-            file_eos = true;
-            EbBufferHeaderType headerPtrLast;
-            headerPtrLast.n_alloc_len = 0;
-            headerPtrLast.n_filled_len = 0;
-            headerPtrLast.n_tick_count = 0;
-            headerPtrLast.p_app_private = nullptr;
-            headerPtrLast.flags = EB_BUFFERFLAG_EOS;
-            headerPtrLast.p_buffer = nullptr;
-            ctxt_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
-            EXPECT_EQ(EB_ErrorNone,
-                      return_error = eb_svt_enc_send_picture(ctxt_.enc_handle,
-                                                             &headerPtrLast))
-                << "eb_svt_enc_send_picture EOS error";
+        if (!src_file_eos) {
+            frame = (uint8_t *)video_src_->get_next_frame();
+            if (frame != nullptr) {
+                // Fill in Buffers Header control data
+                ctxt_.input_picture_buffer->p_buffer = frame;
+                ctxt_.input_picture_buffer->n_filled_len =
+                    video_src_->get_frame_size();
+                ctxt_.input_picture_buffer->flags = 0;
+                ctxt_.input_picture_buffer->p_app_private = nullptr;
+                ctxt_.input_picture_buffer->pts = video_src_->get_frame_index();
+                ctxt_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
+                // Send the picture
+                EXPECT_EQ(EB_ErrorNone,
+                          return_error = eb_svt_enc_send_picture(
+                              ctxt_.enc_handle, ctxt_.input_picture_buffer))
+                    << "eb_svt_enc_send_picture error at: "
+                    << ctxt_.input_picture_buffer->pts;
+            } else if (!src_file_eos) {
+                src_file_eos = true;
+                EbBufferHeaderType headerPtrLast;
+                headerPtrLast.n_alloc_len = 0;
+                headerPtrLast.n_filled_len = 0;
+                headerPtrLast.n_tick_count = 0;
+                headerPtrLast.p_app_private = nullptr;
+                headerPtrLast.flags = EB_BUFFERFLAG_EOS;
+                headerPtrLast.p_buffer = nullptr;
+                ctxt_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
+                EXPECT_EQ(EB_ErrorNone,
+                          return_error = eb_svt_enc_send_picture(
+                              ctxt_.enc_handle, &headerPtrLast))
+                    << "eb_svt_enc_send_picture EOS error";
+            }
         }
 
         // recon
-        if (frame && recon_sink_) {
+        if (recon_sink_ && !rec_file_eos) {
             get_recon_frame();
+            rec_file_eos = recon_sink_->is_compelete();
         }
 
-        // non-blocking call
-        EbBufferHeaderType *headerPtr = nullptr;
-        do {
-            return_error = eb_svt_get_packet(
-                ctxt_.enc_handle, &headerPtr, (frame == nullptr ? 1 : 0));
-            ASSERT_NE(return_error, EB_ErrorMax)
-                << "Error while encoding, code:" << headerPtr->flags;
+        if (!enc_file_eos) {
+            do {
+                // non-blocking call
+                EbBufferHeaderType *enc_out = nullptr;
+                return_error = eb_svt_get_packet(
+                    ctxt_.enc_handle, &enc_out, (frame == nullptr ? 1 : 0));
+                ASSERT_NE(return_error, EB_ErrorMax)
+                    << "Error while encoding, code:" << enc_out->flags;
 
-            // process the output buffer
-            if (headerPtr) {
-                printf("Decode Order:\tdts:\t%ld\tpts:\t%ld\tSliceType:\t%d\n",
-                       (long int)headerPtr->dts,
-                       (long int)headerPtr->pts,
-                       (int)headerPtr->pic_type);
-                if (refer_dec_) {
-                    // input the compressed data into decoder
-                    if (refer_dec_->process_data(headerPtr->p_buffer,
-                                                 headerPtr->n_filled_len) ==
-                        RefDecoder::REF_CODEC_OK) {
-                        VideoFrame ref_frame;
-						memset(&ref_frame, 0, sizeof(ref_frame));
-                        while (refer_dec_->get_frame(ref_frame) ==
-                               RefDecoder::REF_CODEC_OK) {
-                            // TODO: output video frame should send to compare
-                            // tools
-                            if (recon_sink_) {
-                                // TODO: send to comfomance compare tool with
-                                // recon frame
-                            } else {
-                                // TODO: send to PSNR tool with source video
-                                // frame
+                // process the output buffer
+                if (return_error != EB_NoErrorEmptyQueue && enc_out) {
+                    printf(
+                        "Decode Order:\tdts:\t%ld\tpts:\t%ld\tSliceType:\t%d\n",
+                        (long int)enc_out->dts,
+                        (long int)enc_out->pts,
+                        (int)enc_out->pic_type);
+                    if (refer_dec_) {
+                        // input the compressed data into decoder
+                        if (refer_dec_->process_data(enc_out->p_buffer,
+                                                     enc_out->n_filled_len) ==
+                            RefDecoder::REF_CODEC_OK) {
+                            VideoFrame ref_frame;
+                            memset(&ref_frame, 0, sizeof(ref_frame));
+                            while (refer_dec_->get_frame(ref_frame) ==
+                                   RefDecoder::REF_CODEC_OK) {
+                                // TODO: output video frame should send to
+                                // compare tools
+                                if (recon_sink_) {
+                                    // TODO: send to comfomance compare tool
+                                    // with recon frame
+                                } else {
+                                    // TODO: send to PSNR tool with source video
+                                    // frame
+                                }
+                                printf("ref_frame_count %d\n",
+                                       ref_frame_count++);
                             }
-                            printf("ref_frame_count %d\n", ref_frame_count++);
+                        }
+                    } else {
+                        if (output_file_) {
+                            write_compress_data(enc_out);
                         }
                     }
-                } else {
-                    if (output_file_) {
-                        write_compress_data(headerPtr);
+                    if (enc_out->flags & EB_BUFFERFLAG_EOS) {
+                        enc_file_eos = true;
+                        printf("Encoder EOS\n");
+                        break;
                     }
-                }
-                if (headerPtr->flags & EB_BUFFERFLAG_EOS) {
-                    printf("EOS\n");
+                } else
                     break;
-                }
-            } else
-                break;
 
-            // Release the output buffer
-            if (headerPtr != nullptr) {
-                eb_svt_release_out_buffer(&headerPtr);
-            }
-        } while (file_eos);
-    } while (frame);
+                // Release the output buffer
+                if (enc_out != nullptr) {
+                    eb_svt_release_out_buffer(&enc_out);
+                    //EXPECT_EQ(enc_out, nullptr)
+                    //    << "enc_out buffer is not well released";
+                }
+            } while (src_file_eos);
+        }
+    } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 }
 
 #define LONG_ENCODE_FRAME_ENCODE 4000
@@ -295,7 +305,6 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
 #define TD_SIZE 2
 static __inline void mem_put_le32(void *vmem, int32_t val) {
     uint8_t *mem = (uint8_t *)vmem;
-
     mem[0] = (uint8_t)((val >> 0) & 0xff);
     mem[1] = (uint8_t)((val >> 8) & 0xff);
     mem[2] = (uint8_t)((val >> 16) & 0xff);
@@ -304,7 +313,6 @@ static __inline void mem_put_le32(void *vmem, int32_t val) {
 #define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
 static __inline void mem_put_le16(void *vmem, int32_t val) {
     uint8_t *mem = (uint8_t *)vmem;
-
     mem[0] = (uint8_t)((val >> 0) & 0xff);
     mem[1] = (uint8_t)((val >> 8) & 0xff);
 }

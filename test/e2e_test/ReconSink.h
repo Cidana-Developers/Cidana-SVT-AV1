@@ -37,9 +37,12 @@ class ReconSink {
     VideoFrameParam get_video_param() {
         return video_param_;
     }
-    int get_frame_count() {
+	uint32_t get_frame_count() {
         return frame_count_;
     }
+	void set_frame_count(uint32_t count) {
+		frame_count_ = count;
+	}
     ReconMug* get_empty_mug() {
         ReconMug* new_mug = new ReconMug;
         if (new_mug) {
@@ -57,6 +60,7 @@ class ReconSink {
     virtual const ReconMug* take_mug(uint64_t time_stamp) = 0;
     virtual const ReconMug* take_mug_inorder(uint32_t index) = 0;
     virtual void pour_mug(ReconMug* mug) = 0;
+	virtual bool is_compelete() = 0;
 
   protected:
     static uint32_t calculate_frame_size(const VideoFrameParam& param) {
@@ -86,7 +90,7 @@ class ReconSink {
     ReconSinkType sink_type_;
     VideoFrameParam video_param_;
     uint32_t frame_size_;
-    int frame_count_;
+	uint32_t frame_count_;
 };
 
 ReconSink* create_recon_sink(const VideoFrameParam& param, const char* file_path);
