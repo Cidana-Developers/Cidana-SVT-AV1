@@ -40,7 +40,7 @@
 using svt_av1_test_reference::get_txfm1d_types;
 using svt_av1_test_reference::reference_txfm_1d;
 using svt_av1_test_tool::SVTRandom;
-namespace FwdTxfm1dTest {
+namespace {
 /**
  * @brief Unit test for forward 1d tx functions:
  * - av1_fdct{4, 8, 16, 32, 64}_new
@@ -127,4 +127,4 @@ INSTANTIATE_TEST_CASE_P(
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY8, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY16, 7),
         FwdTxfm1dParam(TXFM_TYPE_IDENTITY32, 7)));
-}  // namespace FwdTxfm1dTest
+}  // namespace
