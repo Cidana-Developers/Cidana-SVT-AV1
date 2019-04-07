@@ -63,8 +63,10 @@ EbErrorType Y4MVideoSource::open_source() {
     current_frame_index_ = -1;
     monitor = new VideoMonitor(width_with_padding_,
                                height_with_padding_,
+                               width_with_padding_,
                                bit_depth_,
-                               packed_ten_bit_mode);
+                               packed_ten_bit_mode,
+                               "Y4M Source");
 
     return EB_ErrorNone;
 }
@@ -79,8 +81,6 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
     if (frame_size_ == 0)
         return nullptr;
     current_frame_index_ = index;
-    monitor->draw_frame(
-        frame_buffer_->luma, frame_buffer_->cb, frame_buffer_->cr);
     return frame_buffer_;
 }
 
