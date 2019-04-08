@@ -11,6 +11,9 @@
  *
  * @author Cidana-Edmond
  *
+ * @version 1.0 <br>
+ * 04-2019 Cidana-Edmond
+ *
  ******************************************************************************/
 
 #ifndef _TEST_PARAMS_H_
@@ -23,8 +26,10 @@
 
 using std::vector;
 
-namespace svt_av1_test_params {
-
+/** @brief Definitions of Marco to help get test value from test vectors for
+ * individual parameter of encoder configuration
+ *
+ */
 #define SIZE_VALID_PARAM(p) (svt_av1_test_params::valid_##p.size())
 #define SIZE_INVALID_PARAM(p) (svt_av1_test_params::invalid_##p.size())
 #define SIZE_SPECIAL_PARAM(p) (svt_av1_test_params::special_##p.size())
@@ -33,11 +38,24 @@ namespace svt_av1_test_params {
 #define GET_INVALID_PARAM(p, n) (svt_av1_test_params::invalid_##p[n])
 #define GET_SPECIAL_PARAM(p, n) (svt_av1_test_params::special_##p[n])
 
-/* A preset defining the quality vs density tradeoff point that the
+/** @defgroup svt_av1_test_params Test vectors of individual params test
+ *  Defines test values of encoder params in test vectors, includes default,
+ * valid, invalid and special case in vector
+ *  @{
+ */
+
+namespace svt_av1_test_params {
+
+/** @brief Test vectors for parameter enc_mode, inludes default, valid and
+ * invalid <br>
+ * paramter reference: <br>
+ * A preset defining the quality vs density tradeoff point that the
  * encoding is to be performed at. 0 is the highest quality mode, 3 is
- * the highest density mode.
+ * the highest density mode. <br>
  *
- * Default is defined as MAX_ENC_PRESET. */
+ * Default is defined as MAX_ENC_PRESET.
+ *
+ */
 static const vector<uint8_t> default_enc_mode = {
     MAX_ENC_PRESET,
 };
@@ -993,5 +1011,7 @@ static const vector<int32_t> invalid_tile_rows = {
 #endif
 
 }  // namespace svt_av1_test_params
+
+/** @} */  // end of svt_av1_test_params
 
 #endif  // _TEST_PARAMS_H_
