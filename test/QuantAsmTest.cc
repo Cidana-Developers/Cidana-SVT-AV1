@@ -79,7 +79,6 @@ const int g_loop_count = 10;
  * - AVX2/QuantizeTest.input_zero_all
  * - AVX2/QuantizeTest.input_dcac_minmax_q_n
  * - AVX2/QuantizeTest.input_random_dc_only
- * - AVX2/QuantizeTest.input_random_all_q_0
  * - AVX2/QuantizeTest.input_random_all_q_all
  */
 class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
@@ -278,21 +277,6 @@ TEST_P(QuantizeTest, input_random_dc_only) {
 }
 
 /**
- * @brief AVX2/QuantizeTest.input_random_all_q_0
- *
- * loop test output data consistency of quantize C and avx2 functions with
- * input coef: dc random and ac all random
- * q_index: 0
- */
-TEST_P(QuantizeTest, input_random_all_q_0) {
-    for (int i = 0; i < g_loop_count; ++i) {
-        fill_coeff_const(0, n_coeffs_, 0);
-        fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs_);
-        run_quantize(0);
-    }
-}
-
-/**
  * @brief AVX2/QuantizeTest.input_random_all_q_all
  *
  * loop test output data consistency of quantize C and avx2 functions with
@@ -302,8 +286,7 @@ TEST_P(QuantizeTest, input_random_all_q_0) {
 TEST_P(QuantizeTest, input_random_all_q_all) {
     for (int q = 0; q < QINDEX_RANGE; ++q) {
         for (int i = 0; i < g_loop_count; ++i) {
-            fill_coeff_const(0, n_coeffs_, 0);
-            fill_coeff_random(0, dist_nbit_(gen_) % n_coeffs_);
+            fill_coeff_random(0, n_coeffs_);
             run_quantize(q);
         }
     }
