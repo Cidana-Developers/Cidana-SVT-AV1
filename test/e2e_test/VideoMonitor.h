@@ -24,5 +24,6 @@ class VideoMonitor {
     const uint32_t luma_stride_;
     const uint8_t bit_depth_;
     const bool packed_ten_bit_mode_;
+    bool libaom_hack;
 };
 #endif  //_VIDEO_MONITOR_

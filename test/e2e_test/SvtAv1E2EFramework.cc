@@ -32,36 +32,79 @@
 using namespace svt_av1_test_e2e;
 
 bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
-    // TODO: Check input width & height
     const uint32_t width = ref_frame->disp_width;
     const uint32_t height = ref_frame->disp_height;
     unsigned int i = 0;
-    for (int l = 0; l < height; l++) {
-        const uint8_t *s = recon->mug_buf + l * width;
-        const uint8_t *d = ref_frame->planes[0] + l * ref_frame->stride[0];
-        for (int r = 0; r < width; r++) {
-            if (s[r] !=
-                d[r * 2])  // ref decoder use 2bytes to store 8 bits depth pix.
-                return false;
+    if (ref_frame->bits_per_sample == 8) {
+        for (int l = 0; l < height; l++) {
+            const uint8_t *s = recon->mug_buf + l * width;
+            const uint8_t *d = ref_frame->planes[0] + l * ref_frame->stride[0];
+            for (int r = 0; r < width; r++) {
+                if (s[r] != d[r * 2])  // ref decoder use 2bytes to store 8 bits
+                                       // depth pix.
+                    return false;
+                i++;
+            }
         }
-    }
 
-    for (int l = 0; l < (height >> 1); l++) {
-        const uint8_t *s = (recon->mug_buf + width * height) + l * (width >> 1);
-        const uint8_t *d = ref_frame->planes[1] + l * ref_frame->stride[1];
-        for (int r = 0; r < (width >> 1); r++) {
-            if (s[r] != d[r * 2])
-                return false;
+        for (int l = 0; l < (height >> 1); l++) {
+            const uint8_t *s =
+                (recon->mug_buf + width * height) + l * (width >> 1);
+            const uint8_t *d = ref_frame->planes[1] + l * ref_frame->stride[1];
+            for (int r = 0; r < (width >> 1); r++) {
+                if (s[r] != d[r * 2])
+                    return false;
+                i++;
+            }
         }
-    }
 
-    for (int l = 0; l < (height >> 1); l++) {
-        const uint8_t *s =
-            (recon->mug_buf + width * height * 5 / 4) + l * (width >> 1);
-        const uint8_t *d = ref_frame->planes[2] + l * ref_frame->stride[2];
-        for (int r = 0; r < (width >> 1); r++) {
-            if (s[r] != d[r * 2])
-                return false;
+        for (int l = 0; l < (height >> 1); l++) {
+            const uint8_t *s =
+                (recon->mug_buf + width * height * 5 / 4) + l * (width >> 1);
+            const uint8_t *d = ref_frame->planes[2] + l * ref_frame->stride[2];
+            for (int r = 0; r < (width >> 1); r++) {
+                if (s[r] != d[r * 2])
+                    return false;
+                i++;
+            }
+        }
+    } else  // 10bit mode.
+    {
+        for (int l = 0; l < height; l++) {
+            const uint16_t *s = (uint16_t *)(recon->mug_buf + l * width * 2);
+            const uint16_t *d =
+                (uint16_t *)(ref_frame->planes[0] + l * ref_frame->stride[0]);
+            for (int r = 0; r < width; r++) {
+                if (s[r] != d[r])
+                    return false;
+                i++;
+            }
+        }
+
+        for (int l = 0; l < (height >> 1); l++) {
+            const uint16_t *s =
+                (uint16_t *)(recon->mug_buf + width * height * 2 +
+                             l * (width >> 1) * 2);
+            const uint16_t *d =
+                (uint16_t *)(ref_frame->planes[1] + l * ref_frame->stride[1]);
+            for (int r = 0; r < (width >> 1); r++) {
+                if (s[r] != d[r])
+                    return false;
+                i++;
+            }
+        }
+
+        for (int l = 0; l < (height >> 1); l++) {
+            const uint16_t *s =
+                (uint16_t *)(recon->mug_buf + width * height * 5 / 4 * 2 +
+                             l * (width >> 1) * 2);
+            const uint16_t *d =
+                (uint16_t *)(ref_frame->planes[2] + l * ref_frame->stride[2]);
+            for (int r = 0; r < (width >> 1); r++) {
+                if (s[r] != d[r])
+                    return false;
+                i++;
+            }
         }
     }
     return true;
@@ -108,6 +151,7 @@ void SvtAv1E2ETestBase::SetUp() {
     ctxt_.enc_params.source_width = width;
     ctxt_.enc_params.source_height = height;
     ctxt_.enc_params.encoder_bit_depth = bit_depth;
+    ctxt_.enc_params.ten_bit_format = 1;
     ctxt_.enc_params.recon_enabled = 0;
     // TODO: set parameter here?
 
@@ -294,30 +338,61 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
                             memset(&ref_frame, 0, sizeof(ref_frame));
                             while (refer_dec_->get_frame(ref_frame) ==
                                    RefDecoder::REF_CODEC_OK) {
-                            if (ref_monitor_ == nullptr) {
-                                ref_monitor_ =
-                                    new VideoMonitor(ref_frame.width,
-                                                     ref_frame.height,
-                                                     ref_frame.stride[0],
-                                                     ref_frame.bits_per_sample,
-                                                     true,
-                                                     "Ref decode");
-                            }
-                            if (ref_monitor_) {
-                                ref_monitor_->draw_frame(ref_frame.planes[0],
-                                                         ref_frame.planes[1],
-                                                         ref_frame.planes[2]);
-                            }
+                                if (ref_monitor_ == nullptr) {
+                                    ref_monitor_ = new VideoMonitor(
+                                        ref_frame.width,
+                                        ref_frame.height,
+                                        ref_frame.stride[0],
+                                        ref_frame.bits_per_sample,
+                                        true,
+                                        "Ref decode");
+                                }
+                                if (ref_monitor_) {
+                                    ref_monitor_->draw_frame(
+                                        ref_frame.planes[0],
+                                        ref_frame.planes[1],
+                                        ref_frame.planes[2]);
+                                }
                                 // TODO: output video frame should send to
                                 // compare tools
                                 if (recon_sink_) {
                                     // TODO: send to comfomance compare tool
                                     // with recon frame
-                                if (recon_sink_) {
                                     const ReconSink::ReconMug *new_mug =
-                                        recon_sink_->take_mug_inorder(
-                                            ref_frame_count);
+                                        recon_sink_->take_mug(ref_frame_count);
                                     if (new_mug) {
+                                        uint32_t luma_len =
+                                            video_src_
+                                                ->get_width_with_padding() *
+                                            video_src_
+                                                ->get_height_with_padding() *
+                                            (video_src_->get_bit_depth() > 8
+                                                 ? 2
+                                                 : 1);
+                                        if (recon_monitor_ == nullptr) {
+                                            recon_monitor_ = new VideoMonitor(
+                                                video_src_
+                                                    ->get_width_with_padding(),
+                                                video_src_
+                                                    ->get_height_with_padding(),
+                                                (video_src_->get_bit_depth() >
+                                                 8)
+                                                    ? video_src_
+                                                              ->get_width_with_padding() *
+                                                          2
+                                                    : video_src_
+                                                          ->get_width_with_padding(),
+                                                video_src_->get_bit_depth(),
+                                                true,
+                                                "Recon");
+                                        }
+                                        if (recon_monitor_) {
+                                            recon_monitor_->draw_frame(
+                                                new_mug->mug_buf,
+                                                new_mug->mug_buf + luma_len,
+                                                new_mug->mug_buf +
+                                                    luma_len * 5 / 4);
+                                        }
                                         printf("do compare %d\n",
                                                ref_frame_count);
                                         ASSERT_EQ(
@@ -326,13 +401,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
                                             << "image compare failed on "
                                             << ref_frame_count;
                                     }
-                                }
                                 } else {
                                     // TODO: send to PSNR tool with source video
                                     // frame
                                 }
                                 printf("ref_frame_count %d\n",
-                                       ref_frame_count++);
+                                       ref_frame_count += 2);
                             }
                         }
                     } else {
@@ -351,7 +425,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
                 // Release the output buffer
                 if (enc_out != nullptr) {
                     eb_svt_release_out_buffer(&enc_out);
-                    //EXPECT_EQ(enc_out, nullptr)
+                    // EXPECT_EQ(enc_out, nullptr)
                     //    << "enc_out buffer is not well released";
                 }
             } while (src_file_eos);
@@ -541,17 +615,6 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
-    if (recon_monitor_ == nullptr) {
-        recon_monitor_ =
-            new VideoMonitor(video_src_->get_width_with_padding(),
-                             video_src_->get_height_with_padding(),
-                             (video_src_->get_bit_depth() > 8)
-                                 ? video_src_->get_width_with_padding() * 2
-                                 : video_src_->get_width_with_padding(),
-                             video_src_->get_bit_depth(),
-                             true,
-                             "Recon");
-    }
     do {
         ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
         ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
@@ -579,14 +642,6 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             new_mug->tag = recon_frame.flags;
             printf("recon image frame: %d\n", new_mug->time_stamp);
             recon_sink_->fill_mug(new_mug);
-            uint32_t luma_len = video_src_->get_width_with_padding() *
-                                video_src_->get_height_with_padding();
-            if (recon_monitor_) {
-                recon_monitor_->draw_frame(new_mug->mug_buf,
-                                           new_mug->mug_buf + luma_len,
-
-                                           new_mug->mug_buf + luma_len * 5 / 4);
-            }
         }
     } while (true);
 }

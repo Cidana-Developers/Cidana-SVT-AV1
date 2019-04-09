@@ -4,6 +4,7 @@
 #include "string.h"
 //#define ENABLE_DEBUG_MONITOR
 uint32_t VideoMonitor::ref_cout = 0;
+
 VideoMonitor::VideoMonitor(const uint32_t width, const uint32_t height,
                            const uint32_t luma_stride, const uint8_t bit_depth,
                            const bool packed_ten_bit_mode, const char *name)
@@ -21,13 +22,19 @@ VideoMonitor::VideoMonitor(const uint32_t width, const uint32_t height,
         }
     }
     ref_cout++;
+    int x = 0;
+    int y = 20;
+    libaom_hack = false;
+    if (strcmp(name, "Ref decode") == 0) {
+        x = 600;
+        libaom_hack = true;
+    }
+    if (strcmp(name, "Recon") == 0) {
+        x = 300;
+    }
 
-    window = SDL_CreateWindow(name,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              width,
-                              height,
-                              SDL_WINDOW_ALLOW_HIGHDPI);
+    window =
+        SDL_CreateWindow(name, x, y, width, height, SDL_WINDOW_ALLOW_HIGHDPI);
     if (window == nullptr) {
         printf("SDL_CreateWindow Error!\r\n");
         return;
@@ -86,21 +93,54 @@ void VideoMonitor::draw_frame(const uint8_t *luma, const uint8_t *cb,
         for (int l = 0; l < height_; l++) {
             const uint8_t *p = luma + l * luma_stride_;
             for (int r = 0; r < width_; r++) {
-                monitor_buffer[i++] = p[r];
+                if (libaom_hack)
+                    monitor_buffer[i++] = p[r * 2];
+                else
+                    monitor_buffer[i++] = p[r];
             }
         }
 
         for (int l = 0; l < (height_ >> 1); l++) {
             const uint8_t *p = cb + l * (luma_stride_ >> 1);
             for (int r = 0; r < (width_ >> 1); r++) {
-                monitor_buffer[i++] = p[r];
+                if (libaom_hack)
+                    monitor_buffer[i++] = p[r * 2];
+                else
+                    monitor_buffer[i++] = p[r];
             }
         }
 
         for (int l = 0; l < (height_ >> 1); l++) {
             const uint8_t *p = cr + l * (luma_stride_ >> 1);
             for (int r = 0; r < (width_ >> 1); r++) {
-                monitor_buffer[i++] = p[r];
+                if (libaom_hack)
+                    monitor_buffer[i++] = p[r * 2];
+                else
+                    monitor_buffer[i++] = p[r];
+            }
+        }
+    } else if (bit_depth_ > 8 && packed_ten_bit_mode_) {
+        uint32_t i = 0;
+        const uint8_t bit_shift = (bit_depth_ - 8);
+
+        for (uint32_t l = 0; l < height_; l++) {
+            const uint16_t *p = (uint16_t *)(luma + l * luma_stride_);
+            for (uint32_t r = 0; r < width_; r++) {
+                monitor_buffer[i++] = p[r] >> bit_shift & 0xFF;
+            }
+        }
+
+        for (int l = 0; l < (height_ >> 1); l++) {
+            const uint16_t *p = (uint16_t *)(cb + l * (luma_stride_ >> 1));
+            for (uint32_t r = 0; r < (width_ >> 1); r++) {
+                monitor_buffer[i++] = p[r] >> bit_shift & 0xFF;
+            }
+        }
+
+        for (uint32_t l = 0; l < (height_ >> 1); l++) {
+            const uint16_t *p = (uint16_t *)(cr + l * (luma_stride_ >> 1));
+            for (unsigned int r = 0; r < (width_ >> 1); r++) {
+                monitor_buffer[i++] = p[r] >> bit_shift & 0xFF;
             }
         }
     } else if (bit_depth_ > 8 && packed_ten_bit_mode_) {
