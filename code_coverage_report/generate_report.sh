@@ -38,8 +38,9 @@ lcov --capture --initial --base-directory $SOURCE_DIR  --directory . --output-fi
 # run the unit tests
 cp "$SOURCE_DIR"Bin/Debug/* .
 ./SvtAv1UnitTests
-./SvtAv1ApiTests --gtest_filter=EncApi*.*
+./SvtAv1ApiTests --gtest_filter=EncApi*.*-EncApiTest.repeat_normal_setup
 ./SvtAv1ApiTests --gtest_filter=EncParam*.*
+./SvtAv1ApiTests --gtest_filter=EncApiTest.repeat_normal_setup
 
 # capture
 lcov --capture --base-directory $SOURCE_DIR --directory . --output-file svt_av1_test.info
