@@ -74,36 +74,12 @@ class RefDecoder {
     } RefDecoderErr;
 
   public:
-    RefDecoder(RefDecoderErr &ret) {
-        memset(&codec_, 0, sizeof(codec_));
-        aom_codec_err_t err =
-            aom_codec_dec_init(&codec_, aom_codec_av1_dx(), nullptr, 0);
-        if (err != REF_CODEC_OK) {
-            printf("can not create refernece decoder!!");
-        }
-        ret = (RefDecoderErr)(0 - err);
-    }
-    virtual ~RefDecoder() {
-        aom_codec_destroy(&codec_);
-    }
+    RefDecoder(RefDecoderErr &ret);
+    virtual ~RefDecoder();
 
   public:
-    RefDecoderErr process_data(const uint8_t *data, uint32_t size) {
-        aom_codec_err_t err = aom_codec_decode(&codec_, data, size, nullptr);
-        if (err != REF_CODEC_OK) {
-            printf("decoder decode error: %d!", err);
-            return (RefDecoderErr)(0 - err);
-        }
-        return REF_CODEC_OK;
-    }
-    RefDecoderErr get_frame(VideoFrame &frame) {
-		aom_image_t *img = aom_codec_get_frame(&codec_, (aom_codec_iter_t *)&frame.context);
-        if (img == nullptr) {
-            return REF_CODEC_NEED_MORE_INPUT;
-        }
-		trans_video_frame(img, frame);
-        return REF_CODEC_OK;
-    }
+    RefDecoderErr process_data(const uint8_t *data, uint32_t size);
+    RefDecoderErr get_frame(VideoFrame &frame);
 
   private:
     void trans_video_frame(const aom_image_t *image, VideoFrame &frame);

@@ -577,7 +577,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;
-            printf("recon image frame: %d\n", new_mug->time_stamp);
+            printf("recon image frame: %lu\n", new_mug->time_stamp);
             recon_sink_->fill_mug(new_mug);
             uint32_t luma_len = video_src_->get_width_with_padding() *
                                 video_src_->get_height_with_padding();
