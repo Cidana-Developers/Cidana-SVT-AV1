@@ -113,11 +113,6 @@ class VideoSource {
         } break;
         }
 
-        if (is_ten_bit_mode() && packed_ten_bit_mode) {
-            luma_size *= 2;
-            chroma_size *= 2;
-        }
-
         // Determine
         if (frame_buffer_ == nullptr)
             frame_buffer_ = (EbSvtIOFormat *)malloc(sizeof(EbSvtIOFormat));
@@ -130,6 +125,16 @@ class VideoSource {
         frame_buffer_->height = height_with_padding_;
         frame_buffer_->origin_x = 0;
         frame_buffer_->origin_y = 0;
+
+        // SVT-AV1 use pixel size as stride?
+        frame_buffer_->yStride = luma_size;
+        frame_buffer_->cbStride = chroma_size;
+        frame_buffer_->crStride = chroma_size;
+
+        if (is_ten_bit_mode() && packed_ten_bit_mode) {
+            luma_size *= 2;
+            chroma_size *= 2;
+        }
 
         frame_buffer_->luma = (uint8_t *)malloc(luma_size);
         if (!frame_buffer_->luma) {
@@ -148,10 +153,6 @@ class VideoSource {
             deinit_frame_buffer();
             return EB_ErrorInsufficientResources;
         }
-
-        frame_buffer_->yStride = luma_size;
-        frame_buffer_->cbStride = chroma_size;
-        frame_buffer_->crStride = chroma_size;
 
         if (is_ten_bit_mode() && !packed_ten_bit_mode) {
             frame_buffer_->lumaExt = (uint8_t *)malloc(luma_size);

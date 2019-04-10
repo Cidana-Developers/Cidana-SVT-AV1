@@ -132,6 +132,42 @@ bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
     return true;
 }
 
+double psnr_8bit(const uint8_t *p1, const uint8_t *p2, const uint32_t size) {
+    double mse = 0.0;
+    for (int i = 0; i < size; i++) {
+        const uint8_t I = p1[i];
+        const uint8_t K = p2[i];
+        const int32_t diff = I - K;
+        mse += diff * diff;
+    }
+    mse /= size;
+
+    double psnr = INFINITY;
+
+    if (DBL_EPSILON < mse) {
+        psnr = 10 * log10((255 * 255) / mse);
+    }
+    return psnr;
+}
+
+float psnr_10bit(const uint16_t *p1, const uint16_t *p2, int size) {
+    double mse = 0.0;
+    for (int i = 0; i < size; i++) {
+        const uint16_t I = p1[i];
+        const uint16_t K = p2[i];
+        const int32_t diff = I - K;
+        mse += diff * diff;
+    }
+    mse /= size;
+
+    double psnr = INFINITY;
+
+    if (DBL_EPSILON < mse) {
+        psnr = 10 * log10((1024 * 1024) / mse);
+    }
+    return psnr;
+}
+
 SvtAv1E2ETestBase::SvtAv1E2ETestBase()
     : video_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
     memset(&ctxt_, 0, sizeof(ctxt_));
@@ -583,14 +619,16 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
         }
         // compare tools
         if (recon_sink_) {
-            // TODO: send to comfomance compare tool
-            // with recon frame
-            const ReconSink::ReconMug *new_mug =
+            // Compare ref decode output with recon
+            // output.
+            const ReconSink::ReconMug *mug =
                 recon_sink_->take_mug(ref_frame.timestamp);
-            if (new_mug) {
+            if (mug) {
                 uint32_t luma_len = video_src_->get_width_with_padding() *
                                     video_src_->get_height_with_padding() *
                                     (video_src_->get_bit_depth() > 8 ? 2 : 1);
+
+                // Output to monitor for debug
                 if (recon_monitor_ == nullptr) {
                     recon_monitor_ = new VideoMonitor(
                         video_src_->get_width_with_padding(),
@@ -603,18 +641,38 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
                         "Recon");
                 }
                 if (recon_monitor_) {
-                    recon_monitor_->draw_frame(
-                        new_mug->mug_buf,
-                        new_mug->mug_buf + luma_len,
-                        new_mug->mug_buf + luma_len * 5 / 4);
+                    recon_monitor_->draw_frame(mug->mug_buf,
+                                               mug->mug_buf + luma_len,
+                                               mug->mug_buf + luma_len * 5 / 4);
                 }
-                printf("do compare %d\n", ref_frame.timestamp);
-                ASSERT_EQ(compare_image(new_mug, &ref_frame), true)
+
+                // Do compare image
+                ASSERT_EQ(compare_image(mug, &ref_frame), true)
                     << "image compare failed on " << ref_frame.timestamp;
+
+                // Calculate psnr with input frame and
+                // recon frame
+                uint32_t index = video_src_->get_frame_index();
+                EbSvtIOFormat *frame =
+                    video_src_->get_frame_by_index(ref_frame.timestamp);
+                if (frame) {
+                    double luma_psnr =
+                        psnr_8bit(frame->luma, mug->mug_buf, luma_len);
+                    double cb_psnr = psnr_8bit(
+                        frame->cb, mug->mug_buf + luma_len, luma_len >> 2);
+                    double cr_psnr = psnr_8bit(frame->cr,
+                                               mug->mug_buf + luma_len * 5 / 4,
+                                               luma_len >> 2);
+
+                    printf(
+                        "Do psnr %0.4f, %0.4f, "
+                        "%0.f4\r\n",
+                        luma_psnr,
+                        cb_psnr,
+                        cr_psnr);
+                }
+                video_src_->get_frame_by_index(index);
             }
-        } else {
-            // TODO: send to PSNR tool with source video
-            // frame
         }
     };
 }
