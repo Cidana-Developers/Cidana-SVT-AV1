@@ -1,3 +1,16 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+
+/******************************************************************************
+ * @file BitstreamWriterTest.cc
+ *
+ * @brief Unit test for entropy coding functions:
+ *
+ * @author Cidana-Wenyao
+ *
+ ******************************************************************************/
 #include <math.h>
 #include <stdlib.h>
 #include <random>
@@ -5,7 +18,35 @@
 #include "EbCabacContextModel.h"
 #include "gtest/gtest.h"
 
-namespace BsWriterTest {
+/**
+ * @brief Unit test for bitstream writer functions:
+ * - aom_write
+ * - aom_write_symbols
+ * - aom_write_literal
+ * - aom_start_encode
+ * - aom_stop_encode
+ *
+ * Test strategy:
+ * Verify by writing bits/values and reading bits/values in paris,
+ * and compare the values read out and values writen.
+ *
+ * Expected result:
+ * The values read out should match with values writen.
+ *
+ * Test coverage:
+ * To write the bits, probabilities are required to setup as context.
+ * Context are populated with different probabilities, including:
+ * - fixed probabilities,
+ * - Random probability
+ * - low probability,
+ * - high probability
+ * - mixed probability are
+ * Meantime different bit pattern are generated, including:
+ * - fixed pattern(0, 1)
+ * - randome pattern
+ *
+ */
+namespace {
 const int deterministic_seeds = 0xa42b;
 static void generate_random_prob(uint8_t *const probas, const int total_bits,
                                  const int prob_gen_method) {
@@ -183,4 +224,4 @@ TEST(BitstreamWriter, write_symbol_with_update) {
     EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 0);
     EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 1);
 }
-}  // namespace BsWriterTest
+}  // namespace

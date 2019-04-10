@@ -1,3 +1,16 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+
+/******************************************************************************
+ * @file util.h
+ *
+ * @brief common utils
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
 #ifndef _TEST_UTIL_H_
 #define _TEST_UTIL_H_
 
@@ -13,6 +26,13 @@
 
 #ifndef TEST_GET_PARAM
 #define TEST_GET_PARAM(k) std::get<k>(GetParam())
+#endif
+
+#ifndef min
+#define min(a, b) ((((a) < (b)) ? (a) : (b)))
+#endif
+#ifndef max
+#define max(a, b) ((((a) > (b)) ? (a) : (b)))
 #endif
 
 namespace svt_av1_test_tool {

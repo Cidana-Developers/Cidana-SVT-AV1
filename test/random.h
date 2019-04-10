@@ -1,69 +1,76 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+/******************************************************************************
+ * @file random.h
+ *
+ * @brief Random generator for svt-av1 unit tests
+ * - wrap C++11 random generator for different range.
+ *
+ * @author Cidana-Edmond, Cidana-Wenyao <wenyao.liu@cidana.com>
+ *
+ ******************************************************************************/
 
 #ifndef _TEST_RANDOM_H_
 #define _TEST_RANDOM_H_
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <math.h>
+#include <random>
 #include "gtest/gtest.h"
 
 namespace svt_av1_test_tool {
 
-using testing::internal::Random;
+using std::mt19937;
+using std::uniform_int_distribution;
 
 class SVTRandom {
   public:
-    SVTRandom() : _random(default_seed()) {
+    SVTRandom() : gen_(deterministic_seed_) {
     }
 
-    explicit SVTRandom(uint32_t seed) : _random(seed) {
+    explicit SVTRandom(uint32_t seed) : gen_(seed) {
     }
 
     void reset(uint32_t seed) {
-        _random.Reseed(seed);
+        gen_.seed(seed);
     }
 
     uint32_t random_31(void) {
-        return _random.Generate(Random::kMaxRange);
+        return static_cast<uint32_t>(gen_uint_31_(gen_));
     }
 
     uint16_t random_16(void) {
-        const uint32_t value = _random.Generate(Random::kMaxRange);
-        return (value >> 15) & 0xffff;
+        return static_cast<uint16_t>(gen_uint_16_(gen_));
+    }
+
+    uint16_t random_10(void) {
+        return static_cast<uint16_t>(gen_uint_10_(gen_));
+    }
+
+    int16_t random_10s(void) {
+        return static_cast<int16_t>(gen_int_10_(gen_));
     }
 
     int16_t random_9s(void) {
-        // use 1+8 bits: values between 255 (0x0FF) and -256 (0x100).
-        const uint32_t value = _random.Generate(512);
-        return 256 - static_cast<int16_t>(value);
+        return static_cast<int16_t>(gen_int_9_(gen_));
     }
 
     uint8_t random_8(void) {
-        const uint32_t value = _random.Generate(Random::kMaxRange);
-        // there's a bit more entropy in the upper bits of this implementation.
-        return (value >> 23) & 0xff;
-    }
-
-    uint8_t random_8_ex(void) {
-        // returns a random value near 0 or near 255, to better exercise
-        // saturation behavior.
-        const uint8_t r = random_8();
-        return r < 128 ? r << 4 : r >> 4;
-    }
-
-    int pseudo_uniform(int range) {
-        return _random.Generate(range);
-    }
-
-    int operator()(int n) {
-        return pseudo_uniform(n);
+        return static_cast<uint8_t>(gen_uint_8_(gen_));
     }
 
   private:
-    static int default_seed() {
-        return 0xabcd;
-    }
-
-  private:
-    Random _random;
+    const int deterministic_seed_{13596};
+    std::mt19937 gen_;
+    uniform_int_distribution<> gen_uint_8_{0, 0xFF};
+    uniform_int_distribution<> gen_uint_10_{0, 0x3FF};
+    uniform_int_distribution<> gen_uint_16_{0, 0xFFFF};
+    uniform_int_distribution<> gen_uint_31_{0, 0x7FFFFFFF};
+    uniform_int_distribution<> gen_int_9_{-256, 255};
+    uniform_int_distribution<> gen_int_10_{-512, 511};
 };
 
 }  // namespace svt_av1_test_tool
