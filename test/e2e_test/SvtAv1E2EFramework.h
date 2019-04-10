@@ -7,8 +7,10 @@
 
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
-#include "RefDecoder.h"
 #include "VideoMonitor.h"
+
+class RefDecoder;
+extern RefDecoder *create_reference_decoder();
 
 namespace svt_av1_test_e2e {
 

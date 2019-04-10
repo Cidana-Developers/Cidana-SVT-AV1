@@ -13,7 +13,9 @@ class YuvVideoSource : public VideoSource {
     // Prepare stream, and get first frame.
     // Return EB_ErrorBadParameter as open file failed.
     EbErrorType open_source() override;
-    // Get next frame.
+	// Close stream.
+	virtual void close_source() override;
+	// Get next frame.
     EbSvtIOFormat *get_next_frame() override;
     // Get frame ny index.
     EbSvtIOFormat *get_frame_by_index(const uint32_t index) override { return nullptr; };

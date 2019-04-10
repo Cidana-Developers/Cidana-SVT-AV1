@@ -52,6 +52,16 @@ EbErrorType YuvVideoSource::open_source() {
     return EB_ErrorNone;
 }
 
+// Prepare stream, and get first frame.
+void YuvVideoSource::close_source() {
+    if (file_handle_ == nullptr) {
+        fclose(file_handle_);
+        file_handle_ = nullptr;
+    }
+    deinit_frame_buffer();
+    frame_count_ = 0;
+}
+
 // Get next frame.
 EbSvtIOFormat *YuvVideoSource::get_next_frame() {
     frame_size_ = read_input_frame();

@@ -6,6 +6,7 @@
 #include "Y4mVideoSource.h"
 #include "YuvVideosource.h"
 #include "gtest/gtest.h"
+#include "RefDecoder.h"
 #include "SvtAv1E2EFramework.h"
 
 #define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
@@ -257,6 +258,9 @@ void SvtAv1E2ETestBase::TearDown() {
         delete[] ctxt_.output_stream_buffer;
         ctxt_.output_stream_buffer = nullptr;
     }
+
+	ASSERT_NE(video_src_, nullptr);
+	video_src_->close_source();
 }
 
 void SvtAv1E2ETestBase::init_test() {

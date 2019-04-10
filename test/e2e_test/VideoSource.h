@@ -9,9 +9,11 @@ class VideoSource {
     virtual ~VideoSource() {
         deinit_frame_buffer();
     };
-    // Prepare stream.
-    virtual EbErrorType open_source() = 0;
-    // Get next frame.
+	// Prepare stream.
+	virtual EbErrorType open_source() = 0;
+	// Close stream.
+	virtual void close_source() = 0;
+	// Get next frame.
     virtual EbSvtIOFormat *get_next_frame() = 0;
     // Get frame ny index.
     virtual EbSvtIOFormat *get_frame_by_index(const uint32_t index ) = 0;

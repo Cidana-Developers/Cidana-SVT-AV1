@@ -72,6 +72,20 @@ EbErrorType Y4MVideoSource::open_source() {
     return EB_ErrorNone;
 }
 
+// Prepare stream, and get first frame.
+void Y4MVideoSource::close_source() {
+    if (file_handle_) {
+        fclose(file_handle_);
+        file_handle_ = nullptr;
+    }
+    if (monitor) {
+        delete monitor;
+        monitor = nullptr;
+    }
+    deinit_frame_buffer();
+    frame_count_ = 0;
+}
+
 EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
     if (index > frame_count_) {
         return nullptr;
@@ -321,7 +335,7 @@ uint32_t Y4MVideoSource::read_input_frame() {
     default: break;
     }
 
-	// SVT-AV1 use pixel size as stride?
+    // SVT-AV1 use pixel size as stride?
     frame_buffer_->yStride = width_with_padding_;
     frame_buffer_->cbStride = (width_with_padding_ >> width_downsize);
     frame_buffer_->crStride = (width_with_padding_ >> width_downsize);
