@@ -32,6 +32,7 @@ typedef struct VideoFrame : public VideoFrameParam {
     uint8_t *planes[4];
     uint32_t bits_per_sample; /** for packed formats */
 	void	*context;
+	uint64_t timestamp;
 } VideoFrame;
 
 #endif  //_SVT_TEST_VIDEO_FRAME_H_

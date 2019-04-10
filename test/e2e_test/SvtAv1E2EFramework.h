@@ -65,6 +65,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
         output_file_ = nullptr;
         recon_monitor_ = nullptr;
         ref_monitor_ = nullptr;
+        obu_frame_header_size_ = 0;
     }
     virtual ~SvtAv1E2ETestFramework() {
         if (recon_sink_) {
@@ -90,11 +91,14 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     }
 
   protected:
+    virtual void init_test() override;
     virtual void run_encode_process() final override;
 
   private:
     void write_output_header();
-    void write_compress_data(const EbBufferHeaderType *output);
+	void write_compress_data(const EbBufferHeaderType *output);
+	void process_compress_data(const EbBufferHeaderType *data);
+	void decode_compress_data(const uint8_t *data, uint32_t size);
 
   protected:
     // plug-in for test data
@@ -107,6 +111,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     IvfFile *output_file_;
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
+    uint8_t obu_frame_header_size_;
 };
 
 }  // namespace svt_av1_test_e2e

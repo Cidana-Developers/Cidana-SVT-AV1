@@ -86,6 +86,7 @@ class RefDecoder {
 
   protected:
     aom_codec_ctx_t codec_;
+	uint32_t ref_frame_cnt_;
 };
 
 RefDecoder *create_reference_decoder();

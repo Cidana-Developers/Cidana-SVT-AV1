@@ -29,6 +29,28 @@
 #define FOPEN(f, s, m) f = fopen(s, m)
 #endif
 
+#define LONG_ENCODE_FRAME_ENCODE 4000
+#define SPEED_MEASUREMENT_INTERVAL 2000
+#define START_STEADY_STATE 1000
+#define AV1_FOURCC 0x31305641  // used for ivf header
+#define IVF_STREAM_HEADER_SIZE 32
+#define IVF_FRAME_HEADER_SIZE 12
+#define OBU_FRAME_HEADER_SIZE 3
+#define TD_SIZE 2
+static __inline void mem_put_le32(void *vmem, int32_t val) {
+    uint8_t *mem = (uint8_t *)vmem;
+    mem[0] = (uint8_t)((val >> 0) & 0xff);
+    mem[1] = (uint8_t)((val >> 8) & 0xff);
+    mem[2] = (uint8_t)((val >> 16) & 0xff);
+    mem[3] = (uint8_t)((val >> 24) & 0xff);
+}
+#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
+static __inline void mem_put_le16(void *vmem, int32_t val) {
+    uint8_t *mem = (uint8_t *)vmem;
+    mem[0] = (uint8_t)((val >> 0) & 0xff);
+    mem[1] = (uint8_t)((val >> 8) & 0xff);
+}
+
 using namespace svt_av1_test_e2e;
 
 bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
@@ -254,6 +276,18 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     return video_src;
 }
 
+void svt_av1_test_e2e::SvtAv1E2ETestFramework::init_test() {
+    SvtAv1E2ETestBase::init_test();
+#if TILES
+    EbBool has_tiles =
+        (EbBool)(ctxt_.enc_params.tile_columns || ctxt_.enc_params.tile_rows);
+#else
+    EbBool has_tiles = (EbBool)EB_FALSE;
+#endif
+    obu_frame_header_size_ =
+        has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
+}
+
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
     EbErrorType return_error = EB_ErrorNone;
 
@@ -325,95 +359,13 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
                 // process the output buffer
                 if (return_error != EB_NoErrorEmptyQueue && enc_out) {
                     printf(
-                        "Decode Order:\tdts:\t%ld\tpts:\t%ld\tSliceType:\t%d\n",
+                        "Encoder "
+                        "Order:\tdts:\t%ld\tpts:\t%ld\tSliceType:\t%d\n",
                         (long int)enc_out->dts,
                         (long int)enc_out->pts,
                         (int)enc_out->pic_type);
-                    if (refer_dec_) {
-                        // input the compressed data into decoder
-                        if (refer_dec_->process_data(enc_out->p_buffer,
-                                                     enc_out->n_filled_len) ==
-                            RefDecoder::REF_CODEC_OK) {
-                            VideoFrame ref_frame;
-                            memset(&ref_frame, 0, sizeof(ref_frame));
-                            while (refer_dec_->get_frame(ref_frame) ==
-                                   RefDecoder::REF_CODEC_OK) {
-                                if (ref_monitor_ == nullptr) {
-                                    ref_monitor_ = new VideoMonitor(
-                                        ref_frame.width,
-                                        ref_frame.height,
-                                        ref_frame.stride[0],
-                                        ref_frame.bits_per_sample,
-                                        true,
-                                        "Ref decode");
-                                }
-                                if (ref_monitor_) {
-                                    ref_monitor_->draw_frame(
-                                        ref_frame.planes[0],
-                                        ref_frame.planes[1],
-                                        ref_frame.planes[2]);
-                                }
-                                // TODO: output video frame should send to
-                                // compare tools
-                                if (recon_sink_) {
-                                    // TODO: send to comfomance compare tool
-                                    // with recon frame
-                                    const ReconSink::ReconMug *new_mug =
-                                        recon_sink_->take_mug(ref_frame_count);
-                                    if (new_mug) {
-                                        uint32_t luma_len =
-                                            video_src_
-                                                ->get_width_with_padding() *
-                                            video_src_
-                                                ->get_height_with_padding() *
-                                            (video_src_->get_bit_depth() > 8
-                                                 ? 2
-                                                 : 1);
-                                        if (recon_monitor_ == nullptr) {
-                                            recon_monitor_ = new VideoMonitor(
-                                                video_src_
-                                                    ->get_width_with_padding(),
-                                                video_src_
-                                                    ->get_height_with_padding(),
-                                                (video_src_->get_bit_depth() >
-                                                 8)
-                                                    ? video_src_
-                                                              ->get_width_with_padding() *
-                                                          2
-                                                    : video_src_
-                                                          ->get_width_with_padding(),
-                                                video_src_->get_bit_depth(),
-                                                true,
-                                                "Recon");
-                                        }
-                                        if (recon_monitor_) {
-                                            recon_monitor_->draw_frame(
-                                                new_mug->mug_buf,
-                                                new_mug->mug_buf + luma_len,
-                                                new_mug->mug_buf +
-                                                    luma_len * 5 / 4);
-                                        }
-                                        printf("do compare %d\n",
-                                               ref_frame_count);
-                                        ASSERT_EQ(
-                                            compare_image(new_mug, &ref_frame),
-                                            true)
-                                            << "image compare failed on "
-                                            << ref_frame_count;
-                                    }
-                                } else {
-                                    // TODO: send to PSNR tool with source video
-                                    // frame
-                                }
-                                printf("ref_frame_count %d\n",
-                                       ref_frame_count += 2);
-                            }
-                        }
-                    } else {
-                        if (output_file_) {
-                            write_compress_data(enc_out);
-                        }
-                    }
+                    process_compress_data(enc_out);
+
                     if (enc_out->flags & EB_BUFFERFLAG_EOS) {
                         enc_file_eos = true;
                         printf("Encoder EOS\n");
@@ -431,28 +383,6 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
             } while (src_file_eos);
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
-}
-
-#define LONG_ENCODE_FRAME_ENCODE 4000
-#define SPEED_MEASUREMENT_INTERVAL 2000
-#define START_STEADY_STATE 1000
-#define AV1_FOURCC 0x31305641  // used for ivf header
-#define IVF_STREAM_HEADER_SIZE 32
-#define IVF_FRAME_HEADER_SIZE 12
-#define OBU_FRAME_HEADER_SIZE 3
-#define TD_SIZE 2
-static __inline void mem_put_le32(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-    mem[2] = (uint8_t)((val >> 16) & 0xff);
-    mem[3] = (uint8_t)((val >> 24) & 0xff);
-}
-#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
-static __inline void mem_put_le16(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_output_header() {
@@ -525,15 +455,6 @@ static void write_ivf_frame_header(
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
     const EbBufferHeaderType *output) {
-#if TILES
-    EbBool has_tiles =
-        (EbBool)(ctxt_.enc_params.tile_columns || ctxt_.enc_params.tile_rows);
-#else
-    EbBool has_tiles = (EbBool)EB_FALSE;
-#endif
-    uint8_t obu_frame_header_size =
-        has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
-
     switch (output->flags &
             0x00000006) {  // Check for the flags EB_BUFFERFLAG_HAS_TD and
                            // EB_BUFFERFLAG_SHOW_EXT
@@ -547,19 +468,20 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
         // Write a new IVF frame header to file as a TD is in the packet
         write_ivf_frame_header(
             output_file_,
-            output->n_filled_len - (obu_frame_header_size + TD_SIZE));
+            output->n_filled_len - (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer,
                1,
-               output->n_filled_len - (obu_frame_header_size + TD_SIZE),
+               output->n_filled_len - (obu_frame_header_size_ + TD_SIZE),
                output_file_->file);
 
         // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
         // packet to show another frame, a new IVF is needed
-        write_ivf_frame_header(output_file_, (obu_frame_header_size + TD_SIZE));
+        write_ivf_frame_header(output_file_,
+                               (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer + output->n_filled_len -
-                   (obu_frame_header_size + TD_SIZE),
+                   (obu_frame_header_size_ + TD_SIZE),
                1,
-               (obu_frame_header_size + TD_SIZE),
+               (obu_frame_header_size_ + TD_SIZE),
                output_file_->file);
 
         break;
@@ -582,11 +504,11 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
         // relater
         fwrite(output->p_buffer,
                1,
-               output->n_filled_len - (obu_frame_header_size + TD_SIZE),
+               output->n_filled_len - (obu_frame_header_size_ + TD_SIZE),
                output_file_->file);
         // this packet will be part of the previous IVF header
         output_file_->byte_count_since_ivf +=
-            (output->n_filled_len - (obu_frame_header_size + TD_SIZE));
+            (output->n_filled_len - (obu_frame_header_size_ + TD_SIZE));
 
         // terminate previous ivf packet, update the combined size of packets
         // sent
@@ -594,11 +516,12 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
 
         // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
         // packet to show another frame, a new IVF is needed
-        write_ivf_frame_header(output_file_, (obu_frame_header_size + TD_SIZE));
+        write_ivf_frame_header(output_file_,
+                               (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer + output->n_filled_len -
-                   (obu_frame_header_size + TD_SIZE),
+                   (obu_frame_header_size_ + TD_SIZE),
                1,
-               (obu_frame_header_size + TD_SIZE),
+               (obu_frame_header_size_ + TD_SIZE),
                output_file_->file);
 
         break;
@@ -612,6 +535,88 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::write_compress_data(
         output_file_->byte_count_since_ivf += (output->n_filled_len);
         break;
     }
+}
+
+void svt_av1_test_e2e::SvtAv1E2ETestFramework::process_compress_data(
+    const EbBufferHeaderType *data) {
+    ASSERT_NE(data, nullptr);
+    if (refer_dec_ == nullptr) {
+        if (output_file_) {
+            write_compress_data(data);
+        }
+        return;
+    }
+
+    if (data->flags & EB_BUFFERFLAG_SHOW_EXT) {
+        uint32_t first_part_size =
+            data->n_filled_len - obu_frame_header_size_ - TD_SIZE;
+        decode_compress_data(data->p_buffer, first_part_size);
+        decode_compress_data(data->p_buffer + first_part_size,
+                             obu_frame_header_size_ + TD_SIZE);
+    } else {
+        decode_compress_data(data->p_buffer, data->n_filled_len);
+    }
+}
+
+void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
+    const uint8_t *data, uint32_t size) {
+    ASSERT_NE(data, nullptr);
+    ASSERT_GT(size, 0);
+
+    // input the compressed data into decoder
+    ASSERT_EQ(refer_dec_->process_data(data, size), RefDecoder::REF_CODEC_OK);
+
+    VideoFrame ref_frame;
+    memset(&ref_frame, 0, sizeof(ref_frame));
+    while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
+        if (ref_monitor_ == nullptr) {
+            ref_monitor_ = new VideoMonitor(ref_frame.width,
+                                            ref_frame.height,
+                                            ref_frame.stride[0],
+                                            ref_frame.bits_per_sample,
+                                            true,
+                                            "Ref decode");
+        }
+        if (ref_monitor_) {
+            ref_monitor_->draw_frame(
+                ref_frame.planes[0], ref_frame.planes[1], ref_frame.planes[2]);
+        }
+        // compare tools
+        if (recon_sink_) {
+            // TODO: send to comfomance compare tool
+            // with recon frame
+            const ReconSink::ReconMug *new_mug =
+                recon_sink_->take_mug(ref_frame.timestamp);
+            if (new_mug) {
+                uint32_t luma_len = video_src_->get_width_with_padding() *
+                                    video_src_->get_height_with_padding() *
+                                    (video_src_->get_bit_depth() > 8 ? 2 : 1);
+                if (recon_monitor_ == nullptr) {
+                    recon_monitor_ = new VideoMonitor(
+                        video_src_->get_width_with_padding(),
+                        video_src_->get_height_with_padding(),
+                        (video_src_->get_bit_depth() > 8)
+                            ? video_src_->get_width_with_padding() * 2
+                            : video_src_->get_width_with_padding(),
+                        video_src_->get_bit_depth(),
+                        true,
+                        "Recon");
+                }
+                if (recon_monitor_) {
+                    recon_monitor_->draw_frame(
+                        new_mug->mug_buf,
+                        new_mug->mug_buf + luma_len,
+                        new_mug->mug_buf + luma_len * 5 / 4);
+                }
+                printf("do compare %d\n", ref_frame.timestamp);
+                ASSERT_EQ(compare_image(new_mug, &ref_frame), true)
+                    << "image compare failed on " << ref_frame.timestamp;
+            }
+        } else {
+            // TODO: send to PSNR tool with source video
+            // frame
+        }
+    };
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
