@@ -326,6 +326,38 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     return video_src;
 }
 
+svt_av1_test_e2e::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework() {
+    recon_sink_ = nullptr;
+    refer_dec_ = nullptr;
+    output_file_ = nullptr;
+    recon_monitor_ = nullptr;
+    ref_monitor_ = nullptr;
+    obu_frame_header_size_ = 0;
+}
+
+svt_av1_test_e2e::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
+    if (recon_sink_) {
+        delete recon_sink_;
+        recon_sink_ = nullptr;
+    }
+    if (refer_dec_) {
+        delete refer_dec_;
+        refer_dec_ = nullptr;
+    }
+    if (output_file_) {
+        delete output_file_;
+        output_file_ = nullptr;
+    }
+    if (recon_monitor_) {
+        delete recon_monitor_;
+        recon_monitor_ = nullptr;
+    }
+    if (ref_monitor_) {
+        delete ref_monitor_;
+        ref_monitor_ = nullptr;
+    }
+}
+
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::init_test() {
     SvtAv1E2ETestBase::init_test();
 #if TILES
