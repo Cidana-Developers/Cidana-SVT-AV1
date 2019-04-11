@@ -37,10 +37,10 @@ EbErrorType eb_sequence_control_set_ctor(
     EbPtr *object_dbl_ptr,
     EbPtr object_init_data_ptr)
 {
-    EbSequenceControlSetInitData_t *scsInitData = (EbSequenceControlSetInitData_t*)object_init_data_ptr;
+    EbSequenceControlSetInitData *scsInitData = (EbSequenceControlSetInitData*)object_init_data_ptr;
     uint32_t segment_index;
-    SequenceControlSet_t *sequence_control_set_ptr;
-    EB_MALLOC(SequenceControlSet_t*, sequence_control_set_ptr, sizeof(SequenceControlSet_t), EB_N_PTR);
+    SequenceControlSet *sequence_control_set_ptr;
+    EB_MALLOC(SequenceControlSet*, sequence_control_set_ptr, sizeof(SequenceControlSet), EB_N_PTR);
 
     *object_dbl_ptr = (EbPtr)sequence_control_set_ptr;
 
@@ -73,7 +73,7 @@ EbErrorType eb_sequence_control_set_ctor(
     sequence_control_set_ptr->profile_idc = 0;
     sequence_control_set_ptr->level_idc = 0;
     sequence_control_set_ptr->tier_idc = 0;
-    sequence_control_set_ptr->chroma_format_idc = 1; // EB_YUV420
+    sequence_control_set_ptr->chroma_format_idc = EB_YUV420;
     sequence_control_set_ptr->max_temporal_layers = 1;
 
     sequence_control_set_ptr->bits_for_picture_order_count = 16;
@@ -90,8 +90,8 @@ EbErrorType eb_sequence_control_set_ctor(
     sequence_control_set_ptr->encoder_bit_depth = 8;
 
     // Bitdepth
-    sequence_control_set_ptr->input_bitdepth = EB_8BIT;
-    sequence_control_set_ptr->output_bitdepth = EB_8BIT;
+    //sequence_control_set_ptr->input_bitdepth = EB_8BIT;
+    //sequence_control_set_ptr->output_bitdepth = EB_8BIT;
 
     // GOP Structure
     sequence_control_set_ptr->max_ref_count = 1;
@@ -170,11 +170,7 @@ EbErrorType eb_sequence_control_set_ctor(
 
     sequence_control_set_ptr->order_hint_bits_minus1 = sequence_control_set_ptr->enable_order_hint ? 6 : -1;
 
-#if ICOPY
     sequence_control_set_ptr->force_screen_content_tools = 2;
-#else
-    sequence_control_set_ptr->force_screen_content_tools = 0;
-#endif
     // 0 - force off
     // 1 - force on
     // 2 - adaptive
@@ -206,10 +202,9 @@ EbErrorType eb_sequence_control_set_ctor(
     sequence_control_set_ptr->still_picture = 0;
     sequence_control_set_ptr->timing_info_present = 0;
     sequence_control_set_ptr->operating_points_decoder_model_cnt = 0;
-#if AV1_UPGRADE
     sequence_control_set_ptr->decoder_model_info_present_flag = 0;
     sequence_control_set_ptr->display_model_info_present_flag = 0;
-#endif
+
     for (int32_t i = 0; i < MAX_NUM_OPERATING_POINTS; i++) {
         sequence_control_set_ptr->operating_point_idc[i] = 0;
         sequence_control_set_ptr->level[i].major = 0;
@@ -244,8 +239,8 @@ EbErrorType eb_sequence_control_set_ctor(
  * Sequence Control Set Copy
  ************************************************/
 EbErrorType copy_sequence_control_set(
-    SequenceControlSet_t *dst,
-    SequenceControlSet_t *src)
+    SequenceControlSet *dst,
+    SequenceControlSet *src)
 {
     uint32_t  writeCount = 0;
 
@@ -278,8 +273,11 @@ EbErrorType copy_sequence_control_set(
     dst->cropping_bottom_offset = src->cropping_bottom_offset;                    writeCount += sizeof(int32_t);
     dst->conformance_window_flag = src->conformance_window_flag;                   writeCount += sizeof(uint32_t);
     dst->frame_rate = src->frame_rate;                               writeCount += sizeof(uint32_t);
-    dst->input_bitdepth = src->input_bitdepth;                           writeCount += sizeof(EB_BITDEPTH);
-    dst->output_bitdepth = src->output_bitdepth;                          writeCount += sizeof(EB_BITDEPTH);
+    //dst->input_bitdepth = src->input_bitdepth;                           writeCount += sizeof(EB_BITDEPTH);
+    //dst->output_bitdepth = src->output_bitdepth;                          writeCount += sizeof(EB_BITDEPTH);
+    dst->encoder_bit_depth = src->encoder_bit_depth;                      writeCount += sizeof(uint32_t);
+    dst->subsampling_x = src->subsampling_x;                writeCount += sizeof(uint16_t);
+    dst->subsampling_y = src->subsampling_y;                writeCount += sizeof(uint16_t);
     dst->pred_struct_ptr = src->pred_struct_ptr;                           writeCount += sizeof(PredictionStructure_t*);
     dst->intra_period_length = src->intra_period_length;                       writeCount += sizeof(int32_t);
     dst->intra_refresh_type = src->intra_refresh_type;                        writeCount += sizeof(uint32_t);
@@ -339,14 +337,12 @@ EbErrorType copy_sequence_control_set(
         dst->enc_dec_segment_row_count_array[i] = src->enc_dec_segment_row_count_array[i];
     }
 
-#if CDEF_M
     dst->cdef_segment_column_count = src->cdef_segment_column_count;
     dst->cdef_segment_row_count = src->cdef_segment_row_count;
-#endif
-#if REST_M
+
     dst->rest_segment_column_count = src->rest_segment_column_count;
     dst->rest_segment_row_count = src->rest_segment_row_count;
-#endif
+
 #if BASE_LAYER_REF
     dst->extra_frames_to_ref_islice = src->extra_frames_to_ref_islice;
     dst->max_frame_window_to_ref_islice = src->max_frame_window_to_ref_islice;
@@ -355,7 +351,7 @@ EbErrorType copy_sequence_control_set(
 }
 
 extern EbErrorType derive_input_resolution(
-    SequenceControlSet_t *sequenceControlSetPtr,
+    SequenceControlSet *sequenceControlSetPtr,
     uint32_t                  inputSize) {
     EbErrorType return_error = EB_ErrorNone;
 
@@ -371,11 +367,11 @@ extern EbErrorType derive_input_resolution(
 }
 
 EbErrorType eb_sequence_control_set_instance_ctor(
-    EbSequenceControlSetInstance_t **object_dbl_ptr)
+    EbSequenceControlSetInstance **object_dbl_ptr)
 {
-    EbSequenceControlSetInitData_t scsInitData;
+    EbSequenceControlSetInitData scsInitData;
     EbErrorType return_error = EB_ErrorNone;
-    EB_MALLOC(EbSequenceControlSetInstance_t*, *object_dbl_ptr, sizeof(EbSequenceControlSetInstance_t), EB_N_PTR);
+    EB_MALLOC(EbSequenceControlSetInstance*, *object_dbl_ptr, sizeof(EbSequenceControlSetInstance), EB_N_PTR);
 
     scsInitData.sb_size = 64;
 
@@ -403,7 +399,7 @@ EbErrorType eb_sequence_control_set_instance_ctor(
 }
 
 extern EbErrorType sb_params_ctor(
-    SequenceControlSet_t *sequence_control_set_ptr) {
+    SequenceControlSet *sequence_control_set_ptr) {
 
     EbErrorType return_error = EB_ErrorNone;
 
@@ -412,7 +408,7 @@ extern EbErrorType sb_params_ctor(
 }
 
 extern EbErrorType sb_params_init(
-    SequenceControlSet_t *sequence_control_set_ptr) {
+    SequenceControlSet *sequence_control_set_ptr) {
 
     EbErrorType return_error = EB_ErrorNone;
     uint16_t    sb_index;
@@ -537,7 +533,7 @@ extern EbErrorType sb_params_init(
     return return_error;
 }
 
-EbErrorType sb_geom_init(SequenceControlSet_t * sequence_control_set_ptr)
+EbErrorType sb_geom_init(SequenceControlSet * sequence_control_set_ptr)
 {
     uint16_t    sb_index;
     uint16_t    md_scan_block_index;

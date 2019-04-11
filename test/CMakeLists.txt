@@ -88,7 +88,6 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
     COMMON_ASM_SSE4_1
     COMMON_ASM_AVX2
     gtest_all)
-    
     cxx_executable_with_flags(SvtAv1UnitTests "${cxx_default}"
       "${lib_list}" ${all_files})
 
