@@ -8,6 +8,7 @@
 #include "gtest/gtest.h"
 #include "RefDecoder.h"
 #include "SvtAv1E2EFramework.h"
+#include "math.h"
 
 #define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
 #define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
@@ -151,7 +152,7 @@ double psnr_8bit(const uint8_t *p1, const uint8_t *p2, const uint32_t size) {
     return psnr;
 }
 
-float psnr_10bit(const uint16_t *p1, const uint16_t *p2, int size) {
+float psnr_10bit(const uint16_t *p1, const uint16_t *p2, const uint32_t size) {
     double mse = 0.0;
     for (int i = 0; i < size; i++) {
         const uint16_t I = p1[i];
@@ -164,7 +165,7 @@ float psnr_10bit(const uint16_t *p1, const uint16_t *p2, int size) {
     double psnr = INFINITY;
 
     if (DBL_EPSILON < mse) {
-        psnr = 10 * log10((1024 * 1024) / mse);
+        psnr = 10 * log10((1023 * 1023) / mse);
     }
     return psnr;
 }
@@ -259,8 +260,8 @@ void SvtAv1E2ETestBase::TearDown() {
         ctxt_.output_stream_buffer = nullptr;
     }
 
-	ASSERT_NE(video_src_, nullptr);
-	video_src_->close_source();
+    ASSERT_NE(video_src_, nullptr);
+    video_src_->close_source();
 }
 
 void SvtAv1E2ETestBase::init_test() {
@@ -660,14 +661,32 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
                 EbSvtIOFormat *frame =
                     video_src_->get_frame_by_index(ref_frame.timestamp);
                 if (frame) {
-                    double luma_psnr =
-                        psnr_8bit(frame->luma, mug->mug_buf, luma_len);
-                    double cb_psnr = psnr_8bit(
-                        frame->cb, mug->mug_buf + luma_len, luma_len >> 2);
-                    double cr_psnr = psnr_8bit(frame->cr,
-                                               mug->mug_buf + luma_len * 5 / 4,
-                                               luma_len >> 2);
+                    double luma_psnr = 0.0;
+                    double cb_psnr = 0.0;
+                    double cr_psnr = 0.0;
 
+                    if (video_src_->get_bit_depth() == 8) {
+                        luma_psnr =
+                            psnr_8bit(frame->luma, mug->mug_buf, luma_len);
+                        cb_psnr = psnr_8bit(
+                            frame->cb, mug->mug_buf + luma_len, luma_len >> 2);
+                        cr_psnr = psnr_8bit(frame->cr,
+                                            mug->mug_buf + luma_len * 5 / 4,
+                                            luma_len >> 2);
+                    }
+                    if (video_src_->get_bit_depth() == 10) {
+                        luma_psnr = psnr_10bit((const uint16_t *)frame->luma,
+                                               (const uint16_t *)mug->mug_buf,
+                                               luma_len / 2);
+                        cb_psnr = psnr_10bit(
+                            (const uint16_t *)frame->cb,
+                            (const uint16_t *)mug->mug_buf + luma_len,
+                            luma_len >> 3);
+                        cr_psnr = psnr_10bit(
+                            (const uint16_t *)frame->cr,
+                            (const uint16_t *)mug->mug_buf + luma_len * 5 / 4,
+                            luma_len >> 3);
+                    }
                     printf(
                         "Do psnr %0.4f, %0.4f, "
                         "%0.f4\r\n",
