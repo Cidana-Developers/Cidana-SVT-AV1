@@ -2,6 +2,15 @@
  * Copyright(c) 2019 Intel Corporation
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+/******************************************************************************
+ * @file RefDecoder.cc
+ *
+ * @brief Impelmentation of reference decoder
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #include "RefDecoder.h"
 
 RefDecoder *create_reference_decoder() {
@@ -39,7 +48,7 @@ RefDecoder::RefDecoder(RefDecoder::RefDecoderErr &ret) {
         printf("can not create refernece decoder!!");
     }
     ret = (RefDecoderErr)(0 - err);
-	ref_frame_cnt_ = 0;
+    ref_frame_cnt_ = 0;
 }
 
 RefDecoder::~RefDecoder() {
@@ -63,7 +72,7 @@ RefDecoder::RefDecoderErr RefDecoder::get_frame(VideoFrame &frame) {
         return REF_CODEC_NEED_MORE_INPUT;
     }
     trans_video_frame(img, frame);
-	printf("ref_frame_count %d\n", ref_frame_cnt_++);
+    printf("ref_frame_count %d\n", ref_frame_cnt_++);
     return REF_CODEC_OK;
 }
 
@@ -80,5 +89,5 @@ void RefDecoder::trans_video_frame(const aom_image_t *image,
     memcpy(frame.stride, image->stride, sizeof(frame.stride));
     memcpy(frame.planes, image->planes, sizeof(frame.planes));
     frame.bits_per_sample = image->bit_depth;
-	frame.timestamp = ref_frame_cnt_;
+    frame.timestamp = ref_frame_cnt_;
 }

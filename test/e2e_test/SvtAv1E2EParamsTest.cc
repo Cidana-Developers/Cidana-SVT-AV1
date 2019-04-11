@@ -2,9 +2,35 @@
  * Copyright(c) 2019 Intel Corporation
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+/******************************************************************************
+ * @file SvtAv1E2EParamsTest.cc
+ *
+ * @brief Impelmentation of encoder parameter coverage test in E2E test
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #include "gtest/gtest.h"
 #include "SvtAv1E2EFramework.h"
 #include "../api_test/params.h"
+
+/**
+ * @brief SVT-AV1 encoder parameter coverage E2E test
+ *
+ * Test strategy:
+ * Setup SVT-AV1 encoder with individual parameter in vaild value and run the
+ * comformance test progress to check when the result can match the output of
+ * refence decoder
+ *
+ * Expect result:
+ * No error from encoding progress and the reconstruction frame is same as the
+ * output frame from refence decoder
+ *
+ * Test coverage:
+ * Almost all the encoder parameters except frame_rate_numerator and
+ * frame_rate_denominator
+ */
 
 using namespace svt_av1_test_e2e;
 using namespace svt_av1_e2e_test_vector;
@@ -60,7 +86,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
             ctxt_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
             SvtAv1E2EParamBase::init_test();                              \
         }                                                                 \
-        virtual void run_conformance_test() {                    \
+        virtual void run_conformance_test() {                             \
             for (size_t i = 0; i < SIZE_VALID_PARAM(param_name); ++i) {   \
                 SvtAv1E2EParamBase::SetUp();                              \
                 init_test(i);                                             \

@@ -2,6 +2,14 @@
  * Copyright(c) 2019 Intel Corporation
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+/******************************************************************************
+ * @file RefDecoder.h
+ *
+ * @brief Defines a reference decoder wrapped AOM decoder
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
 #ifndef _REF_DECODER_H_
 #define _REF_DECODER_H_
 
@@ -13,6 +21,8 @@
 
 class RefDecoder {
   public:
+    /** RefDecoderErr is enumerate type of errors from decoder, refered to
+     * errors in AOM */
     typedef enum {
         /*!\brief Operation completed without error */
         REF_CODEC_OK,
@@ -74,21 +84,47 @@ class RefDecoder {
     } RefDecoderErr;
 
   public:
+    /** Constructor of ReconSink
+     * @param ret the error code found in construction
+     */
     RefDecoder(RefDecoderErr &ret);
+    /** Constructor of ReconSink	  */
     virtual ~RefDecoder();
 
   public:
+    /** Process compressed data
+     * @param data  the memory buffer of a frame of compressed data
+     * @param size  the size of data
+     * @return
+     * REF_CODEC_OK -- no error found in processing
+     * others -- errors found in process, refer to RefDecoderErr
+     */
     RefDecoderErr process_data(const uint8_t *data, uint32_t size);
+    /** Get a video frame after data proceed
+     * @param frame  the video frame with its attributes
+     * @return
+     * REF_CODEC_OK -- no error found in processing
+     * others -- errors found in process, refer to RefDecoderErr
+     */
     RefDecoderErr get_frame(VideoFrame &frame);
 
   private:
+    /** Tool of translation from AOM image info to a video frame
+     * @param image  the video image from AOM decoder
+     * @param frame  the video frame to output
+     */
     void trans_video_frame(const aom_image_t *image, VideoFrame &frame);
 
   protected:
-    aom_codec_ctx_t codec_;
-	uint32_t ref_frame_cnt_;
+    aom_codec_ctx_t codec_;  /**<AOM codec context */
+    uint32_t ref_frame_cnt_; /**<count of refernece frame in processing */
 };
 
+/** Interface of reference decoder creation
+ * @return
+ * RefDecoder -- decoder handle created
+ * nullptr -- creation failed
+ */
 RefDecoder *create_reference_decoder();
 
 #endif  // !_REF_DECODER_H_

@@ -2,6 +2,15 @@
  * Copyright(c) 2019 Intel Corporation
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+/******************************************************************************
+ * @file SvtAv1E2EFramework.cc
+ *
+ * @brief Impelmentation of End to End test framework
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #include "EbSvtAv1Enc.h"
 #include "Y4mVideoSource.h"
 #include "YuvVideosource.h"
@@ -259,8 +268,8 @@ void SvtAv1E2ETestBase::TearDown() {
         ctxt_.output_stream_buffer = nullptr;
     }
 
-	ASSERT_NE(video_src_, nullptr);
-	video_src_->close_source();
+    ASSERT_NE(video_src_, nullptr);
+    video_src_->close_source();
 }
 
 void SvtAv1E2ETestBase::init_test() {

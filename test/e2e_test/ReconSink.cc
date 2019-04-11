@@ -2,6 +2,15 @@
  * Copyright(c) 2019 Intel Corporation
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+/******************************************************************************
+ * @file ReconSink.cc
+ *
+ * @brief Impelmentation of reconstruction frame sink
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
@@ -66,7 +75,7 @@ class ReconSinkFile : public ReconSink {
                 frameNum--;
             }
             fwrite(mug->mug_buf, 1, mug->filled_size, recon_file_);
-			fflush(recon_file_);
+            fflush(recon_file_);
             record_list_.push_back((uint32_t)mug->time_stamp);
         }
         delete_mug(mug);
@@ -149,9 +158,9 @@ class ReconSinkBuffer : public ReconSink {
             delete_mug(mug);
     }
     virtual const ReconMug *take_mug(uint64_t time_stamp) override {
-        for (ReconMug * mug : mug_list_) {
-             if (mug->time_stamp == time_stamp)
-                return mug;           
+        for (ReconMug *mug : mug_list_) {
+            if (mug->time_stamp == time_stamp)
+                return mug;
         }
         return nullptr;
     }

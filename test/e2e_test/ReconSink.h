@@ -1,7 +1,16 @@
 /*
-* Copyright(c) 2019 Intel Corporation
-* SPDX - License - Identifier: BSD - 2 - Clause - Patent
-*/
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+/******************************************************************************
+ * @file ReconSink.h
+ *
+ * @brief Defines a sink to collect reconstruction frames
+ *
+ * @author Cidana-Edmond
+ *
+ ******************************************************************************/
+
 #ifndef _RECON_SINK_H_
 #define _RECON_SINK_H_
 
@@ -11,40 +20,66 @@
 
 class ReconSink {
   public:
+    /** ReconSinkType is enumerate type of sink type, file or buffer mode */
     typedef enum ReconSinkType {
         RECON_SINK_BUFFER,
         RECON_SINK_FILE,
     } ReconSinkType;
 
     typedef struct ReconMug {
-        uint32_t tag;
-        uint64_t time_stamp;
-        uint32_t mug_size;
-        uint32_t filled_size;
-        uint8_t* mug_buf;
+        uint32_t tag;         /**< tag of the frame */
+        uint64_t time_stamp;  /**< timestamp of the frame, current should be the
+                                 index of display order*/
+        uint32_t mug_size;    /**< size of the frame container buffer*/
+        uint32_t filled_size; /**< size of the actual data in buffer */
+        uint8_t* mug_buf;     /**< memory buffer of the frame */
     } ReconMug;
 
   public:
+    /** Constructor of ReconSink
+     * @param param the parameters of the video frame
+     */
     ReconSink(const VideoFrameParam& param) {
         sink_type_ = RECON_SINK_BUFFER;
         video_param_ = param;
         frame_size_ = calculate_frame_size(video_param_);
         frame_count_ = 0;
     }
+    /** Constructor of ReconSink	  */
     virtual ~ReconSink() {
     }
+    /** Get sink type
+     * @return
+     * ReconSinkType -- the type of sink
+     */
     ReconSinkType get_type() {
         return sink_type_;
     }
+    /** Get video parameter
+     * @return
+     * VideoFrameParam -- the parameter of video frame
+     */
     VideoFrameParam get_video_param() {
         return video_param_;
     }
-	uint32_t get_frame_count() {
+    /** Get total frame count in sink
+     * @return
+     * uint32_t -- the count of frame in sink
+     */
+    uint32_t get_frame_count() {
         return frame_count_;
     }
-	void set_frame_count(uint32_t count) {
-		frame_count_ = count;
-	}
+    /** Get maximum video frame number in sink
+     * @param count  the maximum video frame number
+     */
+    void set_frame_count(uint32_t count) {
+        frame_count_ = count;
+    }
+    /** Get an empty video frame container from sink
+     * @return
+     * ReconMug -- a container of video frame
+     * nullptr -- no available container
+     */
     ReconMug* get_empty_mug() {
         ReconMug* new_mug = new ReconMug;
         if (new_mug) {
@@ -58,13 +93,41 @@ class ReconSink {
         }
         return new_mug;
     }
+    /** Interface of insert a container into sink
+     * @param mug  the container to insert into sink
+     */
     virtual void fill_mug(ReconMug* mug) = 0;
+    /** Interface of get a container with video frame by the same timestamp
+     * @param time_stamp  the timestamp of video frame to retreive
+     * @return
+     * ReconMug -- a container of video frame
+     * nullptr -- no available container by this timestamp
+     */
     virtual const ReconMug* take_mug(uint64_t time_stamp) = 0;
+    /** Interface of get a container with video frame by index
+     * @param index  the index of container to retreive
+     * @return
+     * ReconMug -- a container of video frame
+     * nullptr -- no available container by index
+     */
     virtual const ReconMug* take_mug_inorder(uint32_t index) = 0;
+    /** Interface of destroy a container and remove from sink
+     * @param mug  the container to distroy
+     */
     virtual void pour_mug(ReconMug* mug) = 0;
-	virtual bool is_compelete() = 0;
+    /** Interface of get whether the sink is compeletely filled
+     * @return
+     * true -- the sink is filled
+     * false -- the sink is still available
+     */
+    virtual bool is_compelete() = 0;
 
   protected:
+    /** Tool of video frame size caculation, with width, height and bit-depth
+     * @param param  parameter of video frame
+     * @return
+     * the size in byte of the video frame
+     */
     static uint32_t calculate_frame_size(const VideoFrameParam& param) {
         uint32_t lumaSize = param.width * param.height;
         uint32_t chromaSize = 0;
@@ -89,13 +152,30 @@ class ReconSink {
     }
 
   protected:
-    ReconSinkType sink_type_;
-    VideoFrameParam video_param_;
-    uint32_t frame_size_;
-	uint32_t frame_count_;
+    ReconSinkType sink_type_;     /**< type of sink*/
+    VideoFrameParam video_param_; /**< video frame parameters*/
+    uint32_t frame_size_;         /**< size of video frame*/
+    uint32_t frame_count_;        /**< maximun number of video frames*/
 };
 
-ReconSink* create_recon_sink(const VideoFrameParam& param, const char* file_path);
+/** Interface of create a sink of reconstruction video frame with video
+ * parameters and the file path to store
+ * @param param  the parameter of video frame
+ * @param file_path  the file path to store the containers
+ * @return
+ * ReconSink -- the sink created
+ * nullptr -- creation failed
+ */
+ReconSink* create_recon_sink(const VideoFrameParam& param,
+                             const char* file_path);
+
+/** Interface of create a sink of reconstruction video frame with video
+ * parameters
+ * @param param  the parameter of video frame
+ * @return
+ * ReconSink -- the sink created
+ * nullptr -- creation failed
+ */
 ReconSink* create_recon_sink(const VideoFrameParam& param);
 
 #endif  // !_RECON_SINK_H_
