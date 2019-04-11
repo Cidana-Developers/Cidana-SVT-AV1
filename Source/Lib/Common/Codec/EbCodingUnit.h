@@ -14,9 +14,13 @@
 #include "EbPredictionUnit.h"
 #include "EbTransformUnit.h"
 #include "EbCabacContextModel.h"
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if ICOPY
 #include "hash.h"
 #endif
+=======
+#include "hash.h"
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,11 +46,15 @@ extern "C" {
 #define MAX_CU_COST (0xFFFFFFFFFFFFFFFFull >> 1)
 #define MAX_MODE_COST ( 13616969489728 * 8) // RDCOST(6544618, 128 * 128 * 255 * 255, 128 * 128 * 255 * 255) * 8;
 #define INVALID_FAST_CANDIDATE_INDEX    ~0
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if OIS_BASED_INTRA
 #define MAX_OIS_CANDIDATES  61  //18//18
 #else
 #define MAX_OPEN_LOOP_INTRA_CANDIDATES  18//18
 #endif
+=======
+#define MAX_OIS_CANDIDATES  61  //18//18
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
 
     static const uint32_t intra_hev_cmode_to_intra_av1_mode[35] = {
         /*SMOOTH_PRED   */  SMOOTH_PRED,                                                        // EB_INTRA_PLANAR
@@ -90,21 +98,25 @@ extern "C" {
     };
 #else
     static const uint32_t intra_luma_to_chroma[INTRA_MODES] = {                                                                            // EB_INTRA_PLANAR
-        /*DC_PRED       */  UV_DC_PRED,
-        /*V_PRED        */  UV_SMOOTH_PRED,
-        /*H_PRED        */  UV_SMOOTH_PRED,
-        /*D45_PRED      */  UV_D45_PRED,
-        /*D135_PRED     */  UV_D135_PRED,
-        /*D113_PRED     */  UV_D135_PRED,
-        /*D157_PRED     */  UV_D135_PRED,
-        /*D203_PRED     */  UV_SMOOTH_PRED,
-        /*D67_PRED      */  UV_D45_PRED,
-        /*SMOOTH_PRED   */  UV_SMOOTH_PRED,
-        /*SMOOTH_V_PRED */  UV_SMOOTH_PRED,
-        /*SMOOTH_H_PRED */  UV_SMOOTH_PRED,
-        /*PAETH_PRED    */  UV_PAETH_PRED,
+       UV_DC_PRED,        // Average of above and left pixels
+       UV_V_PRED,         // Vertical
+       UV_H_PRED,         // Horizontal
+       UV_D45_PRED,       // Directional 45  degree
+       UV_D135_PRED,      // Directional 135 degree
+       UV_D113_PRED,      // Directional 113 degree
+       UV_D157_PRED,      // Directional 157 degree
+       UV_D203_PRED,      // Directional 203 degree
+       UV_D67_PRED,       // Directional 67  degree
+       UV_SMOOTH_PRED,    // Combination of horizontal and vertical interpolation
+       UV_SMOOTH_V_PRED,  // Vertical interpolation
+       UV_SMOOTH_H_PRED,  // Horizontal interpolation
+       UV_PAETH_PRED,     // Predict from the direction of smallest gradient
     };
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #endif
+=======
+
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
     static const TxType chroma_transform_type[14] = {
         /*UV_DC_PRED,          */   DCT_DCT   ,
         /*UV_V_PRED,           */   ADST_DCT  ,
@@ -184,11 +196,15 @@ extern "C" {
         // Only for INTRA blocks
         UV_PredictionMode uv_mode;
         //PALETTE_MODE_INFO palette_mode_info;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if ICOPY
         uint8_t use_intrabc;
 #else
         //uint8_t use_intrabc;
 #endif
+=======
+        uint8_t use_intrabc;
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
         // Only for INTER blocks
         //InterpFilters interp_filters;
         MvReferenceFrame ref_frame[2];
@@ -241,13 +257,14 @@ extern "C" {
         int32_t mi_row_start, mi_row_end;
         int32_t mi_col_start, mi_col_end;
         int32_t tg_horz_boundary;
-#if TILES
         int32_t tile_row;
         int32_t tile_col;
-#endif
     } TileInfo;
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if ICOPY
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
     typedef struct macroblockd_plane {
 
         int subsampling_x;
@@ -282,7 +299,10 @@ extern "C" {
         const int16_t *dequant_QTX;
 #endif
     } MACROBLOCK_PLANE;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
 
     typedef struct MacroBlockD {
         // block dimension in the unit of mode_info.
@@ -304,13 +324,19 @@ extern "C" {
         int32_t mb_to_bottom_edge;
         uint8_t neighbors_ref_counts[TOTAL_REFS_PER_FRAME];
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if ICOPY 
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
         uint8_t  use_intrabc;
         MbModeInfo *above_mbmi;
         MbModeInfo *left_mbmi;
         MbModeInfo *chroma_above_mbmi;
         MbModeInfo *chroma_left_mbmi;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
     } MacroBlockD;
 
     typedef struct Macroblock {
@@ -320,7 +346,10 @@ extern "C" {
         int32_t sgrproj_restore_cost[2];
     } Macroblock;
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if ICOPY
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
     typedef struct IntraBcContext {
         int32_t rdmult;
         struct macroblockd_plane xdplane[MAX_MB_PLANE];
@@ -344,6 +373,7 @@ extern "C" {
         // [first hash/second hash]
         // [two buffers used ping-pong]
         uint32_t *hash_value_buffer[2][2];
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if IBC_EARLY_0
         uint8_t  is_exhaustive_allowed;
 #endif
@@ -354,10 +384,17 @@ extern "C" {
 
     } IntraBcContext;
 #endif
+=======
+        uint8_t  is_exhaustive_allowed;
+        CRC_CALCULATOR crc_calculator1;
+        CRC_CALCULATOR crc_calculator2;
+
+    } IntraBcContext;
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
 
     typedef struct CodingUnit_s
     {
-        TransformUnit_t             transform_unit_array[TRANSFORM_UNIT_MAX_COUNT]; // 2-bytes * 21 = 42-bytes
+        TransformUnit             transform_unit_array[TRANSFORM_UNIT_MAX_COUNT]; // 2-bytes * 21 = 42-bytes
         PredictionUnit_t            prediction_unit_array[MAX_NUM_OF_PU_PER_CU];    // 35-bytes * 4 = 140 bytes
 
         unsigned                    skip_flag_context       : 2;
@@ -380,9 +417,8 @@ extern "C" {
             unsigned                leaf_index           : 8;
             unsigned                split_flag           : 1;
             unsigned                skip_flag            : 1;
-#if FIX_INTER_DEPTH
             unsigned                mdc_split_flag      : 1;
-#endif
+
         };
 #if NO_ENCDEC
         EbPictureBufferDesc_t      *quant_tmp;
@@ -416,6 +452,7 @@ extern "C" {
         uint8_t                    *neigh_top_recon[3];
         uint32_t                    best_d1_blk;
     } CodingUnit_t;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
 #if OIS_BASED_INTRA
         typedef struct ois_candidate_s {
         union {
@@ -437,6 +474,9 @@ extern "C" {
     } ois_sb_results_t;
 #else
     typedef struct OisCandidate_s {
+=======
+        typedef struct ois_candidate_s {
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
         union {
             struct {
                 unsigned distortion : 20;
@@ -446,14 +486,11 @@ extern "C" {
             };
             uint32_t ois_results;
         };
-    } OisCandidate_t;
-    typedef struct OisLcuResults_s
+        int32_t angle_delta;
+    } ois_candidate_t;
+    typedef struct ois_sb_results_s
     {
-        uint8_t           total_intra_luma_mode[CU_MAX_COUNT];
-        OisCandidate_t    sorted_ois_candidate[CU_MAX_COUNT][MAX_OPEN_LOOP_INTRA_CANDIDATES];
-    } OisLcuResults_t;
-    typedef struct OisCu32Cu16Results_s
-    {
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbCodingUnit.h
         uint8_t            total_intra_luma_mode[21];
         OisCandidate_t*    sorted_ois_candidate[21];
     } OisCu32Cu16Results_t;
@@ -463,6 +500,12 @@ extern "C" {
         OisCandidate_t*    sorted_ois_candidate[64];
     } OisCu8Results_t;
 #endif
+=======
+        uint8_t             total_ois_intra_candidate[CU_MAX_COUNT];
+        ois_candidate_t*    ois_candidate_array[CU_MAX_COUNT];
+        int8_t              best_distortion_index[CU_MAX_COUNT];
+    } ois_sb_results_t;
+>>>>>>> master:Source/Lib/Common/Codec/EbCodingUnit.h
     typedef struct QpmLcuResults_s {
         uint8_t  cu_qp;
         uint8_t  cu_intra_qp;
@@ -503,9 +546,7 @@ extern "C" {
 
         // Quantized Coefficients
         EbPictureBufferDesc_t          *quantized_coeff;
-#if TILES
         TileInfo tile_info;
-#endif
 
     } LargestCodingUnit_t;
 

@@ -168,15 +168,27 @@ extern "C" {
         uint32_t *in_ptr,
         uint64_t  num_of_elements);
 
-    void memset16bit(
-        uint16_t *in_ptr,
-        uint16_t  value,
-        uint64_t  num_of_elements);
+    static INLINE void memset16bit(
+        uint16_t                     * in_ptr,
+        uint16_t                       value,
+        uint64_t                       num_of_elements)
+    {
+        uint64_t i;
 
-    void memset32bit(
-        uint32_t *in_ptr,
-        uint32_t  value,
-        uint64_t  num_of_elements);
+        for (i = 0; i < num_of_elements; i++)
+            in_ptr[i] = value;
+    }
+
+    static INLINE void memset32bit(
+        uint32_t                     * in_ptr,
+        uint32_t                       value,
+        uint64_t                       num_of_elements)
+    {
+        uint64_t i;
+
+        for (i = 0; i < num_of_elements; i++)
+            in_ptr[i] = value;
+    }
 
     static void picture_addition_void_func() {}
     static void pic_zero_out_coef_void_func() {}
@@ -443,12 +455,11 @@ extern "C" {
 
     static EB_SATD_U8_TYPE FUNC_TABLE compute8x8_satd_u8_func_ptr_array[ASM_TYPE_TOTAL] = {
         // NON_AVX2
-        Compute8x8Satd_U8_SSE4,
+        compute8x8_satd_u8_sse4,
         // ASM_AVX2
-        Compute8x8Satd_U8_SSE4
+        compute8x8_satd_u8_sse4
     };
 
-#if  M0_SPATIAL_SSE || SPATIAL_SSE_I_B_SLICES || M0_SSD_HALF_QUARTER_PEL_BIPRED_SEARCH
     typedef uint64_t(*EB_SPATIALFULLDIST_TYPE)(
         uint8_t  *input,
         uint32_t  input_stride,
@@ -456,6 +467,7 @@ extern "C" {
         uint32_t  recon_stride,
         uint32_t  area_width,
         uint32_t  area_height);
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbPictureOperators.h
 #if  USE_SSE_FL
     static EB_SPATIALFULLDIST_TYPE FUNC_TABLE spatial_full_distortion_kernel_func_ptr_array[ASM_TYPE_TOTAL][6] = {
         // NON_AVX2
@@ -491,35 +503,47 @@ extern "C" {
     };
 #else
     static EB_SPATIALFULLDIST_TYPE FUNC_TABLE spatial_full_distortion_kernel_func_ptr_array[ASM_TYPE_TOTAL][5] = {
+=======
+    static EB_SPATIALFULLDIST_TYPE FUNC_TABLE spatial_full_distortion_kernel_func_ptr_array[ASM_TYPE_TOTAL][6] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbPictureOperators.h
         // NON_AVX2
         {
             // 4x4
-            SpatialFullDistortionKernel4x4_SSSE3_INTRIN,
+            spatial_full_distortion_kernel4x4_ssse3_intrin,
             // 8x8
-            SpatialFullDistortionKernel8x8_SSSE3_INTRIN,
+            spatial_full_distortion_kernel8x8_ssse3_intrin,
             // 16x16
-            SpatialFullDistortionKernel16MxN_SSSE3_INTRIN,
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin,
             // 32x32
-            SpatialFullDistortionKernel16MxN_SSSE3_INTRIN,
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin,
             // 64x64
-            SpatialFullDistortionKernel16MxN_SSSE3_INTRIN
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin,
+            // 128x128
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin
         },
         // ASM_AVX2
         {
             // 4x4
-            SpatialFullDistortionKernel4x4_SSSE3_INTRIN,
+            spatial_full_distortion_kernel4x4_ssse3_intrin,
             // 8x8
-            SpatialFullDistortionKernel8x8_SSSE3_INTRIN,
+            spatial_full_distortion_kernel8x8_ssse3_intrin,
             // 16x16
-            SpatialFullDistortionKernel16MxN_SSSE3_INTRIN,
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin,
             // 32x32
-            SpatialFullDistortionKernel16MxN_SSSE3_INTRIN,
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin,
             // 64x64
-            SpatialFullDistortionKernel16MxN_SSSE3_INTRIN
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin,
+            // 128x128
+            spatial_full_distortion_kernel16_mx_n_ssse3_intrin
         },
     };
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbPictureOperators.h
 #endif
 #endif
+=======
+
+
+>>>>>>> master:Source/Lib/Common/Codec/EbPictureOperators.h
     void picture_addition_kernel16_bit(
         uint16_t *pred_ptr,
         uint32_t  pred_stride,

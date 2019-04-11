@@ -121,110 +121,14 @@ extern "C" {
 #define SMOOTHING_THRESHOLD                 8
 #define SMOOTHING_THRESHOLD_10BIT          32
 
-#if !QT_10BIT_SUPPORT
-
-    extern EbErrorType GenerateIntraReferenceSamplesEncodePass(
-
-        EbBool                         *is_left_availble,
-        EbBool                         *is_above_availble,
-
-        EbBool                     constrained_intra_flag,   //input parameter, indicates if constrained intra is switched on/off
-        EbBool                     strongIntraSmoothingFlag,
-        uint32_t                      origin_x,
-        uint32_t                      origin_y,
-        uint32_t                      size,
-        uint32_t                      cu_depth,
-        NeighborArrayUnit_t        *mode_type_neighbor_array,
-        NeighborArrayUnit_t        *luma_recon_neighbor_array,
-        NeighborArrayUnit_t        *cb_recon_neighbor_array,
-        NeighborArrayUnit_t        *cr_recon_neighbor_array,
-        void                       *refWrapperPtr,
-        EbBool                     pictureLeftBoundary,
-        EbBool                     pictureTopBoundary,
-        EbBool                     pictureRightBoundary);
-#endif
-
-
-
-
-#if !QT_10BIT_SUPPORT
-
-    extern EbErrorType GenerateIntraReference16bitSamplesEncodePass(
-        EbBool                         *is_left_availble,
-        EbBool                         *is_above_availble,
-        EbBool                     constrained_intra_flag,   //input parameter, indicates if constrained intra is switched on/off
-        EbBool                     strongIntraSmoothingFlag,
-        uint32_t                      origin_x,
-        uint32_t                      origin_y,
-        uint32_t                      size,
-        uint32_t                      cu_depth,
-        NeighborArrayUnit_t        *mode_type_neighbor_array,
-        NeighborArrayUnit_t        *luma_recon_neighbor_array,
-        NeighborArrayUnit_t        *cb_recon_neighbor_array,
-        NeighborArrayUnit_t        *cr_recon_neighbor_array,
-        void                       *refWrapperPtr,
-        EbBool                     pictureLeftBoundary,
-        EbBool                     pictureTopBoundary,
-        EbBool                     pictureRightBoundary);
-
-
-    extern EbErrorType GenerateLumaIntraReference16bitSamplesEncodePass(
-        EbBool                     *is_left_availble,
-        EbBool                     *is_above_availble,
-        EbBool                     constrained_intra_flag,   //input parameter, indicates if constrained intra is switched on/off
-        EbBool                     strongIntraSmoothingFlag,
-        uint32_t                      origin_x,
-        uint32_t                      origin_y,
-        uint32_t                      size,
-        uint32_t                      sb_sz,
-        uint32_t                      cu_depth,
-        NeighborArrayUnit_t        *mode_type_neighbor_array,
-        NeighborArrayUnit_t        *luma_recon_neighbor_array,
-        NeighborArrayUnit_t        *cb_recon_neighbor_array,
-        NeighborArrayUnit_t        *cr_recon_neighbor_array,
-        void                       *refWrapperPtr,
-        EbBool                     pictureLeftBoundary,
-        EbBool                     pictureTopBoundary,
-        EbBool                     pictureRightBoundary);
-
-
-    extern EbErrorType GenerateChromaIntraReference16bitSamplesEncodePass(
-        EbBool                     *is_left_availble,
-        EbBool                     *is_above_availble,
-        EbBool                     constrained_intra_flag,   //input parameter, indicates if constrained intra is switched on/off
-        EbBool                     strongIntraSmoothingFlag,
-        uint32_t                      origin_x,
-        uint32_t                      origin_y,
-        uint32_t                      size,
-        uint32_t                      sb_sz,
-        uint32_t                      cu_depth,
-        NeighborArrayUnit_t        *mode_type_neighbor_array,
-        NeighborArrayUnit_t        *luma_recon_neighbor_array,
-        NeighborArrayUnit_t        *cb_recon_neighbor_array,
-        NeighborArrayUnit_t        *cr_recon_neighbor_array,
-        void                       *refWrapperPtr,
-        EbBool                     pictureLeftBoundary,
-        EbBool                     pictureTopBoundary,
-        EbBool                     pictureRightBoundary);
-
-
-    extern EbErrorType IntraPredictionCL(
-        struct ModeDecisionContext_s           *context_ptr,
-        uint32_t                                  component_mask,
-        PictureControlSet_t                    *picture_control_set_ptr,
-        ModeDecisionCandidateBuffer_t           *candidate_buffer_ptr,
-        EbAsm                                  asm_type);
-#endif
 
     extern EbErrorType AV1IntraPredictionCL(
         struct ModeDecisionContext_s           *context_ptr,
- #if !CHROMA_BLIND
-        uint32_t                                  component_mask,
-#endif
         PictureControlSet_t                    *picture_control_set_ptr,
         ModeDecisionCandidateBuffer_t           *candidate_buffer_ptr,
         EbAsm                                  asm_type);
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbIntraPrediction.h
 #if !QT_10BIT_SUPPORT
     extern EbErrorType EncodePassIntraPrediction(
 
@@ -353,6 +257,8 @@ extern "C" {
         32,    //  Intra mode 34
     };
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbIntraPrediction.h
     extern void intra_mode_angular_horizontal_kernel_ssse3_intrin(
         uint32_t            size,
         uint8_t            *ref_samp_main,
@@ -368,7 +274,10 @@ extern "C" {
     extern void IntraOpenLoopReferenceSamplesDtor(
         IntraReferenceSamplesOpenLoop_t  *context_ptr);
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbIntraPrediction.h
 #if OIS_BASED_INTRA
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbIntraPrediction.h
     extern EbErrorType update_neighbor_samples_array_open_loop(
         uint8_t                           *above_ref,
         uint8_t                            *left_ref,
@@ -387,6 +296,7 @@ extern "C" {
         uint8_t                         *above_row,
         uint8_t                         *left_col,
         MotionEstimationContext_t       *context_ptr);                  // input parameter, ME context
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbIntraPrediction.h
 #else
     extern EbErrorType UpdateNeighborSamplesArrayOpenLoop(
         IntraReferenceSamplesOpenLoop_t *intra_ref_ptr,
@@ -416,6 +326,8 @@ extern "C" {
         EbPtr                                  prediction_context_ptr,
         EbAsm                                   asm_type);
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbIntraPrediction.h
 
     /***************************************
     * Function Ptr Types
@@ -485,44 +397,18 @@ extern "C" {
         uint8_t         *dst,              //output parameter, pointer to the prediction
         const uint32_t   prediction_buffer_stride,     //input parameter, denotes the stride for the prediction ptr
         const EbBool  skip);
-#if !QT_10BIT_SUPPORT
-    extern void highbd_smooth_v_predictor(
-        const uint32_t   size,                       //input parameter, denotes the size of the current PU
-        uint16_t         *ref_samples,                 //input parameter, pointer to the reference samples
-        uint16_t         *dst,              //output parameter, pointer to the prediction
-        const uint32_t   prediction_buffer_stride,     //input parameter, denotes the stride for the prediction ptr
-        const EbBool  skip);
-#endif
     extern void ebav1_smooth_v_predictor(
         const uint32_t   size,                       //input parameter, denotes the size of the current PU
         uint8_t         *ref_samples,                 //input parameter, pointer to the reference samples
         uint8_t         *dst,              //output parameter, pointer to the prediction
         const uint32_t   prediction_buffer_stride,     //input parameter, denotes the stride for the prediction ptr
         const EbBool  skip);
-#if !QT_10BIT_SUPPORT
-    extern void highbd_smooth_h_predictor(
-        const uint32_t   size,                       //input parameter, denotes the size of the current PU
-        uint16_t         *ref_samples,                 //input parameter, pointer to the reference samples
-        uint16_t         *dst,              //output parameter, pointer to the prediction
-        const uint32_t   prediction_buffer_stride,     //input parameter, denotes the stride for the prediction ptr
-        const EbBool  skip);
-#endif
     extern void ebav1_smooth_h_predictor(
         const uint32_t   size,                       //input parameter, denotes the size of the current PU
         uint8_t         *ref_samples,                 //input parameter, pointer to the reference samples
         uint8_t         *dst,              //output parameter, pointer to the prediction
         const uint32_t   prediction_buffer_stride,     //input parameter, denotes the stride for the prediction ptr
         const EbBool  skip);
-#if !QT_10BIT_SUPPORT
-    extern void highbd_dc_predictor(
-        EbBool                         is_left_availble,
-        EbBool                         is_above_availble,
-        const uint32_t   size,                       //input parameter, denotes the size of the current PU
-        uint8_t         *ref_samples,                 //input parameter, pointer to the reference samples
-        uint8_t         *dst,              //output parameter, pointer to the prediction
-        const uint32_t   prediction_buffer_stride,     //input parameter, denotes the stride for the prediction ptr
-        const EbBool  skip);                     //skip half rows
-#endif
 
     void IntraModeAngular_AV1_Z1_16bit(
         const uint32_t   size,                    //input parameter, denotes the size of the current PU
@@ -554,6 +440,7 @@ extern "C" {
         uint16_t          dy,              //output parameter, pointer to the prediction
         uint16_t          bd);
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbIntraPrediction.h
     #if !OIS_BASED_INTRA
     /***************************************
     * Function Ptrs
@@ -725,20 +612,14 @@ extern "C" {
         highbd_smooth_v_predictor,
     };
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbIntraPrediction.h
     static EB_INTRA_NOANG_TYPE FUNC_TABLE IntraSmoothH_Av1_funcPtrArray[ASM_TYPE_TOTAL] = {
         // NON_AVX2
         ebav1_smooth_h_predictor,
         // AVX2
         ebav1_smooth_h_predictor,
     };
-#if !QT_10BIT_SUPPORT
-    static EB_INTRA_NOANG_16bit_TYPE FUNC_TABLE IntraSmoothH_16bit_Av1_funcPtrArray[ASM_TYPE_TOTAL] = {
-        // NON_AVX2
-        highbd_smooth_h_predictor,
-        // AVX2
-        highbd_smooth_h_predictor,
-    };
-#endif
     static EB_INTRA_NOANG_TYPE FUNC_TABLE IntraSmoothV_Av1_funcPtrArray[ASM_TYPE_TOTAL] = {
         // NON_AVX2
         ebav1_smooth_v_predictor,
@@ -746,6 +627,7 @@ extern "C" {
         ebav1_smooth_v_predictor,
     };
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbIntraPrediction.h
     #if !OIS_BASED_INTRA
     static EB_INTRA_NOANG_16bit_TYPE FUNC_TABLE IntraPlanar_16bit_funcPtrArray[ASM_TYPE_TOTAL] = {
         // NON_AVX2
@@ -795,6 +677,8 @@ extern "C" {
     };
 
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbIntraPrediction.h
     static EB_INTRA_ANG_Z1_Z2_Z3_16bit_TYPE FUNC_TABLE IntraModeAngular_AV1_Z1_16bit_funcPtrArray[9][ASM_TYPE_TOTAL] = {
         // 4x4
         {

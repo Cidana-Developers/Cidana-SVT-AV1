@@ -15,8 +15,9 @@
  ******************************************************/
 EbErrorType mode_decision_context_ctor(
     ModeDecisionContext_t  **context_dbl_ptr,
-    EbFifo_t                *mode_decision_configuration_input_fifo_ptr,
-    EbFifo_t                *mode_decision_output_fifo_ptr){
+    EbColorFormat         color_format,
+    EbFifo                *mode_decision_configuration_input_fifo_ptr,
+    EbFifo                *mode_decision_output_fifo_ptr){
 
     uint32_t bufferIndex;
     uint32_t candidateIndex;
@@ -47,22 +48,26 @@ EbErrorType mode_decision_context_ctor(
     }
 
     // Transform and Quantization Buffers
-    EB_MALLOC(EbTransQuantBuffers_t*, context_ptr->trans_quant_buffers_ptr, sizeof(EbTransQuantBuffers_t), EB_N_PTR);
+    EB_MALLOC(EbTransQuantBuffers*, context_ptr->trans_quant_buffers_ptr, sizeof(EbTransQuantBuffers), EB_N_PTR);
 
 
-    return_error = EbTransQuantBuffersCtor(
+    return_error = eb_trans_quant_buffers_ctor(
         context_ptr->trans_quant_buffers_ptr);
 
     if (return_error == EB_ErrorInsufficientResources) {
         return EB_ErrorInsufficientResources;
     }
     // Cost Arrays
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbModeDecisionProcess.c
 #if INTRA_INTER_FAST_LOOP
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbModeDecisionProcess.c
     // Hsan: MAX_NFL + 1 scratch buffer for intra + 1 scratch buffer for inter
     EB_MALLOC(uint64_t*, context_ptr->fast_cost_array, sizeof(uint64_t) * (MAX_NFL + 1 + 1), EB_N_PTR);
     EB_MALLOC(uint64_t*, context_ptr->full_cost_array, sizeof(uint64_t) * (MAX_NFL + 1 + 1), EB_N_PTR);
     EB_MALLOC(uint64_t*, context_ptr->full_cost_skip_ptr, sizeof(uint64_t) * (MAX_NFL + 1 + 1), EB_N_PTR);
     EB_MALLOC(uint64_t*, context_ptr->full_cost_merge_ptr, sizeof(uint64_t) * (MAX_NFL + 1 + 1), EB_N_PTR);
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbModeDecisionProcess.c
     // Candidate Buffers
     EB_MALLOC(ModeDecisionCandidateBuffer_t**, context_ptr->candidate_buffer_ptr_array, sizeof(ModeDecisionCandidateBuffer_t*) * (MAX_NFL + 1 + 1), EB_N_PTR);
 
@@ -76,9 +81,14 @@ EbErrorType mode_decision_context_ctor(
 
     EB_MALLOC(uint64_t*, context_ptr->full_cost_merge_ptr, sizeof(uint64_t) * MODE_DECISION_CANDIDATE_BUFFER_MAX_COUNT, EB_N_PTR);
 
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbModeDecisionProcess.c
     // Candidate Buffers
-    EB_MALLOC(ModeDecisionCandidateBuffer_t**, context_ptr->candidate_buffer_ptr_array, sizeof(ModeDecisionCandidateBuffer_t*) * MODE_DECISION_CANDIDATE_BUFFER_MAX_COUNT, EB_N_PTR);
+    EB_MALLOC(ModeDecisionCandidateBuffer_t**, context_ptr->candidate_buffer_ptr_array, sizeof(ModeDecisionCandidateBuffer_t*) * (MAX_NFL + 1 + 1), EB_N_PTR);
 
+    for (bufferIndex = 0; bufferIndex < (MAX_NFL + 1 + 1); ++bufferIndex) {
+
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbModeDecisionProcess.c
     for (bufferIndex = 0; bufferIndex < MODE_DECISION_CANDIDATE_BUFFER_MAX_COUNT; ++bufferIndex) {
 #endif
         return_error = mode_decision_candidate_buffer_ctor(
@@ -87,6 +97,10 @@ EbErrorType mode_decision_context_ctor(
             SB_STRIDE_Y,
             EB_8BIT,
 #endif
+=======
+        return_error = mode_decision_candidate_buffer_ctor(
+            &(context_ptr->candidate_buffer_ptr_array[bufferIndex]),
+>>>>>>> master:Source/Lib/Common/Codec/EbModeDecisionProcess.c
             &(context_ptr->fast_cost_array[bufferIndex]),
             &(context_ptr->full_cost_array[bufferIndex]),
             &(context_ptr->full_cost_skip_ptr[bufferIndex]),
@@ -100,6 +114,7 @@ EbErrorType mode_decision_context_ctor(
     // Inter Prediction Context
     return_error = inter_prediction_context_ctor(
         &context_ptr->inter_prediction_context,
+        color_format,
         SB_STRIDE_Y,
         SB_STRIDE_Y);
     if (return_error == EB_ErrorInsufficientResources) {
@@ -138,6 +153,7 @@ EbErrorType mode_decision_context_ctor(
             initData.maxWidth = SB_STRIDE_Y;
             initData.maxHeight = SB_STRIDE_Y;
             initData.bit_depth = EB_32BIT;
+            initData.color_format = EB_YUV420;
             initData.left_padding = 0;
             initData.right_padding = 0;
             initData.top_padding = 0;
@@ -156,6 +172,7 @@ EbErrorType mode_decision_context_ctor(
             initData.maxWidth = SB_STRIDE_Y;
             initData.maxHeight = SB_STRIDE_Y;
             initData.bit_depth = EB_8BIT;
+            initData.color_format = EB_YUV420;
             initData.left_padding = 0;
             initData.right_padding = 0;
             initData.top_padding = 0;
@@ -368,7 +385,7 @@ const EB_AV1_LAMBDA_ASSIGN_FUNC av1_lambda_assignment_function_table[4] = {
 void reset_mode_decision(
     ModeDecisionContext_t   *context_ptr,
     PictureControlSet_t     *picture_control_set_ptr,
-    SequenceControlSet_t    *sequence_control_set_ptr,
+    SequenceControlSet    *sequence_control_set_ptr,
     uint32_t                   segment_index)
 {
     EB_SLICE                     slice_type;
@@ -385,11 +402,7 @@ void reset_mode_decision(
 #endif
     // Asuming cb and cr offset to be the same for chroma QP in both slice and pps for lambda computation
     context_ptr->chroma_qp = context_ptr->qp;
-#if NEW_QPS
     context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
-#else
-    context_ptr->qp_index = quantizer_to_qindex[context_ptr->qp];
-#endif
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
         &context_ptr->full_lambda,
@@ -397,6 +410,7 @@ void reset_mode_decision(
         &context_ptr->full_chroma_lambda,
         (uint8_t)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr->bit_depth,
         context_ptr->qp_index);
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbModeDecisionProcess.c
 #if !INTRA_INTER_FAST_LOOP
     // Configure the number of candidate buffers to search at each depth
 
@@ -436,6 +450,8 @@ void reset_mode_decision(
     context_ptr->buffer_depth_index_width[4] = 5;
 #endif
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbModeDecisionProcess.c
     // Slice Type
     slice_type =
         (picture_control_set_ptr->parent_pcs_ptr->idr_flag == EB_TRUE) ? I_SLICE :
@@ -463,9 +479,9 @@ void reset_mode_decision(
 
     // TMVP Map Writer pointer
     if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-        context_ptr->reference_object_write_ptr = (EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
+        context_ptr->reference_object_write_ptr = (EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
     else
-        context_ptr->reference_object_write_ptr = (EbReferenceObject_t*)EB_NULL;
+        context_ptr->reference_object_write_ptr = (EbReferenceObject*)EB_NULL;
 
     // Reset CABAC Contexts
     context_ptr->coeff_est_entropy_coder_ptr = picture_control_set_ptr->coeff_est_entropy_coder_ptr;
@@ -498,7 +514,7 @@ void ModeDecisionConfigureLcu(
     ModeDecisionContext_t   *context_ptr,
     LargestCodingUnit_t     *sb_ptr,
     PictureControlSet_t     *picture_control_set_ptr,
-    SequenceControlSet_t    *sequence_control_set_ptr,
+    SequenceControlSet    *sequence_control_set_ptr,
     uint8_t                    picture_qp,
     uint8_t                    sb_qp){
 
@@ -522,11 +538,7 @@ void ModeDecisionConfigureLcu(
     /* Note(CHKN) : when Qp modulation varies QP on a sub-LCU(CU) basis,  Lamda has to change based on Cu->QP , and then this code has to move inside the CU loop in MD */
 
     // Lambda Assignement
-#if NEW_QPS
     context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
-#else
-    context_ptr->qp_index = quantizer_to_qindex[context_ptr->qp];
-#endif
 
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,

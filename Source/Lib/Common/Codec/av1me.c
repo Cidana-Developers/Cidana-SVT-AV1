@@ -13,7 +13,10 @@
 #include <math.h>
 #include <stdio.h>
 #include "EbDefinitions.h"
+<<<<<<< HEAD
 #if ICOPY
+=======
+>>>>>>> master
 #include "EbCodingUnit.h"
 #include "av1me.h"
 #include "EbPictureControlSet.h"
@@ -106,6 +109,7 @@ int av1_refining_search_sad(IntraBcContext  *x, MV *ref_mv, int error_per_bit,
     const aom_variance_fn_ptr_t *fn_ptr,
     const MV *center_mv);
 
+<<<<<<< HEAD
 #if !(AOM_SAD_PORTING)
 
 /* Sum the difference between every corresponding element of the buffers. */
@@ -323,6 +327,8 @@ VAR(64, 16)
 
 #endif //!(AOM_SAD_PORTING)
 
+=======
+>>>>>>> master
 aom_variance_fn_ptr_t mefn_ptr[BlockSizeS_ALL];
 
 void init_fn_ptr(void)
@@ -332,7 +338,10 @@ void init_fn_ptr(void)
   mefn_ptr[BT].vf = VF;                                      \
   mefn_ptr[BT].sdx4df = SDX4DF;
 
+<<<<<<< HEAD
 #if AOM_SAD_PORTING
+=======
+>>>>>>> master
         BFP0(BLOCK_4X16, aom_sad4x16, aom_variance4x16, aom_sad4x16x4d)
         BFP0(BLOCK_16X4, aom_sad16x4, aom_variance16x4, aom_sad16x4x4d)
         BFP0(BLOCK_8X32, aom_sad8x32, aom_variance8x32, aom_sad8x32x4d)
@@ -355,6 +364,7 @@ void init_fn_ptr(void)
         BFP0(BLOCK_8X4, aom_sad8x4, aom_variance8x4, aom_sad8x4x4d)
         BFP0(BLOCK_4X8, aom_sad4x8, aom_variance4x8, aom_sad4x8x4d)
         BFP0(BLOCK_4X4, aom_sad4x4, aom_variance4x4, aom_sad4x4x4d)
+<<<<<<< HEAD
 #else
        BFP0(BLOCK_4X16, aom_sad4x16_c, aom_variance4x16_c, aom_sad4x16x4d_c)
 
@@ -401,6 +411,8 @@ void init_fn_ptr(void)
        BFP0(BLOCK_4X4, aom_sad4x4_c, aom_variance4x4_c, aom_sad4x4x4d_c)
 
 #endif
+=======
+>>>>>>> master
 }
 
 
@@ -986,6 +998,7 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
     UNUSED (var_max);
     UNUSED (rd);
 
+<<<<<<< HEAD
 #if IBC_MODES
     int32_t ibc_shift = 0;
     if (pcs->parent_pcs_ptr->ibc_mode > 0)
@@ -998,6 +1011,14 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
 #else
   const SPEED_FEATURES *const sf = &pcs->sf;
 #endif
+=======
+    int32_t ibc_shift = 0;
+    if (pcs->parent_pcs_ptr->ibc_mode > 0)
+        ibc_shift = 1;
+
+    SPEED_FEATURES * sf = &pcs->sf;
+    sf->exhaustive_searches_thresh = (1 << 25);
+>>>>>>> master
   const aom_variance_fn_ptr_t *fn_ptr = &mefn_ptr[bsize];
   int var = 0;
 
@@ -1038,16 +1059,23 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
                                MAX_MVSEARCH_STEPS - 1 - step_param, 1,
                                cost_list, fn_ptr, ref_mv);
 
+<<<<<<< HEAD
 #if IBC_EARLY_0
+=======
+>>>>>>> master
       if (x->is_exhaustive_allowed)
       {
           int exhuastive_thr = sf->exhaustive_searches_thresh;
           exhuastive_thr >>=
               10 - (mi_size_wide_log2[bsize] + mi_size_high_log2[bsize]);
 
+<<<<<<< HEAD
 #if IBC_MODES
           exhuastive_thr = exhuastive_thr << ibc_shift;
 #endif
+=======
+          exhuastive_thr = exhuastive_thr << ibc_shift;
+>>>>>>> master
 
           if (var > exhuastive_thr)
           {
@@ -1063,6 +1091,7 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
               }
           }
       }
+<<<<<<< HEAD
 #else
 
       // Should we allow a follow on exhaustive search?
@@ -1088,10 +1117,13 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
         }
       }
 #endif
+=======
+>>>>>>> master
       break;
     default: assert(0 && "Invalid search method.");
   }
 
+<<<<<<< HEAD
 #if !IBC_EARLY_0 
 
   // Should we allow a follow on exhaustive search?
@@ -1125,6 +1157,8 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
     var = av1_get_mvpred_var(x, &x->best_mv.as_mv, ref_mv, fn_ptr, 1);
 
 #endif
+=======
+>>>>>>> master
 
   do {
     //CHKN if (!intra || !av1_use_hash_me(&cpi->common)) break;
@@ -1197,4 +1231,7 @@ int av1_full_pixel_search(PictureControlSet_t *pcs, IntraBcContext  *x, block_si
   return 0;//CHKN  var;
 }
 
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> master

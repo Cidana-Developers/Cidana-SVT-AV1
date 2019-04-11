@@ -16,7 +16,6 @@
 
 #include <stdlib.h>
 #include "EbDefinitions.h"
-#if FILT_PROC
 #include "EbRestProcess.h"
 #include "EbEncDecResults.h"
 
@@ -27,18 +26,18 @@
 
 void ReconOutput(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr);
+    SequenceControlSet   *sequence_control_set_ptr);
 void av1_loop_restoration_filter_frame(Yv12BufferConfig *frame,
     Av1Common *cm, int32_t optimized_lr);
 void CopyStatisticsToRefObject(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr);
+    SequenceControlSet   *sequence_control_set_ptr);
 void PsnrCalculations(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr);
+    SequenceControlSet   *sequence_control_set_ptr);
 void PadRefAndSetFlags(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr);
+    SequenceControlSet   *sequence_control_set_ptr);
 void generate_padding(
     EbByte              src_pic,
     uint32_t            src_stride,
@@ -46,32 +45,32 @@ void generate_padding(
     uint32_t            original_src_height,
     uint32_t            padding_width,
     uint32_t            padding_height);
-#if REST_M
 void restoration_seg_search(
-    RestContext_t          *context_ptr,
+    RestContext          *context_ptr,
     Yv12BufferConfig       *org_fts,
     const Yv12BufferConfig *src,
     Yv12BufferConfig       *trial_frame_rst,
     PictureControlSet_t    *pcs_ptr,
     uint32_t                segment_index);
 void rest_finish_search(Macroblock *x, Av1Common *const cm);
-#endif
+
 /******************************************************
  * Rest Context Constructor
  ******************************************************/
 EbErrorType rest_context_ctor(
-    RestContext_t **context_dbl_ptr,
-    EbFifo_t                *rest_input_fifo_ptr,
-    EbFifo_t                *rest_output_fifo_ptr ,
-    EbFifo_t                *picture_demux_fifo_ptr,
+    RestContext **context_dbl_ptr,
+    EbFifo                *rest_input_fifo_ptr,
+    EbFifo                *rest_output_fifo_ptr ,
+    EbFifo                *picture_demux_fifo_ptr,
     EbBool                  is16bit,
+    EbColorFormat           color_format,
     uint32_t                max_input_luma_width,
     uint32_t                max_input_luma_height
    )
 {
     EbErrorType return_error = EB_ErrorNone;
-    RestContext_t *context_ptr;
-    EB_MALLOC(RestContext_t*, context_ptr, sizeof(RestContext_t), EB_N_PTR);
+    RestContext *context_ptr;
+    EB_MALLOC(RestContext*, context_ptr, sizeof(RestContext), EB_N_PTR);
     *context_dbl_ptr = context_ptr;
 
     // Input/Output System Resource Manager FIFOs
@@ -87,6 +86,7 @@ EbErrorType rest_context_ctor(
         initData.maxWidth = (uint16_t)max_input_luma_width;
         initData.maxHeight = (uint16_t)max_input_luma_height;
         initData.bit_depth = is16bit ? EB_16BIT : EB_8BIT;
+        initData.color_format = color_format;
         initData.left_padding = AOM_BORDER_IN_PIXELS;
         initData.right_padding = AOM_BORDER_IN_PIXELS;
         initData.top_padding = AOM_BORDER_IN_PIXELS;
@@ -101,13 +101,12 @@ EbErrorType rest_context_ctor(
             return EB_ErrorInsufficientResources;
         }
 
-#if REST_M
          return_error = eb_picture_buffer_desc_ctor(
             (EbPtr*)&context_ptr->org_rec_frame,
                 (EbPtr)&initData);
 
          EB_MALLOC(int32_t *, context_ptr->rst_tmpbuf, RESTORATION_TMPBUF_SIZE, EB_N_PTR);
-#endif
+
 
     }
 
@@ -124,6 +123,7 @@ EbErrorType rest_context_ctor(
     tempLfReconDescInitData.bot_padding = PAD_VALUE;
 
     tempLfReconDescInitData.splitMode = EB_FALSE;
+    tempLfReconDescInitData.color_format = color_format;
 
     if (is16bit) {
         tempLfReconDescInitData.bit_depth = EB_16BIT;
@@ -141,17 +141,16 @@ EbErrorType rest_context_ctor(
 
     return EB_ErrorNone;
 }
-#if REST_M
 void   get_own_recon(
-    SequenceControlSet_t                    *sequence_control_set_ptr,
+    SequenceControlSet                    *sequence_control_set_ptr,
     PictureControlSet_t                     *picture_control_set_ptr,
-    RestContext_t                            *context_ptr,
+    RestContext                            *context_ptr,
     EbBool  is16bit)
 {
     EbPictureBufferDesc_t  * recon_picture_ptr;
     if (is16bit) {
         if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-            recon_picture_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
+            recon_picture_ptr = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit;
         else
             recon_picture_ptr = picture_control_set_ptr->recon_picture16bit_ptr;
 
@@ -175,7 +174,7 @@ void   get_own_recon(
     }
     else {
         if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-            recon_picture_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+            recon_picture_ptr = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
         else
             recon_picture_ptr = picture_control_set_ptr->recon_picture_ptr;
 
@@ -198,7 +197,7 @@ void   get_own_recon(
         }
     }
 }
-#endif
+
 
 /******************************************************
  * Rest Kernel
@@ -206,18 +205,18 @@ void   get_own_recon(
 void* rest_kernel(void *input_ptr)
 {
     // Context & SCS & PCS
-    RestContext_t                            *context_ptr = (RestContext_t*)input_ptr;
+    RestContext                            *context_ptr = (RestContext*)input_ptr;
     PictureControlSet_t                     *picture_control_set_ptr;
-    SequenceControlSet_t                    *sequence_control_set_ptr;
+    SequenceControlSet                    *sequence_control_set_ptr;
 
     //// Input
-    EbObjectWrapper_t                       *cdef_results_wrapper_ptr;
+    EbObjectWrapper                       *cdef_results_wrapper_ptr;
     CdefResults_t                         *cdef_results_ptr;
 
     //// Output
-    EbObjectWrapper_t                       *rest_results_wrapper_ptr;
+    EbObjectWrapper                       *rest_results_wrapper_ptr;
     RestResults_t*                          rest_results_ptr;
-    EbObjectWrapper_t                       *picture_demux_results_wrapper_ptr;
+    EbObjectWrapper                       *picture_demux_results_wrapper_ptr;
     PictureDemuxResults_t                   *picture_demux_results_rtr;
     // SB Loop variables
 
@@ -231,18 +230,21 @@ void* rest_kernel(void *input_ptr)
 
         cdef_results_ptr = (CdefResults_t*)cdef_results_wrapper_ptr->object_ptr;
         picture_control_set_ptr = (PictureControlSet_t*)cdef_results_ptr->picture_control_set_wrapper_ptr->object_ptr;
-        sequence_control_set_ptr = (SequenceControlSet_t*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+        sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
         uint8_t lcuSizeLog2 = (uint8_t)Log2f(sequence_control_set_ptr->sb_size_pix);
         EbBool  is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
         Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
 
-#if  REST_M
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbRestProcess.c
 #if ICOPY
         if (sequence_control_set_ptr->enable_restoration && picture_control_set_ptr->parent_pcs_ptr->allow_intrabc == 0)
 #else
         if (sequence_control_set_ptr->enable_restoration)
 #endif
+=======
+        if (sequence_control_set_ptr->enable_restoration && picture_control_set_ptr->parent_pcs_ptr->allow_intrabc == 0)
+>>>>>>> master:Source/Lib/Common/Codec/EbRestProcess.c
         {
             get_own_recon(sequence_control_set_ptr, picture_control_set_ptr, context_ptr, is16bit);
 
@@ -276,6 +278,7 @@ void* rest_kernel(void *input_ptr)
         picture_control_set_ptr->tot_seg_searched_rest++;
         if (picture_control_set_ptr->tot_seg_searched_rest == picture_control_set_ptr->rest_segments_total_count)
         {
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbRestProcess.c
 
 #endif
 
@@ -312,16 +315,12 @@ void* rest_kernel(void *input_ptr)
 
 
 #if REST_M
+=======
+            if (sequence_control_set_ptr->enable_restoration && picture_control_set_ptr->parent_pcs_ptr->allow_intrabc == 0) {
+>>>>>>> master:Source/Lib/Common/Codec/EbRestProcess.c
                 rest_finish_search(
                     picture_control_set_ptr->parent_pcs_ptr->av1x,
                     picture_control_set_ptr->parent_pcs_ptr->av1_cm);
-#else
-                av1_pick_filter_restoration(
-                    &cpi_source,
-                    &trial_frame_rst,
-                    picture_control_set_ptr->parent_pcs_ptr->av1x,
-                    picture_control_set_ptr->parent_pcs_ptr->av1_cm);
-#endif
 
                 if (cm->rst_info[0].frame_restoration_type != RESTORE_NONE ||
                     cm->rst_info[1].frame_restoration_type != RESTORE_NONE ||
@@ -339,7 +338,6 @@ void* rest_kernel(void *input_ptr)
                 cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
             }
 
-#if FAST_SG
             uint8_t best_ep_cnt = 0;
             uint8_t best_ep = 0;
             for (uint8_t i = 0; i < SGRPROJ_PARAMS; i++) {
@@ -349,7 +347,7 @@ void* rest_kernel(void *input_ptr)
                 }
             }
             cm->sg_frame_ep = best_ep;
-#endif
+
 
             if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
                 // copy stat to ref object (intra_coded_area, Luminance, Scene change detection flags)
@@ -378,8 +376,8 @@ void* rest_kernel(void *input_ptr)
                 const uint32_t  SrccbOffset = (input_picture_ptr->origin_x >> 1) + (input_picture_ptr->origin_y >> 1)*input_picture_ptr->strideCb;
                 const uint32_t  SrccrOffset = (input_picture_ptr->origin_x >> 1) + (input_picture_ptr->origin_y >> 1)*input_picture_ptr->strideCr;
 
-                EbReferenceObject_t   *referenceObject = (EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
-                EbPictureBufferDesc_t *refDenPic = referenceObject->refDenSrcPicture;
+                EbReferenceObject   *referenceObject = (EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
+                EbPictureBufferDesc_t *refDenPic = referenceObject->ref_den_src_picture;
                 const uint32_t           ReflumaOffSet = refDenPic->origin_x + refDenPic->origin_y    *refDenPic->stride_y;
                 const uint32_t           RefcbOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCb;
                 const uint32_t           RefcrOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCr;
@@ -466,10 +464,8 @@ void* rest_kernel(void *input_ptr)
             // Post Rest Results
             eb_post_full_object(rest_results_wrapper_ptr);
 
-#if REST_M
         }
         eb_release_mutex(picture_control_set_ptr->rest_search_mutex);
-#endif
 
 
         // Release input Results
@@ -479,4 +475,3 @@ void* rest_kernel(void *input_ptr)
 
     return EB_NULL;
 }
-#endif

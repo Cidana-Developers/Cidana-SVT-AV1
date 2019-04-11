@@ -146,40 +146,6 @@ void neighbor_array_unit_reset(NeighborArrayUnit_t *na_unit_ptr)
 
 
 /*************************************************
- * Neighbor Array Unit Get Left Index
- *************************************************/
-uint32_t get_neighbor_array_unit_left_index32(
-    NeighborArrayUnit32_t *na_unit_ptr,
-    uint32_t               loc_y)
-{
-    return (loc_y >> na_unit_ptr->granularityNormalLog2);
-}
-
-uint32_t get_neighbor_array_unit_left_index(
-    NeighborArrayUnit_t *na_unit_ptr,
-    uint32_t               loc_y)
-{
-    return (loc_y >> na_unit_ptr->granularityNormalLog2);
-}
-
-/*************************************************
- * Neighbor Array Unit Get Top Index
- *************************************************/
-uint32_t get_neighbor_array_unit_top_index32(
-    NeighborArrayUnit32_t *na_unit_ptr,
-    uint32_t               loc_x)
-{
-    return (loc_x >> na_unit_ptr->granularityNormalLog2);
-}
-
-uint32_t get_neighbor_array_unit_top_index(
-    NeighborArrayUnit_t *na_unit_ptr,
-    uint32_t               loc_x)
-{
-    return (loc_x >> na_unit_ptr->granularityNormalLog2);
-}
-
-/*************************************************
  * Neighbor Array Unit Get Top Index
  *************************************************/
 uint32_t GetNeighborArrayUnitTopLeftIndex32(
@@ -214,22 +180,14 @@ void update_recon_neighbor_array(
         get_neighbor_array_unit_top_index(
             na_unit_ptr,
             pic_origin_x) * na_unit_ptr->unit_size;
-#if OPT_MEMCPY
     EB_MEMCPY(dst_ptr, src_ptr_top, block_width);
-#else
-    memcpy(dst_ptr, src_ptr_top, block_width);
-#endif
 
 
     dst_ptr = na_unit_ptr->leftArray +
         get_neighbor_array_unit_left_index(
             na_unit_ptr,
             pic_origin_y) * na_unit_ptr->unit_size;
-#if OPT_MEMCPY
     EB_MEMCPY(dst_ptr, src_ptr_left, block_height);
-#else
-    memcpy(dst_ptr, src_ptr_left, block_height);
-#endif
 
 
     //na_unit_ptr->topLeftArray[ (MAX_PICTURE_HEIGHT_SIZE>>is_chroma) + pic_origin_x - pic_origin_y] = srcPtr2[block_height-1];
@@ -789,7 +747,7 @@ void neighbor_array_unit_mode_write(
     uint32_t               block_height,
     uint32_t               neighbor_array_type_mask)
 {
-    uint32_t idx;
+    uint32_t idx, j;
     uint8_t  *dst_ptr;
 
     uint32_t count;
@@ -825,8 +783,9 @@ void neighbor_array_unit_mode_write(
         count = block_width >> na_unit_ptr->granularityNormalLog2;
 
         for (idx = 0; idx < count; ++idx) {
-
-            EB_MEMCPY(dst_ptr, value, naUnitSize);
+            /* memcpy less that 10 bytes*/
+            for (j = 0; j < naUnitSize; ++j)
+                dst_ptr[j] = value[j];
 
             dst_ptr += naUnitSize;
         }
@@ -860,8 +819,9 @@ void neighbor_array_unit_mode_write(
         count = block_height >> na_unit_ptr->granularityNormalLog2;
 
         for (idx = 0; idx < count; ++idx) {
-
-            EB_MEMCPY(dst_ptr, value, naUnitSize);
+            /* memcpy less that 10 bytes*/
+            for (j = 0; j < naUnitSize; ++j)
+                dst_ptr[j] = value[j];
 
             dst_ptr += naUnitSize;
         }
@@ -901,8 +861,9 @@ void neighbor_array_unit_mode_write(
         count = ((block_width + block_height) >> na_unit_ptr->granularityTopLeftLog2) - 1;
 
         for (idx = 0; idx < count; ++idx) {
-
-            EB_MEMCPY(dst_ptr, value, naUnitSize);
+            /* memcpy less that 10 bytes*/
+            for (j = 0; j < naUnitSize; ++j)
+                dst_ptr[j] = value[j];
 
             dst_ptr += naUnitSize;
         }

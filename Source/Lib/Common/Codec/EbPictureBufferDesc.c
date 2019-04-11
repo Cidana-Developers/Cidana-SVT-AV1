@@ -33,6 +33,7 @@ EbErrorType eb_picture_buffer_desc_ctor(
     EbPictureBufferDescInitData_t  *pictureBufferDescInitDataPtr = (EbPictureBufferDescInitData_t*)object_init_data_ptr;
 
     uint32_t bytesPerPixel = (pictureBufferDescInitDataPtr->bit_depth == EB_8BIT) ? 1 : (pictureBufferDescInitDataPtr->bit_depth <= EB_16BIT) ? 2 : 4;
+    const uint16_t subsampling_x = (pictureBufferDescInitDataPtr->color_format == EB_YUV444 ? 1 : 2) - 1;
 
     if (pictureBufferDescInitDataPtr->bit_depth > EB_8BIT && pictureBufferDescInitDataPtr->bit_depth <= EB_16BIT && pictureBufferDescInitDataPtr->splitMode == EB_TRUE)
         bytesPerPixel = 1;
@@ -48,14 +49,15 @@ EbErrorType eb_picture_buffer_desc_ctor(
     pictureBufferDescPtr->width = pictureBufferDescInitDataPtr->maxWidth;
     pictureBufferDescPtr->height = pictureBufferDescInitDataPtr->maxHeight;
     pictureBufferDescPtr->bit_depth = pictureBufferDescInitDataPtr->bit_depth;
+    pictureBufferDescPtr->color_format = pictureBufferDescInitDataPtr->color_format;
     pictureBufferDescPtr->stride_y = pictureBufferDescInitDataPtr->maxWidth + pictureBufferDescInitDataPtr->left_padding + pictureBufferDescInitDataPtr->right_padding;
-    pictureBufferDescPtr->strideCb = pictureBufferDescPtr->strideCr = pictureBufferDescPtr->stride_y >> 1;
+    pictureBufferDescPtr->strideCb = pictureBufferDescPtr->strideCr = pictureBufferDescPtr->stride_y >> subsampling_x;
     pictureBufferDescPtr->origin_x = pictureBufferDescInitDataPtr->left_padding;
     pictureBufferDescPtr->origin_y = pictureBufferDescInitDataPtr->top_padding;
 
     pictureBufferDescPtr->lumaSize = (pictureBufferDescInitDataPtr->maxWidth + pictureBufferDescInitDataPtr->left_padding + pictureBufferDescInitDataPtr->right_padding) *
         (pictureBufferDescInitDataPtr->maxHeight + pictureBufferDescInitDataPtr->top_padding + pictureBufferDescInitDataPtr->bot_padding);
-    pictureBufferDescPtr->chromaSize = pictureBufferDescPtr->lumaSize >> 2;
+    pictureBufferDescPtr->chromaSize = pictureBufferDescPtr->lumaSize >> (3 - pictureBufferDescInitDataPtr->color_format);
     pictureBufferDescPtr->packedFlag = EB_FALSE;
 
     if (pictureBufferDescInitDataPtr->splitMode == EB_TRUE) {
@@ -137,6 +139,7 @@ EbErrorType eb_recon_picture_buffer_desc_ctor(
 {
     EbPictureBufferDesc_t          *pictureBufferDescPtr;
     EbPictureBufferDescInitData_t  *pictureBufferDescInitDataPtr = (EbPictureBufferDescInitData_t*)object_init_data_ptr;
+    const uint16_t subsampling_x = (pictureBufferDescInitDataPtr->color_format == EB_YUV444 ? 1 : 2) - 1;
 
     uint32_t bytesPerPixel = (pictureBufferDescInitDataPtr->bit_depth == EB_8BIT) ? 1 : 2;
 
@@ -151,14 +154,15 @@ EbErrorType eb_recon_picture_buffer_desc_ctor(
     pictureBufferDescPtr->width = pictureBufferDescInitDataPtr->maxWidth;
     pictureBufferDescPtr->height = pictureBufferDescInitDataPtr->maxHeight;
     pictureBufferDescPtr->bit_depth = pictureBufferDescInitDataPtr->bit_depth;
+    pictureBufferDescPtr->color_format = pictureBufferDescInitDataPtr->color_format;
     pictureBufferDescPtr->stride_y = pictureBufferDescInitDataPtr->maxWidth + pictureBufferDescInitDataPtr->left_padding + pictureBufferDescInitDataPtr->right_padding;
-    pictureBufferDescPtr->strideCb = pictureBufferDescPtr->strideCr = pictureBufferDescPtr->stride_y >> 1;
+    pictureBufferDescPtr->strideCb = pictureBufferDescPtr->strideCr = pictureBufferDescPtr->stride_y >> subsampling_x;
     pictureBufferDescPtr->origin_x = pictureBufferDescInitDataPtr->left_padding;
     pictureBufferDescPtr->origin_y = pictureBufferDescInitDataPtr->top_padding;
 
     pictureBufferDescPtr->lumaSize = (pictureBufferDescInitDataPtr->maxWidth + pictureBufferDescInitDataPtr->left_padding + pictureBufferDescInitDataPtr->right_padding) *
         (pictureBufferDescInitDataPtr->maxHeight + pictureBufferDescInitDataPtr->top_padding + pictureBufferDescInitDataPtr->bot_padding);
-    pictureBufferDescPtr->chromaSize = pictureBufferDescPtr->lumaSize >> 2;
+    pictureBufferDescPtr->chromaSize = pictureBufferDescPtr->lumaSize >> (3 - pictureBufferDescInitDataPtr->color_format);
     pictureBufferDescPtr->packedFlag = EB_FALSE;
 
     pictureBufferDescPtr->strideBitIncY = 0;
@@ -198,7 +202,10 @@ EbErrorType eb_recon_picture_buffer_desc_ctor(
 
     return EB_ErrorNone;
 }
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbPictureBufferDesc.c
 #if ICOPY_10B
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbPictureBufferDesc.c
 void link_Eb_to_aom_buffer_desc_8bit(
     EbPictureBufferDesc_t          *picBuffDsc,
     Yv12BufferConfig             *aomBuffDsc
@@ -210,6 +217,7 @@ void link_Eb_to_aom_buffer_desc_8bit(
         aomBuffDsc->y_buffer = picBuffDsc->buffer_y + picBuffDsc->origin_x + (picBuffDsc->origin_y     * picBuffDsc->stride_y);
         aomBuffDsc->u_buffer = picBuffDsc->bufferCb + picBuffDsc->origin_x / 2 + (picBuffDsc->origin_y / 2 * picBuffDsc->strideCb);
         aomBuffDsc->v_buffer = picBuffDsc->bufferCr + picBuffDsc->origin_x / 2 + (picBuffDsc->origin_y / 2 * picBuffDsc->strideCb);
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbPictureBufferDesc.c
 
         aomBuffDsc->y_width = picBuffDsc->width;
         aomBuffDsc->uv_width = picBuffDsc->width / 2;
@@ -222,6 +230,20 @@ void link_Eb_to_aom_buffer_desc_8bit(
 
         aomBuffDsc->border = picBuffDsc->origin_x;
 
+=======
+
+        aomBuffDsc->y_width = picBuffDsc->width;
+        aomBuffDsc->uv_width = picBuffDsc->width / 2;
+
+        aomBuffDsc->y_height = picBuffDsc->height;
+        aomBuffDsc->uv_height = picBuffDsc->height / 2;
+
+        aomBuffDsc->y_stride = picBuffDsc->stride_y;
+        aomBuffDsc->uv_stride = picBuffDsc->strideCb;
+
+        aomBuffDsc->border = picBuffDsc->origin_x;
+
+>>>>>>> master:Source/Lib/Common/Codec/EbPictureBufferDesc.c
         aomBuffDsc->subsampling_x = 1;
         aomBuffDsc->subsampling_y = 1;
 
@@ -233,8 +255,13 @@ void link_Eb_to_aom_buffer_desc_8bit(
         aomBuffDsc->flags = 0;
     }
 }
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbPictureBufferDesc.c
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbPictureBufferDesc.c
 
+//Jing: TODO
+//Change here later
 void LinkEbToAomBufferDesc(
     EbPictureBufferDesc_t          *picBuffDsc,
     Yv12BufferConfig             *aomBuffDsc

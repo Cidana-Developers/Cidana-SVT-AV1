@@ -85,7 +85,7 @@ extern "C" {
         return EB_ErrorInsufficientResources; \
     } \
     else { \
-        memory_map[*(memory_map_index)].ptrType = pointer_class; \
+        memory_map[*(memory_map_index)].ptr_type = pointer_class; \
         memory_map[(*(memory_map_index))++].ptr = pointer; \
         if (n_elements % 8 == 0) { \
             *total_lib_memory += (n_elements); \
@@ -121,7 +121,27 @@ extern    cpu_set_t                   group_affinity;
     } \
    else { \
         pthread_setaffinity_np(*((pthread_t*)pointer),sizeof(cpu_set_t),&group_affinity); \
-        memory_map[*(memory_map_index)].ptrType = pointer_class; \
+        memory_map[*(memory_map_index)].ptr_type = pointer_class; \
+        memory_map[(*(memory_map_index))++].ptr = pointer; \
+        if (n_elements % 8 == 0) { \
+            *total_lib_memory += (n_elements); \
+        } \
+        else { \
+            *total_lib_memory += ((n_elements) + (8 - ((n_elements) % 8))); \
+        } \
+    } \
+    if (*(memory_map_index) >= MAX_NUM_PTR) { \
+        return EB_ErrorInsufficientResources; \
+    } \
+    lib_thread_count++;
+#else
+#define EB_CREATETHREAD(type, pointer, n_elements, pointer_class, thread_function, thread_context) \
+    pointer = eb_create_thread(thread_function, thread_context); \
+    if (pointer == (type)EB_NULL) { \
+        return EB_ErrorInsufficientResources; \
+    } \
+   else { \
+        memory_map[*(memory_map_index)].ptr_type = pointer_class; \
         memory_map[(*(memory_map_index))++].ptr = pointer; \
         if (n_elements % 8 == 0) { \
             *total_lib_memory += (n_elements); \

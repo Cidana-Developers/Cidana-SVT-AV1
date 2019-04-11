@@ -47,76 +47,21 @@ extern "C" {
 #define MR_MODE                                         0
 #define SHUT_FILTERING                                  0 // CDEF RESTORATION DLF
     ////
-#define MEM_RED4                                        1 //  Reduce mem allocation when DISABLE_128X128_SB is ON
-#define FILT_PROC                                       1    // New Filtering processes.
-#define CDEF_M                                          1 // multi-threaded cdef
-#define REST_M                                          1 // multi-threaded restoration
-#define REST_NEED_B                                     1 // use boundary update in restoration
-#define NEW_PRED_STRUCT                                 1 // Ability to run 5-layer prediction structure. By Default 5L is used
-#define TILES                                           1
-
-#define INTRA_CORE_OPT                                  0
-#define ENABLE_INTRA_4x4                                1 //
-#define DISABLE_NSQ                                     1 //
-#define DISABLE_128X128_SB                              0
-#define ENABLE_INTER_4x4                                0 // optional
-#define DISABLE_4xN_Nx4                                 1 //
-#define DISABLE_128x128                                 0
-#define VCI_CANDIDATE_II                                1
-
-#if VCI_CANDIDATE_II
-#define INTRA_ASM                                       1
-#define CBF_ZERO_OFF                                    1 // Remove CBF zero feature due to VQ problems
-#define TX_TYPE_FIX                                     1 // Fix the Tx Type search for Inter blocks
-#define INC_NFL                                         1 // Set NFL to 4 for all sizes and temporal layers
-#define REMOVE_INTRA_CONST                              1 // Remove the constraints for INTRA injection
 
 // ADOPTED HEVC-M0 FEATURES (Active in M0 and M1)
-#define M0_ME_QUARTER_PEL_SEARCH                        1 // F1
-#define SHUT_CBF_FL_SKIP                                1 // F2 Lossless
-#define V2_HME_ME_SR                                    1 // F3
-#define ME_64x64                                        1 // F4
-#define M0_SSD_HALF_QUARTER_PEL_BIPRED_SEARCH           1 // F7
-#define M0_64x64_32x32_HALF_QUARTER_PEL                 1 // F8
-#define IMPROVED_UNIPRED_INJECTION                      1 // F11
-#define IMPROVED_BIPRED_INJECTION                       1 // F10
-#define M0_ME_SEARCH_BASE                               1 // F13
-#define INC_NFL12                                       1 // F14
-#define AV1_UPGRADE                                     1 // Upgrade to V1.0.0
-#define INTRAD_ASM                                      1 // asm for intra directionnal modes - Z1
-#define SUPPORT_10BIT                                   1 // Support for 10 Bit encodings
-#define NEW_QPS                                         1 // New QPS based on AOM 1Pass
-#define ME_HME_OQ                                       1 // Ported ME HME from EB32 OQ
-#if SUPPORT_10BIT
-#define INTRA_10BIT_SUPPORT                             1
-#define QT_10BIT_SUPPORT                                1
-#define CDEF_10BIT_FIX                                  1
-#define RS_10BIT_FIX                                    1
-#define MD_10BIT_FIX                                    1
-#define LF_10BIT_FIX                                    1
 #define INTERPOL_FILTER_SEARCH_10BIT_SUPPORT            1
-#endif
-#define BUG_FIX                                         1 // BUG fix related to transform type
-#define LIMIT_INTRA_INJ                                 1
-#define TURN_OFF_INTERPOL_FILTER_SEARCH                 1
-#define TURN_OFF_TX_TYPE_SEARCH                         1
-#define TURN_OFF_NFL8                                   1 // Uses 8->4 NFL
-
-#define TURN_OFF_CFL                                    0 // turning CFL off is broken
-#if M0_SSD_HALF_QUARTER_PEL_BIPRED_SEARCH
 #define M0_SAD_HALF_QUARTER_PEL_BIPRED_SEARCH           1
-#endif
-#endif
-
 // NEW MACOS
 #define INTRINSIC_OPT_2                                 1 // Intrinsics opt work phase 2
 #define DIS_EDGE_FIL                                    0 // disable intra edge filter - to be removed after fixing the neigbor array for intra 4xN and Nx4
-#define DISABLE_INTRA_PRED_INTRINSIC                    0 // To be used to switch between intrinsic and C code for intra-pred
 #define USE_INLOOP_ME_FULL_SAD                          0 // To switch between full SAD and subsampled-SAD for in-loop-me subpel.
-#define NO_SUBPEL_FOR_128X128                           1 // Intrinsic is not available for 128x128 Subpel
+
+
+
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC                                       0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 #define FIX_DEBUG_CRASH                                 1
 #define FIX_47                                          1 // interdepth decision to be tedted block aware
 #define HME_ENHANCED_CENTER_SEARCH                      1
@@ -128,33 +73,59 @@ extern "C" {
 #define DISABLE_IN_LOOP_ME                              1
 #define EXTRA_ALLOCATION                                1
 #define SCS_CP_FIX                                      0 
+=======
+
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 #define ENCDEC_TX_SEARCH                                1
-#define DISABLE_ANGULAR_MODE                            0
-#define FIX_ME_SR_10BIT                                 1
 #define TEST5_DISABLE_NSQ_ME                            0
-#define DISABLE_ANGULAR_MODE_FOR_NON_REF                0
-#define INJECT_ONLY_SQ                                  1
-#define OPT_MEMCPY                                      1
-#define DISABLE_DR_REFIN                                0
+
+
+
+
+// M9 settings toward 4K 60 fps
+#define M9_SETTINGS              0
+
+#if M9_SETTINGS
+// Adopted
+#define M9_FULL_LOOP_ESCAPE      0   // Enhanced full loop escape
+#define M9_HME                   0   // VP9 4K HME, HME (L0 only 48x32)
+#define M9_ME                    0   // VP9 4K ME, ME (16x9)
+#define M9_SUBPEL_SELECTION      0
+#define M9_CU_8x8                0
+    
+#define M9_INTRA                    0
+
+// Under testing
+#define M9_FRAC_ME_SEARCH_METHOD 0   // VP9 4K fractional search method; SUB_SAD_SEARCH vs. FULL_SAD_SEARCH 
+#define M9_FRAC_ME_SEARCH_64x64  0   // VP9 4K 64x64 search; OFF vs. ON
+#define M9_SUBPEL                0   // VP9 4K subpel settings; subpel ON base
+#define M9_NFL                   0   // VP9 4K NFL settings; NFL = 3 
+#define M9_PF                    0   // VP9 4K PF settings N2 is 32x32, and non-base
+#define M9_CDEF                  0   // CDEF off
+#define M9_TX_SEARCH             0   // Tx search off
+#define M9_CHROMA                0   // VP9 4K chroma settings; shut cfl @ ep
+#define M9_ADP                   0   // VP9 4K ADP budget;  (121,110,100 but different injection) (budget = f (layer index))      
+
+#define M9_NON_UNIFORM_NFL       0   // Non-uniform NFL
+
+#define OPT_LOSSLESS             0
+#define OPT_LOSSY                0
+#endif
+
 #define CDEF_REF_ONLY                                   0 //CDEF for ref frame only
 #define REST_REF_ONLY                                   0 //REST for ref frame only
 #define REDUCE_COPY_CDEF                                1
 
-#define FAST_CDEF                                       1
-#define FAST_SG                                         1
-#define FAST_WN                                         1
-#define CHROMA_BLIND                                    1 // Added the ability to switch between three chroma modes: 1. chroma @ MD, 2. chroma blind @ MD + CFL @ EP. 3. chroma blind @ MD + no CFL @ EP
-#define CONTENT_BASED_QPS                               1 // Adaptive QP Scaling (active for I only)
-#define ADAPTIVE_DEPTH_PARTITIONING                     1 // Added the ability to switch @ SB basis between: (1) all square up to 64x64,  (2) mdc up to 64x64, (3) mdc up to 64x64 only pred, (4) mdc up to 64x64 only pred + 1 NFL
-#if ADAPTIVE_DEPTH_PARTITIONING
-#define ADP_V1                                          0      
 #define ADP_STATS_PER_LAYER                             0
-#define OPEN_LOOP_EARLY_PARTITION                       1
-#if OPEN_LOOP_EARLY_PARTITION
-#define REST_FAST_RATE_EST                              1
-#define MDC_FIX_0                                       1
-#define MDC_FIX_1                                       1
+
+
+#define M8_ADP                                          1
+#if M8_ADP
+#define FASTER_M8_ADP                                   1
 #endif
+
+#if M9_PF
+#define PF_N2_32X32                                     1
 #endif
 #define M8_ADP                                          1
 #if M8_ADP
@@ -166,6 +137,7 @@ extern "C" {
 #define PF_N2_32X32                                     0
 #define SHUT_GLOBAL_MV                                  1
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 #define REMOVED_DUPLICATE_INTER                         1
 #define REMOVED_DUPLICATE_INTER_L1                      1
 #define REMOVED_DUPLICATE_INTER_BIPRED                  1
@@ -175,13 +147,29 @@ extern "C" {
 #endif
 #define TRACK_FAST_DISTORTION                           1
 
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 
-#define USED_NFL_FEATURE_BASED                          1
-#if USED_NFL_FEATURE_BASED
 #define NFL_TX_TH                                      12 // To be tuned
 #define NFL_IT_TH                                       2 // To be tuned
+
+
+#define BASE_LAYER_REF                                  1 // Base layer pictures use the previous I slice as the second reference
+#define MAX_FRAMES_TO_REF_I                             64
+
+
+#define NSQ_TAB_SIZE                                    6
+#define NSQ_ME_OPT                                      1
+
+#define SC_HME_ME  0//use sc detector for hme/me setting
+
+#define AOM_INTERP_EXTEND 4
+#define RC                                              1 // VBR Rate control integrated from SVT-VP9
+#if RC
+#define RC_FEEDBACK                                     1 // Feedback from previous base layer is received before starting the next base layer frame
 #endif
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 #define ENABLE_PAETH                                    1
 #if !INTRA_INTER_FAST_LOOP
 #define TWO_FAST_LOOP                                   1
@@ -227,6 +215,8 @@ extern "C" {
 #define SC_HME_ME  0//use sc detector for hme/me setting
 
 #define AOM_INTERP_EXTEND 4
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 struct buf_2d {
     uint8_t *buf;
     uint8_t *buf0;
@@ -259,20 +249,13 @@ enum {
 /********************************************************/
 /****************** Pre-defined Values ******************/
 /********************************************************/
-#if  DISABLE_128X128_SB
-#define PAD_VALUE                                (64+32)
-#else
 #define PAD_VALUE                                (128+32)
-#endif
+
 
 //  Delta QP support
 #define ADD_DELTA_QP_SUPPORT                      0  // Add delta QP support - Please enable this flag and iproveSharpness (config) to test the QPM
-#if DISABLE_128X128_SB
-#define BLOCK_MAX_COUNT                           1101
-#else
 #define BLOCK_MAX_COUNT_SB_128                    4421  // TODO: reduce alloction for 64x64
 #define BLOCK_MAX_COUNT_SB_64                     1101  // TODO: reduce alloction for 64x64
-#endif
 #define MAX_TXB_COUNT                             4 // Maximum number of transform blocks.
 #define MAX_NFL                                   40
 #define MAX_LAD                                   120 // max lookahead-distance 2x60fps
@@ -602,6 +585,7 @@ typedef enum INTERPOLATION_SEARCH_LEVEL {
     IT_SEARCH_OFF,
     IT_SEARCH_INTER_DEPTH,
     IT_SEARCH_FULL_LOOP,
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 #if CHROMA_BLIND_IF_SEARCH
     IT_SEARCH_FAST_LOOP_UV_BLIND,
 #endif
@@ -620,15 +604,27 @@ typedef enum NSQ_SEARCH_LEVEL {
     NSQ_SEARCH_FULL
 } NSQ_SEARCH_LEVEL;
 #else
+=======
+    IT_SEARCH_FAST_LOOP_UV_BLIND,
+    IT_SEARCH_FAST_LOOP,
+} INTERPOLATION_SEARCH_LEVEL;
+
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 typedef enum NSQ_SEARCH_LEVEL {
     NSQ_SEARCH_OFF,
-    NSQ_SEARCH_BASE_ON_SQ_TYPE,
-    NSQ_SEARCH_BASE_ON_SQ_COEFF,
-    NSQ_INTER_SEARCH_BASE_ON_SQ_MVMODE,
-    NSQ_INTER_SEARCH_BASE_ON_SQ_INTRAMODE,
+    NSQ_SEARCH_LEVEL1,
+    NSQ_SEARCH_LEVEL2,
+    NSQ_SEARCH_LEVEL3,
+    NSQ_SEARCH_LEVEL4,
+    NSQ_SEARCH_LEVEL5,
+    NSQ_SEARCH_LEVEL6,
     NSQ_SEARCH_FULL
 } NSQ_SEARCH_LEVEL;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 #endif
+=======
+
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 #define MAX_PARENT_SQ     6
 typedef enum COMPOUND_DIST_WEIGHT_MODE {
     DIST,
@@ -1956,9 +1952,6 @@ typedef enum EB_BITFIELD_MASKS {
 #define INIT_RC_OPT_G1                    1
 #define INIT_RC_OPT_G2                    1
 #define HIST_OPT                          2 // 1 is intrinsic, 2 is C
-#if !CHROMA_BLIND
-#define INTER_DEPTH_DECISION_CHROMA_BLIND 1
-#endif
 #define ENABLE_8x8                        0
 
 #define    Log2f                              Log2f_SSE2
@@ -2284,13 +2277,17 @@ typedef enum EbPtrType {
 typedef struct EbMemoryMapEntry
 {
     EbPtr                    ptr;                       // points to a memory pointer
-    EbPtrType                ptrType;                   // pointer type
+    EbPtrType                ptr_type;                   // pointer type
 } EbMemoryMapEntry;
 
 // Rate Control
+#if RC
+#define THRESHOLD1QPINCREASE     1
+#define THRESHOLD2QPINCREASE     2
+#else
 #define THRESHOLD1QPINCREASE     0
 #define THRESHOLD2QPINCREASE     1
-
+#endif
 #define EB_IOS_POINT            uint8_t
 #define OIS_VERY_FAST_MODE       0
 #define OIS_FAST_MODE            1
@@ -2302,9 +2299,9 @@ typedef struct EbMemoryMapEntry
 // Display Total Memory at the end of the memory allocations
 #define DISPLAY_MEMORY                                  0
 
-extern    EbMemoryMapEntry        *appMemoryMap;            // App Memory table
-extern    uint32_t                  *appMemoryMapIndex;       // App Memory index
-extern    uint64_t                  *totalAppMemory;          // App Memory malloc'd
+extern    EbMemoryMapEntry        *app_memory_map;            // App Memory table
+extern    uint32_t                  *app_memory_map_index;       // App Memory index
+extern    uint64_t                  *total_app_memory;          // App Memory malloc'd
 
 extern    EbMemoryMapEntry        *memory_map;               // library Memory table
 extern    uint32_t                  *memory_map_index;          // library memory index
@@ -2315,52 +2312,52 @@ extern    uint32_t                   lib_thread_count;
 extern    uint32_t                   libSemaphoreCount;
 extern    uint32_t                   libMutexCount;
 
-extern    uint32_t                   appMallocCount;
+extern    uint32_t                   app_malloc_count;
 
-#define EB_APP_MALLOC(type, pointer, n_elements, pointer_class, returnType) \
+#define EB_APP_MALLOC(type, pointer, n_elements, pointer_class, return_type) \
 pointer = (type)malloc(n_elements); \
 if (pointer == (type)EB_NULL){ \
-    return returnType; \
+    return return_type; \
     } \
     else { \
-    appMemoryMap[*(appMemoryMapIndex)].ptrType = pointer_class; \
-    appMemoryMap[(*(appMemoryMapIndex))++].ptr = pointer; \
+    app_memory_map[*(app_memory_map_index)].ptr_type = pointer_class; \
+    app_memory_map[(*(app_memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
-        *totalAppMemory += (n_elements); \
+        *total_app_memory += (n_elements); \
             } \
             else { \
-        *totalAppMemory += ((n_elements) + (8 - ((n_elements) % 8))); \
+        *total_app_memory += ((n_elements) + (8 - ((n_elements) % 8))); \
     } \
 } \
-if (*(appMemoryMapIndex) >= MAX_APP_NUM_PTR) { \
-    return returnType; \
+if (*(app_memory_map_index) >= MAX_APP_NUM_PTR) { \
+    return return_type; \
         } \
-appMallocCount++;
+app_malloc_count++;
 
-#define EB_APP_MALLOC_NR(type, pointer, n_elements, pointer_class,returnType) \
-(void)returnType; \
+#define EB_APP_MALLOC_NR(type, pointer, n_elements, pointer_class,return_type) \
+(void)return_type; \
 pointer = (type)malloc(n_elements); \
 if (pointer == (type)EB_NULL){ \
-    returnType = EB_ErrorInsufficientResources; \
+    return_type = EB_ErrorInsufficientResources; \
     printf("Malloc has failed due to insuffucient resources"); \
     return; \
     } \
     else { \
-    appMemoryMap[*(appMemoryMapIndex)].ptrType = pointer_class; \
-    appMemoryMap[(*(appMemoryMapIndex))++].ptr = pointer; \
+    app_memory_map[*(app_memory_map_index)].ptr_type = pointer_class; \
+    app_memory_map[(*(app_memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
-        *totalAppMemory += (n_elements); \
+        *total_app_memory += (n_elements); \
             } \
             else { \
-        *totalAppMemory += ((n_elements) + (8 - ((n_elements) % 8))); \
+        *total_app_memory += ((n_elements) + (8 - ((n_elements) % 8))); \
     } \
 } \
-if (*(appMemoryMapIndex) >= MAX_APP_NUM_PTR) { \
-    returnType = EB_ErrorInsufficientResources; \
+if (*(app_memory_map_index) >= MAX_APP_NUM_PTR) { \
+    return_type = EB_ErrorInsufficientResources; \
     printf("Malloc has failed due to insuffucient resources"); \
     return; \
         } \
-appMallocCount++;
+app_malloc_count++;
 
 #define ALVALUE 32
 
@@ -2371,7 +2368,7 @@ if (pointer == (type)EB_NULL) { \
     return EB_ErrorInsufficientResources; \
     } \
     else { \
-    memory_map[*(memory_map_index)].ptrType = pointer_class; \
+    memory_map[*(memory_map_index)].ptr_type = pointer_class; \
     memory_map[(*(memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
         *total_lib_memory += (n_elements); \
@@ -2392,7 +2389,7 @@ if (posix_memalign((void**)(&(pointer)), ALVALUE, n_elements) != 0) { \
         } \
             else { \
     pointer = (type) pointer;  \
-    memory_map[*(memory_map_index)].ptrType = pointer_class; \
+    memory_map[*(memory_map_index)].ptr_type = pointer_class; \
     memory_map[(*(memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
         *total_lib_memory += (n_elements); \
@@ -2414,7 +2411,7 @@ if (pointer == (type)EB_NULL) { \
     return EB_ErrorInsufficientResources; \
     } \
     else { \
-    memory_map[*(memory_map_index)].ptrType = pointer_class; \
+    memory_map[*(memory_map_index)].ptr_type = pointer_class; \
     memory_map[(*(memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
         *total_lib_memory += (n_elements); \
@@ -2434,7 +2431,7 @@ if (pointer == (type)EB_NULL) { \
     return EB_ErrorInsufficientResources; \
 } \
 else { \
-    memory_map[*(memory_map_index)].ptrType = pointer_class; \
+    memory_map[*(memory_map_index)].ptr_type = pointer_class; \
     memory_map[(*(memory_map_index))++].ptr = pointer; \
     if (count % 8 == 0) { \
         *total_lib_memory += (count); \
@@ -2454,7 +2451,7 @@ if (pointer == (type)EB_NULL) { \
     return EB_ErrorInsufficientResources; \
 } \
 else { \
-    memory_map[*(memory_map_index)].ptrType = pointer_class; \
+    memory_map[*(memory_map_index)].ptr_type = pointer_class; \
     memory_map[(*(memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
         *total_lib_memory += (n_elements); \
@@ -2474,7 +2471,7 @@ if (pointer == (type)EB_NULL){ \
     return EB_ErrorInsufficientResources; \
 } \
 else { \
-    memory_map[*(memory_map_index)].ptrType = pointer_class; \
+    memory_map[*(memory_map_index)].ptr_type = pointer_class; \
     memory_map[(*(memory_map_index))++].ptr = pointer; \
     if (n_elements % 8 == 0) { \
         *total_lib_memory += (n_elements); \
@@ -2497,8 +2494,8 @@ printf("Total Library Memory: %.2lf KB\n\n",*total_lib_memory/(double)1024);
 
 
 #define EB_APP_MEMORY() \
-printf("Total Number of Mallocs in App: %d\n", appMallocCount); \
-printf("Total App Memory: %.2lf KB\n\n",*totalAppMemory/(double)1024);
+printf("Total Number of Mallocs in App: %d\n", app_malloc_count); \
+printf("Total App Memory: %.2lf KB\n\n",*total_app_memory/(double)1024);
 
 #ifndef EOK
 #define EOK             ( 0 )
@@ -2968,13 +2965,12 @@ static const uint8_t INTRA_AREA_TH_CLASS_1[MAX_HIERARCHICAL_LEVEL][MAX_TEMPORAL_
 };
 
 
-#if NEW_PRED_STRUCT
 #define NON_MOVING_SCORE_0     0
 #define NON_MOVING_SCORE_1    10
 #define NON_MOVING_SCORE_2    20
 #define NON_MOVING_SCORE_3    30
 #define INVALID_NON_MOVING_SCORE (uint8_t) ~0
-#endif
+
 // Picture split into regions for analysis (SCD, Dynamic GOP)
 #define CLASS_SUB_0_REGION_SPLIT_PER_WIDTH    1
 #define CLASS_SUB_0_REGION_SPLIT_PER_HEIGHT    1
@@ -3067,17 +3063,10 @@ static const uint8_t INTRA_AREA_TH_CLASS_1[MAX_HIERARCHICAL_LEVEL][MAX_TEMPORAL_
 #define N4_SHAPE      2
 #define ONLY_DC_SHAPE 3
 
-#if CHROMA_BLIND 
 #define EB_CHROMA_LEVEL uint8_t
 #define CHROMA_MODE_0  0 // Chroma @ MD
 #define CHROMA_MODE_1  1 // Chroma blind @ MD + CFL @ EP
 #define CHROMA_MODE_2  2 // Chroma blind @ MD + no CFL @ EP
-#else
-typedef enum EbChromaMode {
-    CHROMA_MODE_FULL = 1,
-    CHROMA_MODE_BEST = 2 //Chroma for best full loop candidate.
-} EbChromaMode;
-#endif
 
 typedef enum EbSbComplexityStatus {
     SB_COMPLEXITY_STATUS_0 = 0,
@@ -3113,11 +3102,11 @@ typedef enum EbPictureDepthMode {
     PIC_OPEN_LOOP_DEPTH_MODE    = 7
 } EbPictureDepthMode;
 
-#if ADAPTIVE_DEPTH_PARTITIONING
 #define EB_SB_DEPTH_MODE              uint8_t
 #define SB_SQ_BLOCKS_DEPTH_MODE             1
 #define SB_SQ_NON4_BLOCKS_DEPTH_MODE        2
 #define SB_OPEN_LOOP_DEPTH_MODE             3
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 #if M8_ADP
 #define SB_FAST_OPEN_LOOP_DEPTH_MODE        4
 #define SB_PRED_OPEN_LOOP_DEPTH_MODE        5
@@ -3139,6 +3128,11 @@ typedef enum EbLcuDepthMode {
     LCU_PRED_OPEN_LOOP_1_NFL_DEPTH_MODE = 9
 } EbLcuDepthMode;
 #endif
+=======
+#define SB_FAST_OPEN_LOOP_DEPTH_MODE        4
+#define SB_PRED_OPEN_LOOP_DEPTH_MODE        5
+
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 typedef enum EB_INTRA4x4_SEARCH_METHOD {
     INTRA4x4_OFF = 0,
     INTRA4x4_INLINE_SEARCH = 1,
@@ -3503,14 +3497,22 @@ static const uint32_t MD_SCAN_TO_OIS_32x32_SCAN[CU_MAX_COUNT] =
                             ME/HME settings
 *******************************************************************************/
 //     M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12    
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t EnableHmeLevel0Flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t enable_hme_level0_flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_576p_RANGE_OR_LOWER
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_720P_RANGE/INPUT_SIZE_1080i_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_1080p_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_4K_RANGE
 };
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint16_t HmeLevel0TotalSearchAreaWidth[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint16_t hme_level0_total_search_area_width[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {
         {  48,   48,   48,   48,   48,   48,   48,   48,   48,   48,   48,   48,   48 },
         { 112,  112,  112,  112,  112,  112,   64,   64,   64,   64,   64,   64,   64 },
@@ -3550,7 +3552,11 @@ static const uint16_t HmeLevel0SearchAreaInWidthArrayRight[SC_MAX_LEVEL][INPUT_S
         {  64,   64,   64,   64,   64,   64,   64,   64,   64,   64,   64,   64,   64 }
     }
 };
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint16_t HmeLevel0TotalSearchAreaHeight[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint16_t hme_level0_total_search_area_height[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {
         {  40,   40,   40,   40,   40,   40,   40,   40,   40,   40,   40,   40,   40 },
         {  64,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,   48,   48 },
@@ -3592,7 +3598,11 @@ static const uint16_t HmeLevel0SearchAreaInHeightArrayBottom[SC_MAX_LEVEL][INPUT
 
 // HME LEVEL 1
 //      M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t EnableHmeLevel1Flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t enable_hme_level1_flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_576p_RANGE_OR_LOWER
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_720P_RANGE/INPUT_SIZE_1080i_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_1080p_RANGE
@@ -3652,7 +3662,11 @@ static const uint16_t HmeLevel1SearchAreaInHeightArrayBottom[SC_MAX_LEVEL][INPUT
 };
 // HME LEVEL 2
 //     M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t EnableHmeLevel2Flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t enable_hme_level2_flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_576p_RANGE_OR_LOWER
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_720P_RANGE/INPUT_SIZE_1080i_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_1080p_RANGE
@@ -3711,7 +3725,11 @@ static const uint16_t HmeLevel2SearchAreaInHeightArrayBottom[SC_MAX_LEVEL][INPUT
     }
 };
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint16_t SearchAreaWidth[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint16_t search_area_width[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {
         {  64,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,    48,   48 },
         { 112,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,    48,   48 },
@@ -3724,7 +3742,11 @@ static const uint16_t SearchAreaWidth[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPOR
         { 640,  640,  448,  128,  128,  128,  128,   96,   80,   80,   80,    80,   80 }
     }
 };
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint16_t SearchAreaHeight[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint16_t search_area_height[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {
         {  64,   64,   64,   32,   32,   32,   48,   48,   16,   16,   16,    16,   16 },
         { 112,   64,   64,   32,   32,   32,   48,   48,   16,   16,   16,    16,   16 },
@@ -3745,14 +3767,22 @@ static const uint16_t SearchAreaHeight[SC_MAX_LEVEL][INPUT_SIZE_COUNT][MAX_SUPPO
                             ME/HME settings
 *******************************************************************************/
 //     M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12    
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t EnableHmeLevel0Flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t enable_hme_level0_flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_576p_RANGE_OR_LOWER
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_720P_RANGE/INPUT_SIZE_1080i_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_1080p_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1 },      // INPUT_SIZE_4K_RANGE
 };
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint16_t HmeLevel0TotalSearchAreaWidth[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint16_t hme_level0_total_search_area_width[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {  48,   48,   48,   48,   48,   48,   48,   48,   48,   48,   48,   48,   48 },
     { 112,  112,  112,  112,  112,  112,   64,   64,   64,   64,   64,   64,   64 },
     { 128,  128,  128,  128,  128,  128,   96,   96,   96,   96,   96,   96,   96 },
@@ -3771,7 +3801,11 @@ static const uint16_t HmeLevel0SearchAreaInWidthArrayRight[INPUT_SIZE_COUNT][MAX
     {  64,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,   48,   48 },
     {  64,   64,   64,   64,   64,   64,   64,   64,   64,   64,   64,   64,   64 }
 };
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint16_t HmeLevel0TotalSearchAreaHeight[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint16_t hme_level0_total_search_area_height[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {  40,   40,   40,   40,   40,   40,   40,   40,   40,   40,   40,   40,   40 },
     {  64,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,   48,   48 },
     {  80,   80,   80,   80,   80,   80,   48,   48,   48,   48,   48,   48,   48 },
@@ -3792,7 +3826,11 @@ static const uint16_t HmeLevel0SearchAreaInHeightArrayBottom[INPUT_SIZE_COUNT][M
 
 // HME LEVEL 1
 //      M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t EnableHmeLevel1Flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t enable_hme_level1_flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_576p_RANGE_OR_LOWER
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_720P_RANGE/INPUT_SIZE_1080i_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_1080p_RANGE
@@ -3824,7 +3862,11 @@ static const uint16_t HmeLevel1SearchAreaInHeightArrayBottom[INPUT_SIZE_COUNT][M
 };
 // HME LEVEL 2
 //     M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t EnableHmeLevel2Flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t enable_hme_level2_flag[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_576p_RANGE_OR_LOWER
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_720P_RANGE/INPUT_SIZE_1080i_RANGE
     {   1,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     1,    1 },      // INPUT_SIZE_1080p_RANGE
@@ -3855,19 +3897,28 @@ static const uint16_t HmeLevel2SearchAreaInHeightArrayBottom[INPUT_SIZE_COUNT][M
     {   8,    8,    8,    8,    8,    8,    4,    4,    4,    4,    4,     4,    4 }
 };
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t SearchAreaWidth[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t search_area_width[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {  64,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,    48,   48 },
     { 112,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,    48,   48 },
     { 128,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,    48,   48 },
     { 128,   64,   64,   64,   64,   64,   48,   48,   48,   48,   48,    48,   48 }
 };
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 static const uint8_t SearchAreaHeight[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+=======
+static const uint8_t search_area_height[INPUT_SIZE_COUNT][MAX_SUPPORTED_MODES] = {
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
     {  64,   64,   64,   32,   32,   32,   48,   48,   16,   16,   16,    16,   16 },
     { 112,   64,   64,   32,   32,   32,   48,   48,   16,   16,   16,    16,   16 },
     { 128,   64,   64,   32,   32,   32,   48,   48,   16,   16,   16,    16,   16 },
     { 128,   64,   64,   32,   32,   32,   48,   48,   16,   16,   16,    16,   16 }
 
 //     M0    M1    M2    M3    M4    M5    M6    M7    M8    M9    M10    M11    M12
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDefinitions.h
 };
 #endif
 #if OIS_BASED_INTRA
@@ -3967,6 +4018,105 @@ static const uint16_t ep_to_pa_block_index[BLOCK_MAX_COUNT_SB_64] = {
     84,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0   
 };
 #endif
+=======
+};
+#endif
+static const uint16_t ep_to_pa_block_index[BLOCK_MAX_COUNT_SB_64] = {
+    0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    1 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    2 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    3 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    4 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    5 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    6 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    7 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    8 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    9 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    10,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    11,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    12,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    13,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    14,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    15,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    16,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    17,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    18,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    19,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    20,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    21,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    22,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    23,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    24,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    25,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    26,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    27,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    28,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    29,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    30,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    31,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    32,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    33,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    34,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    35,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    36,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    37,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    38,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    39,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    40,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    41,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    42,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    43,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    44,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    45,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    46,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    47,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    48,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    49,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    50,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    51,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    52,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    53,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    54,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    55,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    56,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    57,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    58,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    59,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    60,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    61,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    62,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    63,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    64,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+
+    65,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    66,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    67,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    68,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    69,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    70,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    71,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    72,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    73,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    74,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    75,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 , 0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    76,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    77,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    78,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    79,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    80,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    81,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    82,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    83,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0 ,
+    84,0 ,0 ,0 ,0 ,0 ,0 ,0 ,0   
+};
+>>>>>>> master:Source/Lib/Common/Codec/EbDefinitions.h
 #ifdef __cplusplus
 }
 #endif

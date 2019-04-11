@@ -73,9 +73,13 @@ extern "C" {
         DistDir_t    distortionDirection[3];
 
         uint8_t        totalMeCandidateIndex;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbMotionEstimationLcuResults.h
 #if NSQ_OPTIMASATION
         uint8_t       me_nsq[2]; // 2 Number of reference lists
 #endif
+=======
+        uint8_t       me_nsq[2]; // 2 Number of reference lists
+>>>>>>> master:Source/Lib/Common/Codec/EbMotionEstimationLcuResults.h
     } MeCuResults_t;
 
 #ifdef __cplusplus

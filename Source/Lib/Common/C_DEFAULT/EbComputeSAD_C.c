@@ -119,7 +119,10 @@ void sad_loop_kernel(
     return;
 }
 
+<<<<<<< HEAD:Source/Lib/Common/C_DEFAULT/EbComputeSAD_C.c
 #if AOM_SAD_PORTING
+=======
+>>>>>>> master:Source/Lib/Common/C_DEFAULT/EbComputeSAD_C.c
 
 /* Sum the difference between every corresponding element of the buffers. */
 static INLINE uint32_t sad_inline_c(const uint8_t *a, int a_stride,
@@ -233,4 +236,7 @@ sadMxNx4D(16, 64);
 sadMxN(64, 16);
 sadMxNx4D(64, 16);
 
+<<<<<<< HEAD:Source/Lib/Common/C_DEFAULT/EbComputeSAD_C.c
 #endif //AOM_SAD_PORTING
+=======
+>>>>>>> master:Source/Lib/Common/C_DEFAULT/EbComputeSAD_C.c

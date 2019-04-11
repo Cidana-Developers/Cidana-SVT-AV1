@@ -16,7 +16,6 @@
 
 #include <stdlib.h>
 #include "EbDefinitions.h"
-#if FILT_PROC
 #include "EbDlfProcess.h"
 #include "EbEncDecResults.h"
 #include "EbEncDecTasks.h"
@@ -32,9 +31,10 @@ void av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, Av1
  ******************************************************/
 EbErrorType dlf_context_ctor(
     DlfContext_t **context_dbl_ptr,
-    EbFifo_t                *dlf_input_fifo_ptr,
-    EbFifo_t                *dlf_output_fifo_ptr ,
+    EbFifo                *dlf_input_fifo_ptr,
+    EbFifo                *dlf_output_fifo_ptr ,
     EbBool                  is16bit,
+    EbColorFormat           color_format,
     uint32_t                max_input_luma_width,
     uint32_t                max_input_luma_height
    )
@@ -63,6 +63,7 @@ EbErrorType dlf_context_ctor(
     temp_lf_recon_desc_init_data.bot_padding = PAD_VALUE;
 
     temp_lf_recon_desc_init_data.splitMode = EB_FALSE;
+    temp_lf_recon_desc_init_data.color_format = color_format;
 
     if (is16bit) {
         temp_lf_recon_desc_init_data.bit_depth = EB_16BIT;
@@ -89,14 +90,14 @@ void* dlf_kernel(void *input_ptr)
     // Context & SCS & PCS
     DlfContext_t                            *context_ptr = (DlfContext_t*)input_ptr;
     PictureControlSet_t                     *picture_control_set_ptr;
-    SequenceControlSet_t                    *sequence_control_set_ptr;
+    SequenceControlSet                    *sequence_control_set_ptr;
 
     //// Input
-    EbObjectWrapper_t                       *enc_dec_results_wrapper_ptr;
+    EbObjectWrapper                       *enc_dec_results_wrapper_ptr;
     EncDecResults_t                         *enc_dec_results_ptr;
 
     //// Output
-    EbObjectWrapper_t                       *dlf_results_wrapper_ptr;
+    EbObjectWrapper                       *dlf_results_wrapper_ptr;
     struct DlfResults_s*                     dlf_results_ptr;
 
     // SB Loop variables
@@ -108,8 +109,13 @@ void* dlf_kernel(void *input_ptr)
             &enc_dec_results_wrapper_ptr);
 
         enc_dec_results_ptr         = (EncDecResults_t*)enc_dec_results_wrapper_ptr->object_ptr;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDlfProcess.c
         picture_control_set_ptr     = (PictureControlSet_t*)enc_dec_results_ptr->pictureControlSetWrapperPtr->object_ptr;
         sequence_control_set_ptr    = (SequenceControlSet_t*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+=======
+        picture_control_set_ptr     = (PictureControlSet_t*)enc_dec_results_ptr->picture_control_set_wrapper_ptr->object_ptr;
+        sequence_control_set_ptr    = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+>>>>>>> master:Source/Lib/Common/Codec/EbDlfProcess.c
 
         EbBool is16bit       = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
         EbBool dlfEnableFlag = (EbBool)(picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode &&
@@ -124,10 +130,10 @@ void* dlf_kernel(void *input_ptr)
 
                 //get the 16bit form of the input LCU
                 if (is16bit) {
-                    recon_buffer = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
+                    recon_buffer = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit;
                 }
                 else {
-                    recon_buffer = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+                    recon_buffer = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
                 }
             }
             else { // non ref pictures
@@ -165,20 +171,23 @@ void* dlf_kernel(void *input_ptr)
                     3);
             }
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDlfProcess.c
 #if CDEF_M
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbDlfProcess.c
         //pre-cdef prep
         {
             Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
             EbPictureBufferDesc_t  * recon_picture_ptr;
             if (is16bit) {
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-                    recon_picture_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
+                    recon_picture_ptr = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit;
                 else
                     recon_picture_ptr = picture_control_set_ptr->recon_picture16bit_ptr;
             }
             else {
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-                    recon_picture_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+                    recon_picture_ptr = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
                 else
                     recon_picture_ptr = picture_control_set_ptr->recon_picture_ptr;
             }
@@ -191,10 +200,9 @@ void* dlf_kernel(void *input_ptr)
                 av1_loop_restoration_save_boundary_lines(cm->frame_to_show, cm, 0);
             }
 
-#if CDEF_M
             if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->cdef_filter_mode)
             {
-#endif
+
                 if (is16bit)
                 {
                     picture_control_set_ptr->src[0] = (uint16_t*)recon_picture_ptr->buffer_y + (recon_picture_ptr->origin_x + recon_picture_ptr->origin_y     * recon_picture_ptr->stride_y);
@@ -235,9 +243,12 @@ void* dlf_kernel(void *input_ptr)
                         }
                     }
                 }
-#if CDEF_M
             }
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDlfProcess.c
 #endif
+=======
+
+>>>>>>> master:Source/Lib/Common/Codec/EbDlfProcess.c
         }
 
         picture_control_set_ptr->cdef_segments_column_count =  sequence_control_set_ptr->cdef_segment_column_count;
@@ -253,11 +264,16 @@ void* dlf_kernel(void *input_ptr)
                 context_ptr->dlf_output_fifo_ptr,
                 &dlf_results_wrapper_ptr);
             dlf_results_ptr = (struct DlfResults_s*)dlf_results_wrapper_ptr->object_ptr;
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDlfProcess.c
             dlf_results_ptr->picture_control_set_wrapper_ptr = enc_dec_results_ptr->pictureControlSetWrapperPtr;
+=======
+            dlf_results_ptr->picture_control_set_wrapper_ptr = enc_dec_results_ptr->picture_control_set_wrapper_ptr;
+>>>>>>> master:Source/Lib/Common/Codec/EbDlfProcess.c
             dlf_results_ptr->segment_index = segment_index;
             // Post DLF Results
             eb_post_full_object(dlf_results_wrapper_ptr);
         }
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbDlfProcess.c
 #else
             // Get Empty DLF Results to Cdef
             eb_get_empty_object(
@@ -270,6 +286,9 @@ void* dlf_kernel(void *input_ptr)
             // Post DLF Results
             eb_post_full_object(dlf_results_wrapper_ptr);
 #endif
+=======
+
+>>>>>>> master:Source/Lib/Common/Codec/EbDlfProcess.c
 
             // Release EncDec Results
             eb_release_object(enc_dec_results_wrapper_ptr);
@@ -278,4 +297,3 @@ void* dlf_kernel(void *input_ptr)
 
     return EB_NULL;
 }
-#endif

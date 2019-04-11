@@ -67,8 +67,13 @@ typedef struct EbBufferHeaderType
     uint32_t n_alloc_len;
 
     // pic private data
+<<<<<<< HEAD
     void*    p_app_private;
     void*    wrapper_ptr;
+=======
+    void    *p_app_private;
+    void    *wrapper_ptr;
+>>>>>>> master
 
     // pic timing param
     uint32_t n_tick_count;
@@ -86,12 +91,18 @@ typedef struct EbBufferHeaderType
 typedef struct EbComponentType
 {
     uint32_t size;
+<<<<<<< HEAD
     void* pComponentPrivate;
     void* pApplicationPrivate;
+=======
+    void    *p_component_private;
+    void    *p_application_private;
+>>>>>>> master
 } EbComponentType;
 
 typedef enum EbErrorType
 {
+<<<<<<< HEAD
     EB_ErrorNone = 0,
 
     EB_DecUnsupportedBitstream = (int32_t)0x40001000,
@@ -111,13 +122,36 @@ typedef enum EbErrorType
     EB_NoErrorEmptyQueue = (int32_t)0x80002033,
 
     EB_ErrorMax = 0x7FFFFFFF
+=======
+    EB_ErrorNone                   = 0,
+    EB_DecUnsupportedBitstream     = (int32_t)0x40001000,
+    EB_DecNoOutputPicture          = (int32_t)0x40001004,
+    EB_DecDecodingError            = (int32_t)0x40001008,
+    EB_ErrorInsufficientResources  = (int32_t)0x80001000,
+    EB_ErrorUndefined              = (int32_t)0x80001001,
+    EB_ErrorInvalidComponent       = (int32_t)0x80001004,
+    EB_ErrorBadParameter           = (int32_t)0x80001005,
+    EB_ErrorDestroyThreadFailed    = (int32_t)0x80002012,
+    EB_ErrorSemaphoreUnresponsive  = (int32_t)0x80002021,
+    EB_ErrorDestroySemaphoreFailed = (int32_t)0x80002022,
+    EB_ErrorCreateMutexFailed      = (int32_t)0x80002030,
+    EB_ErrorMutexUnresponsive      = (int32_t)0x80002031,
+    EB_ErrorDestroyMutexFailed     = (int32_t)0x80002032,
+    EB_NoErrorEmptyQueue           = (int32_t)0x80002033,
+    EB_ErrorMax                    = 0x7FFFFFFF
+>>>>>>> master
 } EbErrorType;
 
 /* AV1 bistream profile (seq_profile syntax element) */
 typedef enum EbAv1SeqProfile 
 {
+<<<<<<< HEAD
     MAIN_PROFILE = 0,
     HIGH_PROFILE  = 1,
+=======
+    MAIN_PROFILE         = 0,
+    HIGH_PROFILE         = 1,
+>>>>>>> master
     PROFESSIONAL_PROFILE = 2
 } EbAv1SeqProfile;
 
@@ -134,6 +168,7 @@ typedef struct EbSvtIOFormat            //former EbSvtEncInput
     uint8_t *cr;
 
     // Hosts LSB 2 bits of 10bit input/output when the compressed 10bit format is used
+<<<<<<< HEAD
     uint8_t *lumaExt;
     uint8_t *cbExt;
     uint8_t *crExt;
@@ -141,6 +176,15 @@ typedef struct EbSvtIOFormat            //former EbSvtEncInput
     uint32_t yStride;
     uint32_t crStride;
     uint32_t cbStride;
+=======
+    uint8_t *luma_ext;
+    uint8_t *cb_ext;
+    uint8_t *cr_ext;
+
+    uint32_t y_stride;
+    uint32_t cr_stride;
+    uint32_t cb_stride;
+>>>>>>> master
 
     uint32_t width;
     uint32_t height;

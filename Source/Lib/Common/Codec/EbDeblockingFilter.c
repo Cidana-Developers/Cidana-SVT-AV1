@@ -1017,7 +1017,7 @@ void av1_filter_block_plane_vert(
     const MacroblockdPlane *const plane_ptr,
     const uint32_t mi_row, const uint32_t mi_col) {
 
-    SequenceControlSet_t *scsPtr = (SequenceControlSet_t*)pcsPtr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+    SequenceControlSet *scsPtr = (SequenceControlSet*)pcsPtr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
     EbBool is16bit = scsPtr->static_config.encoder_bit_depth > 8;
     const int32_t row_step = MI_SIZE >> MI_SIZE_LOG2;
     const uint32_t scale_horz = plane_ptr->subsampling_x;
@@ -1139,7 +1139,7 @@ void av1_filter_block_plane_horz(
     const MacroblockdPlane *const plane_ptr,
     const uint32_t mi_row, const uint32_t mi_col) {
 
-    SequenceControlSet_t *scsPtr = (SequenceControlSet_t*)pcsPtr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+    SequenceControlSet *scsPtr = (SequenceControlSet*)pcsPtr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
     EbBool is16bit = scsPtr->static_config.encoder_bit_depth > 8;
     const int32_t col_step = MI_SIZE >> MI_SIZE_LOG2;
     const uint32_t scale_horz = plane_ptr->subsampling_x;
@@ -1353,7 +1353,7 @@ void av1_loop_filter_frame(
     PictureControlSet_t *picture_control_set_ptr,
     int32_t plane_start, int32_t plane_end) {
 
-    SequenceControlSet_t *scsPtr = (SequenceControlSet_t*)picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+    SequenceControlSet *scsPtr = (SequenceControlSet*)picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
     //LargestCodingUnit_t                     *sb_ptr;
     //uint16_t                                   sb_index;
     uint8_t                                   sb_size_Log2 = (uint8_t)Log2f(scsPtr->sb_size_pix);
@@ -1413,74 +1413,47 @@ void EbCopyBuffer(
     uint16_t   luma_height = (uint16_t)(srcBuffer->height - pcsPtr->parent_pcs_ptr->sequence_control_set_ptr->pad_bottom);
     uint16_t   chroma_width = (luma_width >> 1);
     if (plane == 0) {
-#if LF_10BIT_FIX
         uint16_t stride_y = srcBuffer->stride_y << is16bit;
-#endif
+
         dstBuffer->stride_y = srcBuffer->stride_y;
         dstBuffer->strideBitIncY = srcBuffer->strideBitIncY;
 
         for (int32_t inputRowIndex = 0; inputRowIndex < luma_height; inputRowIndex++) {
-#if LF_10BIT_FIX
             EB_MEMCPY((dstBuffer->buffer_y + lumaBufferOffset + stride_y * inputRowIndex),
                 (srcBuffer->buffer_y + lumaBufferOffset + stride_y * inputRowIndex),
                 luma_width);
-#else
-            EB_MEMCPY((dstBuffer->buffer_y + lumaBufferOffset + dstBuffer->stride_y*inputRowIndex),
-                (srcBuffer->buffer_y + lumaBufferOffset + srcBuffer->stride_y*inputRowIndex),
-                luma_width);
-#endif
         }
 
     }
     else if (plane == 1) {
-#if LF_10BIT_FIX
         uint16_t strideCb = srcBuffer->strideCb << is16bit;
-#endif
         dstBuffer->strideCb = srcBuffer->strideCb;
         dstBuffer->strideBitIncCb = srcBuffer->strideBitIncCb;
 
         uint32_t   chromaBufferOffset = (srcBuffer->origin_x / 2 + srcBuffer->origin_y / 2 * srcBuffer->strideCb) << is16bit;
 
         for (int32_t inputRowIndex = 0; inputRowIndex < luma_height >> 1; inputRowIndex++) {
-#if LF_10BIT_FIX
             EB_MEMCPY((dstBuffer->bufferCb + chromaBufferOffset + strideCb * inputRowIndex),
                 (srcBuffer->bufferCb + chromaBufferOffset + strideCb * inputRowIndex),
                 chroma_width);
-#else
-            EB_MEMCPY((dstBuffer->bufferCb + chromaBufferOffset + dstBuffer->strideCb*inputRowIndex),
-                (srcBuffer->bufferCb + chromaBufferOffset + srcBuffer->strideCb*inputRowIndex),
-                chroma_width);
-#endif
+
         }
     }
     else if (plane == 2) {
-#if LF_10BIT_FIX
         uint16_t strideCr = srcBuffer->strideCr << is16bit;
-#endif
+
         dstBuffer->strideCr = srcBuffer->strideCr;
         dstBuffer->strideBitIncCr = srcBuffer->strideBitIncCr;
 
         uint32_t   chromaBufferOffset = (srcBuffer->origin_x / 2 + srcBuffer->origin_y / 2 * srcBuffer->strideCr) << is16bit;
 
         for (int32_t inputRowIndex = 0; inputRowIndex < luma_height >> 1; inputRowIndex++) {
-#if LF_10BIT_FIX
             EB_MEMCPY((dstBuffer->bufferCr + chromaBufferOffset + strideCr * inputRowIndex),
                 (srcBuffer->bufferCr + chromaBufferOffset + strideCr * inputRowIndex),
                 chroma_width);
-#else
-            EB_MEMCPY((dstBuffer->bufferCr + chromaBufferOffset + dstBuffer->strideCr*inputRowIndex),
-                (srcBuffer->bufferCr + chromaBufferOffset + srcBuffer->strideCr*inputRowIndex),
-                chroma_width);
-#endif
         }
 
     }
-#if !LF_10BIT_FIX
-    if (is16bit) {
-        printf("ERROR AN: 16 bit to be checked ");
-
-    }
-#endif
 }
 
 
@@ -1500,7 +1473,7 @@ uint64_t PictureSseCalculations(
     int32_t plane)
 
 {
-    SequenceControlSet_t   *sequence_control_set_ptr = picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr;
+    SequenceControlSet   *sequence_control_set_ptr = picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr;
     EbBool is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
     if (!is16bit) {
@@ -1579,7 +1552,6 @@ uint64_t PictureSseCalculations(
         return 0;
     }
     else {
-#if LF_10BIT_FIX
         EbPictureBufferDesc_t *input_picture_ptr = (EbPictureBufferDesc_t*)picture_control_set_ptr->input_frame16bit;
 
         uint32_t   columnIndex;
@@ -1652,9 +1624,7 @@ uint64_t PictureSseCalculations(
 
             return residualDistortion;
         }
-#else
-        printf("AN: ERROR 16 bit not supported\n");
-#endif
+
         return 0;
     }
 }
@@ -1683,10 +1653,10 @@ static int64_t try_filter_frame(
 
         //get the 16bit form of the input LCU
         if (is16bit) {
-            recon_buffer = ((EbReferenceObject_t*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
+            recon_buffer = ((EbReferenceObject*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit;
         }
         else {
-            recon_buffer = ((EbReferenceObject_t*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+            recon_buffer = ((EbReferenceObject*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
         }
     }
     else { // non ref pictures
@@ -1748,10 +1718,10 @@ static int32_t search_filter_level(
 
         //get the 16bit form of the input LCU
         if (is16bit) {
-            recon_buffer = ((EbReferenceObject_t*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
+            recon_buffer = ((EbReferenceObject*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit;
         }
         else {
-            recon_buffer = ((EbReferenceObject_t*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+            recon_buffer = ((EbReferenceObject*)pcsPtr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
         }
     }
     else { // non ref pictures
@@ -1879,16 +1849,12 @@ static int32_t search_filter_level(
 }
 
 void av1_pick_filter_level(
-#if FILT_PROC
     DlfContext_t            *context_ptr,
-#else
-    EncDecContext_t         *context_ptr,
-#endif
     EbPictureBufferDesc_t   *srcBuffer, // source input
     PictureControlSet_t     *pcsPtr,
     LPF_PICK_METHOD          method) {
 
-    SequenceControlSet_t *scsPtr = (SequenceControlSet_t*)pcsPtr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+    SequenceControlSet *scsPtr = (SequenceControlSet*)pcsPtr->parent_pcs_ptr->sequence_control_set_wrapper_ptr->object_ptr;
     const int32_t num_planes = 3;
     (void)srcBuffer;
     struct loopfilter *const lf = &pcsPtr->parent_pcs_ptr->lf;

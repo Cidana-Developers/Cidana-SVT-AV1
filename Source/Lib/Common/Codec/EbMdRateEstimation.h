@@ -8,18 +8,26 @@
 
 #include "EbDefinitions.h"
 #include "EbCabacContextModel.h"
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbMdRateEstimation.h
 #if ICOPY
 #include "EbPictureControlSet.h"
 #endif
+=======
+#include "EbPictureControlSet.h"
+>>>>>>> master:Source/Lib/Common/Codec/EbMdRateEstimation.h
 #ifdef __cplusplus
 extern "C" {
 #endif
     /**************************************
      * MD Rate Estimation Defines
      **************************************/
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbMdRateEstimation.h
 #if ICOPY
 #define MV_COST_WEIGHT_SUB 120
 #endif
+=======
+#define MV_COST_WEIGHT_SUB 120
+>>>>>>> master:Source/Lib/Common/Codec/EbMdRateEstimation.h
 
 #define TOTAL_NUMBER_OF_MD_RATE_ESTIMATION_CASE_BUFFERS (TOTAL_NUMBER_OF_QP_VALUES * TOTAL_NUMBER_OF_SLICE_TYPES)
 #define NUMBER_OF_SPLIT_FLAG_CASES                            6       // number of cases for bit estimation for split flag
@@ -70,10 +78,15 @@ extern "C" {
         int32_t nmv_costs[2][MV_VALS];
         int32_t nmv_costs_hp[2][MV_VALS];
         int32_t *nmvcoststack[2];
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbMdRateEstimation.h
 #if ICOPY
         int dv_cost[2][MV_VALS];
         int dv_joint_cost[MV_JOINTS];
 #endif
+=======
+        int dv_cost[2][MV_VALS];
+        int dv_joint_cost[MV_JOINTS];
+>>>>>>> master:Source/Lib/Common/Codec/EbMdRateEstimation.h
 
         // Compouned Mode
         int32_t interCompoundModeFacBits[INTER_MODE_CONTEXTS][CDF_SIZE(INTER_COMPOUND_MODES)];
@@ -326,9 +339,13 @@ extern "C" {
     * based on the frame CDF
     ***************************************************************************/
     extern void av1_estimate_mv_rate(
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbMdRateEstimation.h
 #if ICOPY
         struct PictureControlSet_s     *picture_control_set_ptr,
 #endif
+=======
+        struct PictureControlSet_s     *picture_control_set_ptr,
+>>>>>>> master:Source/Lib/Common/Codec/EbMdRateEstimation.h
         MdRateEstimationContext_t  *md_rate_estimation_array,
         nmv_context                *nmv_ctx);
 

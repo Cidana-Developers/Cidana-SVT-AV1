@@ -26,28 +26,24 @@
 
 void av1_cdef_search(
     EncDecContext_t                *context_ptr,
-    SequenceControlSet_t           *sequence_control_set_ptr,
+    SequenceControlSet           *sequence_control_set_ptr,
     PictureControlSet_t            *picture_control_set_ptr
 );
 
 void av1_cdef_frame(
     EncDecContext_t                *context_ptr,
-    SequenceControlSet_t           *sequence_control_set_ptr,
+    SequenceControlSet           *sequence_control_set_ptr,
     PictureControlSet_t            *pCs
 );
 
 void av1_cdef_search16bit(
     EncDecContext_t                *context_ptr,
-    SequenceControlSet_t           *sequence_control_set_ptr,
+    SequenceControlSet           *sequence_control_set_ptr,
     PictureControlSet_t            *picture_control_set_ptr
 );
 void av1_cdef_frame16bit(
-#if FILT_PROC
     uint8_t is16bit,
-#else
-    EncDecContext_t                *context_ptr,
-#endif
-    SequenceControlSet_t           *sequence_control_set_ptr,
+    SequenceControlSet           *sequence_control_set_ptr,
     PictureControlSet_t            *pCs
 );
 
@@ -83,11 +79,12 @@ const int8_t  encMaxDeltaQpTab[4][MAX_TEMPORAL_LAYERS] = {
  ******************************************************/
 EbErrorType enc_dec_context_ctor(
     EncDecContext_t        **context_dbl_ptr,
-    EbFifo_t                *mode_decision_configuration_input_fifo_ptr,
-    EbFifo_t                *packetization_output_fifo_ptr,
-    EbFifo_t                *feedback_fifo_ptr,
-    EbFifo_t                *picture_demux_fifo_ptr,
+    EbFifo                *mode_decision_configuration_input_fifo_ptr,
+    EbFifo                *packetization_output_fifo_ptr,
+    EbFifo                *feedback_fifo_ptr,
+    EbFifo                *picture_demux_fifo_ptr,
     EbBool                  is16bit,
+    EbColorFormat           color_format,
     uint32_t                max_input_luma_width,
     uint32_t                max_input_luma_height){
 
@@ -99,6 +96,7 @@ EbErrorType enc_dec_context_ctor(
     *context_dbl_ptr = context_ptr;
 
     context_ptr->is16bit = is16bit;
+    context_ptr->color_format = color_format;
 
     // Input/Output System Resource Manager FIFOs
     context_ptr->mode_decision_input_fifo_ptr = mode_decision_configuration_input_fifo_ptr;
@@ -125,6 +123,7 @@ EbErrorType enc_dec_context_ctor(
         initData.top_padding = 0;
         initData.bot_padding = 0;
         initData.splitMode = EB_FALSE;
+        initData.color_format = color_format;
 
         context_ptr->input_sample16bit_buffer = (EbPictureBufferDesc_t *)EB_NULL;
         if (is16bit) {
@@ -148,12 +147,12 @@ EbErrorType enc_dec_context_ctor(
         initData.maxWidth = SB_STRIDE_Y;
         initData.maxHeight = SB_STRIDE_Y;
         initData.bit_depth = EB_16BIT;
+        initData.color_format = color_format;
         initData.left_padding = 0;
         initData.right_padding = 0;
         initData.top_padding = 0;
         initData.bot_padding = 0;
         initData.splitMode = EB_FALSE;
-
 
         EbPictureBufferDescInitData_t init32BitData;
 
@@ -161,6 +160,7 @@ EbErrorType enc_dec_context_ctor(
         init32BitData.maxWidth = SB_STRIDE_Y;
         init32BitData.maxHeight = SB_STRIDE_Y;
         init32BitData.bit_depth = EB_32BIT;
+        init32BitData.color_format = color_format;
         init32BitData.left_padding = 0;
         init32BitData.right_padding = 0;
         init32BitData.top_padding = 0;
@@ -202,81 +202,19 @@ EbErrorType enc_dec_context_ctor(
         }
     }
     // Mode Decision Context
-    return_error = mode_decision_context_ctor(&context_ptr->md_context, 0, 0);
+    return_error = mode_decision_context_ctor(&context_ptr->md_context, color_format, 0, 0);
 
     if (return_error == EB_ErrorInsufficientResources) {
         return EB_ErrorInsufficientResources;
     }
 
     // Second Stage ME Context
-#if! DISABLE_IN_LOOP_ME
-    return_error = in_loop_me_context_ctor(
-        &context_ptr->ss_mecontext
-    );
-#endif
     if (return_error == EB_ErrorInsufficientResources) {
         return EB_ErrorInsufficientResources;
     }
 
 
     context_ptr->md_context->enc_dec_context_ptr = context_ptr;
-#if ! FILT_PROC
-    context_ptr->temp_lf_recon_picture16bit_ptr = (EbPictureBufferDesc_t *)EB_NULL;
-    context_ptr->temp_lf_recon_picture_ptr = (EbPictureBufferDesc_t *)EB_NULL;
-    EbPictureBufferDescInitData_t tempLfReconDescInitData;
-    tempLfReconDescInitData.maxWidth = (uint16_t)max_input_luma_width;
-    tempLfReconDescInitData.maxHeight = (uint16_t)max_input_luma_height;
-    tempLfReconDescInitData.bufferEnableMask = PICTURE_BUFFER_DESC_FULL_MASK;
-
-    tempLfReconDescInitData.left_padding = PAD_VALUE;
-    tempLfReconDescInitData.right_padding = PAD_VALUE;
-    tempLfReconDescInitData.top_padding = PAD_VALUE;
-    tempLfReconDescInitData.bot_padding = PAD_VALUE;
-
-    tempLfReconDescInitData.splitMode = EB_FALSE;
-
-    if (is16bit) {
-        tempLfReconDescInitData.bit_depth = EB_16BIT;
-        return_error = eb_recon_picture_buffer_desc_ctor(
-            (EbPtr*)&(context_ptr->temp_lf_recon_picture16bit_ptr),
-            (EbPtr)&tempLfReconDescInitData);
-    }
-    else {
-        tempLfReconDescInitData.bit_depth = EB_8BIT;
-        return_error = eb_recon_picture_buffer_desc_ctor(
-            (EbPtr*)&(context_ptr->temp_lf_recon_picture_ptr),
-            (EbPtr)&tempLfReconDescInitData);
-    }
-#endif
-#if  ! FILT_PROC
-    {
-        EbPictureBufferDescInitData_t initData;
-
-        initData.bufferEnableMask = PICTURE_BUFFER_DESC_FULL_MASK;
-        initData.maxWidth = (uint16_t)max_input_luma_width;
-        initData.maxHeight = (uint16_t)max_input_luma_height;
-        initData.bit_depth = is16bit ? EB_16BIT : EB_8BIT;
-        initData.left_padding = AOM_BORDER_IN_PIXELS;
-        initData.right_padding = AOM_BORDER_IN_PIXELS;
-        initData.top_padding = AOM_BORDER_IN_PIXELS;
-        initData.bot_padding = AOM_BORDER_IN_PIXELS;
-        initData.splitMode = EB_FALSE;
-
-        return_error = eb_picture_buffer_desc_ctor(
-            (EbPtr*)&context_ptr->trial_frame_rst,
-            (EbPtr)&initData);
-
-        if (return_error == EB_ErrorInsufficientResources) {
-            return EB_ErrorInsufficientResources;
-        }
-
-        //memset(context_ptr->trial_frame_rst->buffer_y,  context_ptr->trial_frame_rst->lumaSize * 2, 0);
-        //memset(context_ptr->trial_frame_rst->bufferCb, context_ptr->trial_frame_rst->chromaSize * 2, 0);
-        //memset(context_ptr->trial_frame_rst->bufferCr, context_ptr->trial_frame_rst->chromaSize * 2, 0);
-
-    }
-#endif
-
 
     return EB_ErrorNone;
 }
@@ -309,14 +247,11 @@ static void ResetEncodePassNeighborArrays(PictureControlSet_t *picture_control_s
 static void ResetEncDec(
     EncDecContext_t         *context_ptr,
     PictureControlSet_t     *picture_control_set_ptr,
-    SequenceControlSet_t    *sequence_control_set_ptr,
+    SequenceControlSet    *sequence_control_set_ptr,
     uint32_t                   segment_index)
 {
     EB_SLICE                     slice_type;
     MdRateEstimationContext_t   *md_rate_estimation_array;
-#if !REST_FAST_RATE_EST
-    uint32_t                       entropyCodingQp;
-#endif
     context_ptr->is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
 
@@ -334,11 +269,7 @@ static void ResetEncDec(
     context_ptr->chroma_qp = context_ptr->qp;
 
     // Lambda Assignement
-#if NEW_QPS
     context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
-#else
-    context_ptr->qp_index = quantizer_to_qindex[context_ptr->qp];
-#endif
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
         &context_ptr->full_lambda,
@@ -366,22 +297,12 @@ static void ResetEncDec(
 
     // TMVP Map Writer pointer
     if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-        context_ptr->reference_object_write_ptr = (EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
+        context_ptr->reference_object_write_ptr = (EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
     else
-        context_ptr->reference_object_write_ptr = (EbReferenceObject_t*)EB_NULL;
-#if !REST_FAST_RATE_EST
-    entropyCodingQp = picture_control_set_ptr->parent_pcs_ptr->base_qindex;
-#endif
+        context_ptr->reference_object_write_ptr = (EbReferenceObject*)EB_NULL;
     if (segment_index == 0) {
-#if !REST_FAST_RATE_EST
-        // Reset CABAC Contexts
-        ResetEntropyCoder(
-            sequence_control_set_ptr->encode_context_ptr,
-            picture_control_set_ptr->coeff_est_entropy_coder_ptr,
-            entropyCodingQp,
-            picture_control_set_ptr->slice_type);
-#endif
         ResetEncodePassNeighborArrays(picture_control_set_ptr);
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbEncDecProcess.c
 
 #if !REST_FAST_RATE_EST
         // Initial Rate Estimatimation of the syntax elements
@@ -404,6 +325,8 @@ static void ResetEncDec(
             md_rate_estimation_array,
             picture_control_set_ptr->coeff_est_entropy_coder_ptr->fc);
 #endif
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbEncDecProcess.c
     }
 
 
@@ -417,7 +340,7 @@ static void EncDecConfigureLcu(
     EncDecContext_t         *context_ptr,
     LargestCodingUnit_t     *sb_ptr,
     PictureControlSet_t     *picture_control_set_ptr,
-    SequenceControlSet_t    *sequence_control_set_ptr,
+    SequenceControlSet    *sequence_control_set_ptr,
     uint8_t                    picture_qp,
     uint8_t                    sb_qp)
 {
@@ -436,11 +359,7 @@ static void EncDecConfigureLcu(
     context_ptr->chroma_qp = context_ptr->qp;
     /* Note(CHKN) : when Qp modulation varies QP on a sub-LCU(CU) basis,  Lamda has to change based on Cu->QP , and then this code has to move inside the CU loop in MD */
     (void)sb_ptr;
-#if NEW_QPS
     context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
-#else
-    context_ptr->qp_index = quantizer_to_qindex[context_ptr->qp];
-#endif
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
         &context_ptr->full_lambda,
@@ -495,10 +414,10 @@ EbBool AssignEncDecSegments(
     EncDecSegments_t   *segmentPtr,
     uint16_t             *segmentInOutIndex,
     EncDecTasks_t      *taskPtr,
-    EbFifo_t           *srmFifoPtr)
+    EbFifo           *srmFifoPtr)
 {
     EbBool continueProcessingFlag = EB_FALSE;
-    EbObjectWrapper_t *wrapper_ptr;
+    EbObjectWrapper *wrapper_ptr;
     EncDecTasks_t *feedbackTaskPtr;
 
     uint32_t rowSegmentIndex = 0;
@@ -531,7 +450,7 @@ EbBool AssignEncDecSegments(
         continueProcessingFlag = EB_TRUE;
 
         //fprintf(trace, "Start  Pic: %u Seg: %u\n",
-        //    (unsigned) ((PictureControlSet_t*) taskPtr->pictureControlSetWrapperPtr->object_ptr)->picture_number,
+        //    (unsigned) ((PictureControlSet_t*) taskPtr->picture_control_set_wrapper_ptr->object_ptr)->picture_number,
         //    *segmentInOutIndex);
 
         break;
@@ -548,7 +467,7 @@ EbBool AssignEncDecSegments(
         continueProcessingFlag = EB_TRUE;
 
         //fprintf(trace, "Start  Pic: %u Seg: %u\n",
-        //    (unsigned) ((PictureControlSet_t*) taskPtr->pictureControlSetWrapperPtr->object_ptr)->picture_number,
+        //    (unsigned) ((PictureControlSet_t*) taskPtr->picture_control_set_wrapper_ptr->object_ptr)->picture_number,
         //    *segmentInOutIndex);
 
         break;
@@ -576,7 +495,7 @@ EbBool AssignEncDecSegments(
                 continueProcessingFlag = EB_TRUE;
 
                 //fprintf(trace, "Start  Pic: %u Seg: %u\n",
-                //    (unsigned) ((PictureControlSet_t*) taskPtr->pictureControlSetWrapperPtr->object_ptr)->picture_number,
+                //    (unsigned) ((PictureControlSet_t*) taskPtr->picture_control_set_wrapper_ptr->object_ptr)->picture_number,
                 //    *segmentInOutIndex);
             }
 
@@ -601,7 +520,7 @@ EbBool AssignEncDecSegments(
                     continueProcessingFlag = EB_TRUE;
 
                     //fprintf(trace, "Start  Pic: %u Seg: %u\n",
-                    //    (unsigned) ((PictureControlSet_t*) taskPtr->pictureControlSetWrapperPtr->object_ptr)->picture_number,
+                    //    (unsigned) ((PictureControlSet_t*) taskPtr->picture_control_set_wrapper_ptr->object_ptr)->picture_number,
                     //    *segmentInOutIndex);
                 }
             }
@@ -615,7 +534,7 @@ EbBool AssignEncDecSegments(
             feedbackTaskPtr = (EncDecTasks_t*)wrapper_ptr->object_ptr;
             feedbackTaskPtr->inputType = ENCDEC_TASKS_ENCDEC_INPUT;
             feedbackTaskPtr->enc_dec_segment_row = feedbackRowIndex;
-            feedbackTaskPtr->pictureControlSetWrapperPtr = taskPtr->pictureControlSetWrapperPtr;
+            feedbackTaskPtr->picture_control_set_wrapper_ptr = taskPtr->picture_control_set_wrapper_ptr;
             eb_post_full_object(wrapper_ptr);
         }
 
@@ -627,15 +546,11 @@ EbBool AssignEncDecSegments(
 
     return continueProcessingFlag;
 }
-#if FILT_PROC
 void ReconOutput(
-#else
-static void ReconOutput(
-#endif
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr) {
+    SequenceControlSet   *sequence_control_set_ptr) {
 
-    EbObjectWrapper_t             *outputReconWrapperPtr;
+    EbObjectWrapper             *outputReconWrapperPtr;
     EbBufferHeaderType           *outputReconPtr;
     EncodeContext_t               *encode_context_ptr = sequence_control_set_ptr->encode_context_ptr;
     EbBool is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
@@ -672,8 +587,8 @@ static void ReconOutput(
         {
             if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
                 recon_ptr = is16bit ?
-                ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit :
-                ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+                ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit :
+                ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
             else {
                 if (is16bit)
                     recon_ptr = picture_control_set_ptr->recon_picture16bit_ptr;
@@ -696,7 +611,7 @@ static void ReconOutput(
             aom_film_grain_t *film_grain_ptr;
 
             if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-                film_grain_ptr = &((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->film_grain_params;
+                film_grain_ptr = &((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->film_grain_params;
             else
                 film_grain_ptr = &picture_control_set_ptr->parent_pcs_ptr->film_grain_params;
 
@@ -779,7 +694,7 @@ static void ReconOutput(
 
 void PsnrCalculations(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr){
+    SequenceControlSet   *sequence_control_set_ptr){
 
     EbBool is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
@@ -788,7 +703,7 @@ void PsnrCalculations(
         EbPictureBufferDesc_t *recon_ptr;
 
         if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-            recon_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
+            recon_ptr = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture;
         else
             recon_ptr = picture_control_set_ptr->recon_picture_ptr;
 
@@ -869,7 +784,7 @@ void PsnrCalculations(
         EbPictureBufferDesc_t *recon_ptr;
 
         if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-            recon_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
+            recon_ptr = ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit;
         else
             recon_ptr = picture_control_set_ptr->recon_picture16bit_ptr;
         EbPictureBufferDesc_t *input_picture_ptr = (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
@@ -1139,13 +1054,13 @@ void PsnrCalculations(
 
 void PadRefAndSetFlags(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr
+    SequenceControlSet   *sequence_control_set_ptr
 )
 {
 
-    EbReferenceObject_t   *referenceObject = (EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
-    EbPictureBufferDesc_t *refPicPtr = (EbPictureBufferDesc_t*)referenceObject->referencePicture;
-    EbPictureBufferDesc_t *refPic16BitPtr = (EbPictureBufferDesc_t*)referenceObject->referencePicture16bit;
+    EbReferenceObject   *referenceObject = (EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
+    EbPictureBufferDesc_t *refPicPtr = (EbPictureBufferDesc_t*)referenceObject->reference_picture;
+    EbPictureBufferDesc_t *refPic16BitPtr = (EbPictureBufferDesc_t*)referenceObject->reference_picture16bit;
     EbBool                is16bit = (sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
     if (!is16bit) {
@@ -1210,10 +1125,10 @@ void PadRefAndSetFlags(
 
     // set up TMVP flag for the reference picture
 
-    referenceObject->tmvpEnableFlag = (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) ? EB_TRUE : EB_FALSE;
+    referenceObject->tmvp_enable_flag = (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) ? EB_TRUE : EB_FALSE;
 
     // set up the ref POC
-    referenceObject->refPOC = picture_control_set_ptr->parent_pcs_ptr->picture_number;
+    referenceObject->ref_poc = picture_control_set_ptr->parent_pcs_ptr->picture_number;
 
     // set up the QP
 #if ADD_DELTA_QP_SUPPORT
@@ -1231,45 +1146,42 @@ void PadRefAndSetFlags(
 
 void CopyStatisticsToRefObject(
     PictureControlSet_t    *picture_control_set_ptr,
-    SequenceControlSet_t   *sequence_control_set_ptr
+    SequenceControlSet   *sequence_control_set_ptr
 )
 {
     picture_control_set_ptr->intra_coded_area = (100 * picture_control_set_ptr->intra_coded_area) / (sequence_control_set_ptr->luma_width * sequence_control_set_ptr->luma_height);
     if (picture_control_set_ptr->slice_type == I_SLICE)
         picture_control_set_ptr->intra_coded_area = 0;
 
-    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->intra_coded_area = (uint8_t)(picture_control_set_ptr->intra_coded_area);
+    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->intra_coded_area = (uint8_t)(picture_control_set_ptr->intra_coded_area);
 
     uint32_t sb_index;
     for (sb_index = 0; sb_index < picture_control_set_ptr->sb_total_count; ++sb_index) {
-        ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->non_moving_index_array[sb_index] = picture_control_set_ptr->parent_pcs_ptr->non_moving_index_array[sb_index];
+        ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->non_moving_index_array[sb_index] = picture_control_set_ptr->parent_pcs_ptr->non_moving_index_array[sb_index];
     }
 
-    EbReferenceObject_t  * refObjL0, *refObjL1;
-    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->penalizeSkipflag = EB_FALSE;
+    EbReferenceObject  * refObjL0, *refObjL1;
+    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->penalize_skipflag = EB_FALSE;
     if (picture_control_set_ptr->slice_type == B_SLICE) {
-        refObjL0 = (EbReferenceObject_t*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_0]->object_ptr;
-        refObjL1 = (EbReferenceObject_t*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_1]->object_ptr;
+        refObjL0 = (EbReferenceObject*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_0]->object_ptr;
+        refObjL1 = (EbReferenceObject*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_1]->object_ptr;
 
         if (picture_control_set_ptr->temporal_layer_index == 0) {
             if (picture_control_set_ptr->parent_pcs_ptr->intra_coded_block_probability > 30) {
-                ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->penalizeSkipflag = EB_TRUE;
+                ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->penalize_skipflag = EB_TRUE;
             }
         }
         else {
-            ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->penalizeSkipflag = (refObjL0->penalizeSkipflag || refObjL1->penalizeSkipflag) ? EB_TRUE : EB_FALSE;
+            ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->penalize_skipflag = (refObjL0->penalize_skipflag || refObjL1->penalize_skipflag) ? EB_TRUE : EB_FALSE;
         }
     }
-    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->tmpLayerIdx = (uint8_t)picture_control_set_ptr->temporal_layer_index;
-    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->isSceneChange = picture_control_set_ptr->parent_pcs_ptr->scene_change_flag;
+    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->tmp_layer_idx = (uint8_t)picture_control_set_ptr->temporal_layer_index;
+    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->is_scene_change = picture_control_set_ptr->parent_pcs_ptr->scene_change_flag;
 
-#if FAST_CDEF
-    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->cdef_frame_strength = picture_control_set_ptr->parent_pcs_ptr->cdef_frame_strength;
-#endif
-#if FAST_SG
+    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->cdef_frame_strength = picture_control_set_ptr->parent_pcs_ptr->cdef_frame_strength;
+
     Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
-    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->sg_frame_ep = cm->sg_frame_ep;
-#endif
+    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->sg_frame_ep = cm->sg_frame_ep;
 }
 
 
@@ -1340,9 +1252,8 @@ Input   : encoder mode and tune
 Output  : EncDec Kernel signal(s)
 ******************************************************/
 EbErrorType signal_derivation_enc_dec_kernel_oq(
-#if CHROMA_BLIND
-    SequenceControlSet_t    *sequence_control_set_ptr,
-#endif
+    SequenceControlSet    *sequence_control_set_ptr,
+
     PictureControlSet_t     *picture_control_set_ptr,
     ModeDecisionContext_t   *context_ptr) {
 
@@ -1409,7 +1320,10 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #if SCENE_CONTENT_SETTINGS
     }
 #endif
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbEncDecProcess.c
 #if CHROMA_BLIND
+=======
+>>>>>>> master:Source/Lib/Common/Codec/EbEncDecProcess.c
     // Set Chroma Mode
     // Level                Settings
     // CHROMA_MODE_0  0     Chroma @ MD
@@ -1421,7 +1335,135 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         context_ptr->chroma_level = (sequence_control_set_ptr->encoder_bit_depth == EB_8BIT) ?
             CHROMA_MODE_1 :
             CHROMA_MODE_2 ;
+
+    
+    // Set fast loop method
+    // 1 fast loop: SSD_SEARCH not supported    
+    // Level                Settings
+    //  0                   Collapsed fast loop
+    //  1                   Decoupled fast loops ( intra/inter) 
+
+    if (picture_control_set_ptr->enc_mode == ENC_M0)
+        context_ptr->decouple_intra_inter_fast_loop = 0;
+    else
+        context_ptr->decouple_intra_inter_fast_loop = 1;
+
+    // Set the search method when decoupled fast loop is used 
+    // Hsan: FULL_SAD_SEARCH not supported
+#if SCENE_CONTENT_SETTINGS
+
+    if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected){
+	    if (picture_control_set_ptr->enc_mode <= ENC_M0)
+	        context_ptr->decoupled_fast_loop_search_method = SSD_SEARCH;
+	    else
+	        context_ptr->decoupled_fast_loop_search_method = FULL_SAD_SEARCH;
+	}else
 #endif
+    if (picture_control_set_ptr->enc_mode <= ENC_M5)
+        context_ptr->decoupled_fast_loop_search_method = SSD_SEARCH;
+    else
+        context_ptr->decoupled_fast_loop_search_method = FULL_SAD_SEARCH;
+    // Set the full loop escape level
+    // Level                Settings
+    // 0                    Off
+    // 1                    On but only INTRA
+    // 2                    On both INTRA and INTER
+    if (picture_control_set_ptr->enc_mode <= ENC_M7)
+        context_ptr->full_loop_escape = 0;
+    else
+        context_ptr->full_loop_escape = 1;
+
+
+    // Set global MV injection
+    // Level                Settings
+    // 0                    Injection off (Hsan: but not derivation as used by MV ref derivation)
+    // 1                    On
+    if (picture_control_set_ptr->enc_mode <= ENC_M7)
+        context_ptr->global_mv_injection = 1;
+    else
+        context_ptr->global_mv_injection = 0;
+
+    
+    // Set warped motion injection
+    // Level                Settings
+    // 0                    OFF
+    // 1                    On
+#if SCENE_CONTENT_SETTINGS
+    if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected) 
+        if (picture_control_set_ptr->enc_mode == ENC_M0)
+            context_ptr->warped_motion_injection = 1;
+        else
+            context_ptr->warped_motion_injection = 0;
+    else
+
+#endif
+    if (picture_control_set_ptr->enc_mode <= ENC_M5)
+        context_ptr->warped_motion_injection = 1;
+    else
+        context_ptr->warped_motion_injection = 0;
+
+    
+    // Set unipred3x3 injection
+    // Level                Settings
+    // 0                    OFF
+    // 1                    ON FULL
+    // 2                    Reduced set
+#if SCENE_CONTENT_SETTINGS
+    if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
+        if (picture_control_set_ptr->enc_mode == ENC_M0)
+            context_ptr->unipred3x3_injection = 1;
+        else
+            context_ptr->unipred3x3_injection = 0;
+    else
+
+#endif
+    if (picture_control_set_ptr->enc_mode == ENC_M0)
+        context_ptr->unipred3x3_injection = 1;
+    else if (picture_control_set_ptr->enc_mode <= ENC_M3)
+        context_ptr->unipred3x3_injection = 2;
+    else
+        context_ptr->unipred3x3_injection = 0;
+
+    
+    // Set bipred3x3 injection
+    // Level                Settings
+    // 0                    OFF
+    // 1                    ON FULL
+    // 2                    Reduced set
+#if SCENE_CONTENT_SETTINGS
+    if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
+        if (picture_control_set_ptr->enc_mode == ENC_M0)
+            context_ptr->bipred3x3_injection = 1;
+        else
+            context_ptr->bipred3x3_injection = 0;
+    else
+
+#endif
+    if (picture_control_set_ptr->enc_mode == ENC_M0)
+        context_ptr->bipred3x3_injection = 1;
+    else if (picture_control_set_ptr->enc_mode <= ENC_M3)
+        context_ptr->bipred3x3_injection = 2;
+    else
+        context_ptr->bipred3x3_injection = 0;
+      
+    // Set interpolation filter search blk size
+    // Level                Settings
+    // 0                    ON for 8x8 and above
+    // 1                    ON for 16x16 and above
+    // 2                    ON for 32x32 and above
+#if SCENE_CONTENT_SETTINGS
+    if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
+        context_ptr->interpolation_filter_search_blk_size = 0;
+    else
+#endif
+    if (picture_control_set_ptr->enc_mode == ENC_M0)
+        context_ptr->interpolation_filter_search_blk_size = 0;
+    else if (picture_control_set_ptr->enc_mode <= ENC_M2)
+        context_ptr->interpolation_filter_search_blk_size = 1;
+    else        
+        context_ptr->interpolation_filter_search_blk_size = 2;
+    
+
 
     
     // Set fast loop method
@@ -1570,19 +1612,15 @@ void* EncDecKernel(void *input_ptr)
     // Context & SCS & PCS
     EncDecContext_t                         *context_ptr = (EncDecContext_t*)input_ptr;
     PictureControlSet_t                     *picture_control_set_ptr;
-    SequenceControlSet_t                    *sequence_control_set_ptr;
+    SequenceControlSet                    *sequence_control_set_ptr;
 
     // Input
-    EbObjectWrapper_t                       *encDecTasksWrapperPtr;
+    EbObjectWrapper                       *encDecTasksWrapperPtr;
     EncDecTasks_t                           *encDecTasksPtr;
 
     // Output
-    EbObjectWrapper_t                       *encDecResultsWrapperPtr;
+    EbObjectWrapper                       *encDecResultsWrapperPtr;
     EncDecResults_t                         *encDecResultsPtr;
-#if ! FILT_PROC
-    EbObjectWrapper_t                       *pictureDemuxResultsWrapperPtr;
-    PictureDemuxResults_t                   *pictureDemuxResultsPtr;
-#endif
     // SB Loop variables
     LargestCodingUnit_t                     *sb_ptr;
     uint16_t                                 sb_index;
@@ -1614,9 +1652,6 @@ void* EncDecKernel(void *input_ptr)
     uint32_t                                 segmentBandIndex;
     uint32_t                                 segmentBandSize;
     EncDecSegments_t                        *segmentsPtr;
-#if ! FILT_PROC
-    EbBool                                   enableEcRows = EB_FALSE;//for CDEF.
-#endif
     for (;;) {
 
         // Get Mode Decision Results
@@ -1625,21 +1660,18 @@ void* EncDecKernel(void *input_ptr)
             &encDecTasksWrapperPtr);
 
         encDecTasksPtr = (EncDecTasks_t*)encDecTasksWrapperPtr->object_ptr;
-        picture_control_set_ptr = (PictureControlSet_t*)encDecTasksPtr->pictureControlSetWrapperPtr->object_ptr;
-        sequence_control_set_ptr = (SequenceControlSet_t*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+        picture_control_set_ptr = (PictureControlSet_t*)encDecTasksPtr->picture_control_set_wrapper_ptr->object_ptr;
+        sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
         segmentsPtr = picture_control_set_ptr->enc_dec_segment_ctrl;
         lastLcuFlag = EB_FALSE;
         is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
-#if FILT_PROC
         (void)is16bit;
         (void)endOfRowFlag;
-#endif
+
         // EncDec Kernel Signal(s) derivation
 
         signal_derivation_enc_dec_kernel_oq(
-#if CHROMA_BLIND
             sequence_control_set_ptr,
-#endif
             picture_control_set_ptr,
             context_ptr->md_context);
 
@@ -1678,11 +1710,17 @@ void* EncDecKernel(void *input_ptr)
                 sequence_control_set_ptr,
                 segment_index);
 
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbEncDecProcess.c
 #if M8_ADP
             if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
                 ((EbReferenceObject_t  *)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->average_intensity = picture_control_set_ptr->parent_pcs_ptr->average_intensity[0];
             }
 #endif
+=======
+            if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
+                ((EbReferenceObject  *)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->average_intensity = picture_control_set_ptr->parent_pcs_ptr->average_intensity[0];
+            }
+>>>>>>> master:Source/Lib/Common/Codec/EbEncDecProcess.c
 
             if (sequence_control_set_ptr->static_config.improve_sharpness) {
                 QpmDeriveWeightsMinAndMax(
@@ -1839,7 +1877,7 @@ void* EncDecKernel(void *input_ptr)
 #endif
 
                     if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
-                        ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->intra_coded_area_sb[sb_index] = (uint8_t)((100 * context_ptr->intra_coded_area_sb[sb_index]) / (64 * 64));
+                        ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->intra_coded_area_sb[sb_index] = (uint8_t)((100 * context_ptr->intra_coded_area_sb[sb_index]) / (64 * 64));
                     }
 
                 }
@@ -1859,313 +1897,21 @@ void* EncDecKernel(void *input_ptr)
 
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
 
-                    ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->film_grain_params
+                    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->film_grain_params
                         = picture_control_set_ptr->parent_pcs_ptr->film_grain_params;
                 }
             }
-#if !FILT_PROC
-#if AV1_LF
-            EbBool dlfEnableFlag = (EbBool)(picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode &&
-                (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag ||
-                    sequence_control_set_ptr->static_config.recon_enabled ||
-                    sequence_control_set_ptr->static_config.stat_report));
 
-            if (dlfEnableFlag && picture_control_set_ptr->parent_pcs_ptr->loop_filter_mode == 2) {
-                EbPictureBufferDesc_t  *recon_buffer = is16bit ? picture_control_set_ptr->recon_picture16bit_ptr : picture_control_set_ptr->recon_picture_ptr;
-                if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
-
-                    //get the 16bit form of the input LCU
-                    if (is16bit) {
-                        recon_buffer = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
-                    }
-                    else {
-                        recon_buffer = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
-                    }
-                }
-                else { // non ref pictures
-                    recon_buffer = is16bit ? picture_control_set_ptr->recon_picture16bit_ptr : picture_control_set_ptr->recon_picture_ptr;
-                }
-
-                av1_loop_filter_init(picture_control_set_ptr);
-
-
-                av1_pick_filter_level(
-                    context_ptr,
-                    (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr,
-                    picture_control_set_ptr,
-                    LPF_PICK_FROM_FULL_IMAGE);
-
-#if NO_ENCDEC
-                //NO DLF
-                picture_control_set_ptr->parent_pcs_ptr->lf.filter_level[0] = 0;
-                picture_control_set_ptr->parent_pcs_ptr->lf.filter_level[1] = 0;
-                picture_control_set_ptr->parent_pcs_ptr->lf.filter_level_u = 0;
-                picture_control_set_ptr->parent_pcs_ptr->lf.filter_level_v = 0;
-#endif
-                av1_loop_filter_frame(
-                    recon_buffer,
-                    picture_control_set_ptr,
-                    0,
-                    3);
-            }
-#endif
-
-#endif
-
-#if !FILT_PROC
-            Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
-
-            EbPictureBufferDesc_t  * recon_picture_ptr;
-
-            if (is16bit) {
-                if ((picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) && (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE))
-                    recon_picture_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture16bit;
-                else
-                    recon_picture_ptr = picture_control_set_ptr->recon_picture16bit_ptr;
-            }
-            else {
-                if ((picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) && (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE))
-                    recon_picture_ptr = ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->referencePicture;
-                else
-                    recon_picture_ptr = picture_control_set_ptr->recon_picture_ptr;
-            }
-
-            LinkEbToAomBufferDesc(
-                recon_picture_ptr,
-                cm->frame_to_show);
-
-            if (sequence_control_set_ptr->enable_restoration) {
-                av1_loop_restoration_save_boundary_lines(cm->frame_to_show, cm, 0);
-            }
-
-
-#if CDEF_REF_ONLY
-            if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-#else
-            if (sequence_control_set_ptr->enable_cdef) {
-#endif
-                if (is16bit) {
-                    av1_cdef_search16bit(
-                        context_ptr,
-                        sequence_control_set_ptr,
-                        picture_control_set_ptr
-                    );
-
-                    av1_cdef_frame16bit(
-                        context_ptr,
-                        sequence_control_set_ptr,
-                        picture_control_set_ptr
-                    );
-                }
-                else {
-                    av1_cdef_search(
-                        context_ptr,
-                        sequence_control_set_ptr,
-                        picture_control_set_ptr
-                    );
-
-                    av1_cdef_frame(
-                        context_ptr,
-                        sequence_control_set_ptr,
-                        picture_control_set_ptr
-                    );
-                }
-            }
-            else {
-
-#if CDEF_REF_ONLY
-                picture_control_set_ptr->parent_pcs_ptr->cdef_bits = 0;
-                picture_control_set_ptr->parent_pcs_ptr->cdef_strengths[0] = 0;
-                picture_control_set_ptr->parent_pcs_ptr->nb_cdef_strengths = 1;
-                picture_control_set_ptr->parent_pcs_ptr->cdef_uv_strengths[0] = 0;
-#else
-                picture_control_set_ptr->parent_pcs_ptr->cdef_bits = 0;
-
-                picture_control_set_ptr->parent_pcs_ptr->nb_cdef_strengths = 0;
-#endif
-
-
-            }
-
-#endif
-
-
-
-#if FILT_PROC
             EB_MEMCPY(picture_control_set_ptr->parent_pcs_ptr->av1x->sgrproj_restore_cost, context_ptr->md_rate_estimation_ptr->sgrprojRestoreFacBits, 2 * sizeof(int32_t));
             EB_MEMCPY(picture_control_set_ptr->parent_pcs_ptr->av1x->switchable_restore_cost, context_ptr->md_rate_estimation_ptr->switchableRestoreFacBits, 3 * sizeof(int32_t));
             EB_MEMCPY(picture_control_set_ptr->parent_pcs_ptr->av1x->wiener_restore_cost, context_ptr->md_rate_estimation_ptr->wienerRestoreFacBits, 2 * sizeof(int32_t));
             picture_control_set_ptr->parent_pcs_ptr->av1x->rdmult = context_ptr->full_lambda;
 
-#else
-
-#if REST_REF_ONLY
-            if (sequence_control_set_ptr->enable_restoration && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-#else
-            if (sequence_control_set_ptr->enable_restoration) {
-#endif
-                av1_loop_restoration_save_boundary_lines(
-                    cm->frame_to_show,
-                    cm,
-                    1);
-
-                Yv12BufferConfig cpi_source;
-                LinkEbToAomBufferDesc(
-                    is16bit ? picture_control_set_ptr->input_frame16bit : picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr,
-                    &cpi_source);
-
-                Yv12BufferConfig trial_frame_rst;
-                LinkEbToAomBufferDesc(
-                    context_ptr->trial_frame_rst,
-                    &trial_frame_rst);
-
-                memcpy(&picture_control_set_ptr->parent_pcs_ptr->av1x->sgrproj_restore_cost, &context_ptr->md_rate_estimation_ptr->sgrprojRestoreFacBits, 2 * sizeof(int32_t));
-                memcpy(&picture_control_set_ptr->parent_pcs_ptr->av1x->switchable_restore_cost, &context_ptr->md_rate_estimation_ptr->switchableRestoreFacBits, 3 * sizeof(int32_t));
-                memcpy(&picture_control_set_ptr->parent_pcs_ptr->av1x->wiener_restore_cost, &context_ptr->md_rate_estimation_ptr->wienerRestoreFacBits, 2 * sizeof(int32_t));
-                picture_control_set_ptr->parent_pcs_ptr->av1x->rdmult = context_ptr->full_lambda;
-
-                av1_pick_filter_restoration(
-                    &cpi_source,
-                    &trial_frame_rst,
-                    picture_control_set_ptr->parent_pcs_ptr->av1x,
-                    picture_control_set_ptr->parent_pcs_ptr->av1_cm);
-
-                if (cm->rst_info[0].frame_restoration_type != RESTORE_NONE ||
-                    cm->rst_info[1].frame_restoration_type != RESTORE_NONE ||
-                    cm->rst_info[2].frame_restoration_type != RESTORE_NONE)
-                {
-                    av1_loop_restoration_filter_frame(
-                        cm->frame_to_show,
-                        cm,
-                        0);
-                }
-            }
-            else {
-                cm->rst_info[0].frame_restoration_type = RESTORE_NONE;
-                cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
-                cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
-            }
-#endif
-#if !FILT_PROC
-#if FAST_SG
-            uint8_t best_ep_cnt = 0;
-            uint8_t best_ep = 0;
-            for (uint8_t i = 0; i < SGRPROJ_PARAMS; i++) {
-                if (cm->sg_frame_ep_cnt[i] > best_ep_cnt) {
-                    best_ep = i;
-                    best_ep_cnt = picture_control_set_ptr->parent_pcs_ptr->sg_frame_ep_cnt[i];
-                }
-            }
-            cm->sg_frame_ep = best_ep;
-#endif
-            if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
-                // copy stat to ref object (intra_coded_area, Luminance, Scene change detection flags)
-                CopyStatisticsToRefObject(
-                    picture_control_set_ptr,
-                    sequence_control_set_ptr);
-            }
-            //printf("%3i\t%i\n", picture_control_set_ptr->picture_number, context_ptr->tot_intra_coded_area);
-
-            // PSNR Calculation
-            if (sequence_control_set_ptr->static_config.stat_report) {
-                PsnrCalculations(
-                    picture_control_set_ptr,
-                    sequence_control_set_ptr);
-            }
-
-            // Pad the reference picture and set up TMVP flag and ref POC
-            if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
-                PadRefAndSetFlags(
-                    picture_control_set_ptr,
-                    sequence_control_set_ptr);
-
-            if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)
-            {
-                EbPictureBufferDesc_t *input_picture_ptr = (EbPictureBufferDesc_t*)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr;
-                const uint32_t  SrclumaOffSet = input_picture_ptr->origin_x + input_picture_ptr->origin_y    *input_picture_ptr->stride_y;
-                const uint32_t  SrccbOffset = (input_picture_ptr->origin_x >> 1) + (input_picture_ptr->origin_y >> 1)*input_picture_ptr->strideCb;
-                const uint32_t  SrccrOffset = (input_picture_ptr->origin_x >> 1) + (input_picture_ptr->origin_y >> 1)*input_picture_ptr->strideCr;
-
-                EbReferenceObject_t   *referenceObject = (EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr;
-                EbPictureBufferDesc_t *refDenPic = referenceObject->refDenSrcPicture;
-                const uint32_t           ReflumaOffSet = refDenPic->origin_x + refDenPic->origin_y    *refDenPic->stride_y;
-                const uint32_t           RefcbOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCb;
-                const uint32_t           RefcrOffset = (refDenPic->origin_x >> 1) + (refDenPic->origin_y >> 1)*refDenPic->strideCr;
-
-                uint16_t  verticalIdx;
-
-                for (verticalIdx = 0; verticalIdx < refDenPic->height; ++verticalIdx)
-                {
-                    EB_MEMCPY(refDenPic->buffer_y + ReflumaOffSet + verticalIdx * refDenPic->stride_y,
-                        input_picture_ptr->buffer_y + SrclumaOffSet + verticalIdx * input_picture_ptr->stride_y,
-                        input_picture_ptr->width);
-                }
-
-                for (verticalIdx = 0; verticalIdx < input_picture_ptr->height / 2; ++verticalIdx)
-                {
-                    EB_MEMCPY(refDenPic->bufferCb + RefcbOffset + verticalIdx * refDenPic->strideCb,
-                        input_picture_ptr->bufferCb + SrccbOffset + verticalIdx * input_picture_ptr->strideCb,
-                        input_picture_ptr->width / 2);
-
-                    EB_MEMCPY(refDenPic->bufferCr + RefcrOffset + verticalIdx * refDenPic->strideCr,
-                        input_picture_ptr->bufferCr + SrccrOffset + verticalIdx * input_picture_ptr->strideCr,
-                        input_picture_ptr->width / 2);
-                }
-
-                generate_padding(
-                    refDenPic->buffer_y,
-                    refDenPic->stride_y,
-                    refDenPic->width,
-                    refDenPic->height,
-                    refDenPic->origin_x,
-                    refDenPic->origin_y);
-
-                generate_padding(
-                    refDenPic->bufferCb,
-                    refDenPic->strideCb,
-                    refDenPic->width >> 1,
-                    refDenPic->height >> 1,
-                    refDenPic->origin_x >> 1,
-                    refDenPic->origin_y >> 1);
-
-                generate_padding(
-                    refDenPic->bufferCr,
-                    refDenPic->strideCr,
-                    refDenPic->width >> 1,
-                    refDenPic->height >> 1,
-                    refDenPic->origin_x >> 1,
-                    refDenPic->origin_y >> 1);
-            }
-            if (sequence_control_set_ptr->static_config.recon_enabled) {
-                ReconOutput(
-                    picture_control_set_ptr,
-                    sequence_control_set_ptr);
-            }
-#endif
-#if !FILT_PROC
-            if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-
-                // Get Empty EntropyCoding Results
-                eb_get_empty_object(
-                    context_ptr->picture_demux_output_fifo_ptr,
-                    &pictureDemuxResultsWrapperPtr);
-
-                pictureDemuxResultsPtr = (PictureDemuxResults_t*)pictureDemuxResultsWrapperPtr->object_ptr;
-                pictureDemuxResultsPtr->reference_picture_wrapper_ptr = picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr;
-                pictureDemuxResultsPtr->sequence_control_set_wrapper_ptr = picture_control_set_ptr->sequence_control_set_wrapper_ptr;
-                pictureDemuxResultsPtr->picture_number = picture_control_set_ptr->picture_number;
-                pictureDemuxResultsPtr->pictureType = EB_PIC_REFERENCE;
-
-                // Post Reference Picture
-                eb_post_full_object(pictureDemuxResultsWrapperPtr);
-            }
-#endif
 
         }
 
 
 
-#if FILT_PROC
         if (lastLcuFlag)
         {
 
@@ -2174,7 +1920,7 @@ void* EncDecKernel(void *input_ptr)
                 context_ptr->enc_dec_output_fifo_ptr,
                 &encDecResultsWrapperPtr);
             encDecResultsPtr = (EncDecResults_t*)encDecResultsWrapperPtr->object_ptr;
-            encDecResultsPtr->pictureControlSetWrapperPtr = encDecTasksPtr->pictureControlSetWrapperPtr;
+            encDecResultsPtr->picture_control_set_wrapper_ptr = encDecTasksPtr->picture_control_set_wrapper_ptr;
             //CHKN these are not needed for DLF
             encDecResultsPtr->completedLcuRowIndexStart = 0;
             encDecResultsPtr->completedLcuRowCount = ((sequence_control_set_ptr->luma_height + sequence_control_set_ptr->sb_size_pix - 1) >> lcuSizeLog2);
@@ -2182,41 +1928,6 @@ void* EncDecKernel(void *input_ptr)
             eb_post_full_object(encDecResultsWrapperPtr);
 
         }
-#else
-        // Send the Entropy Coder incremental updates as each SB row becomes available
-        if (enableEcRows)
-        {
-            if (endOfRowFlag == EB_TRUE) {
-
-                // Get Empty EncDec Results
-                eb_get_empty_object(
-                    context_ptr->enc_dec_output_fifo_ptr,
-                    &encDecResultsWrapperPtr);
-                encDecResultsPtr = (EncDecResults_t*)encDecResultsWrapperPtr->object_ptr;
-                encDecResultsPtr->pictureControlSetWrapperPtr = encDecTasksPtr->pictureControlSetWrapperPtr;
-                encDecResultsPtr->completedLcuRowIndexStart = lcuRowIndexStart;
-                encDecResultsPtr->completedLcuRowCount = lcuRowIndexCount;
-
-                // Post EncDec Results
-                eb_post_full_object(encDecResultsWrapperPtr);
-            }
-        }
-        else if (lastLcuFlag)
-        {
-
-            // Get Empty EncDec Results
-            eb_get_empty_object(
-                context_ptr->enc_dec_output_fifo_ptr,
-                &encDecResultsWrapperPtr);
-            encDecResultsPtr = (EncDecResults_t*)encDecResultsWrapperPtr->object_ptr;
-            encDecResultsPtr->pictureControlSetWrapperPtr = encDecTasksPtr->pictureControlSetWrapperPtr;
-            encDecResultsPtr->completedLcuRowIndexStart = 0;
-            encDecResultsPtr->completedLcuRowCount = ((sequence_control_set_ptr->luma_height + sequence_control_set_ptr->sb_size_pix - 1) >> lcuSizeLog2);
-            // Post EncDec Results
-            eb_post_full_object(encDecResultsWrapperPtr);
-
-        }
-#endif
         // Release Mode Decision Results
         eb_release_object(encDecTasksWrapperPtr);
 

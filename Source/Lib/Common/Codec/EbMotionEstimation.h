@@ -43,6 +43,7 @@ extern "C" {
         uint32_t                   decimStep);
 
     
+<<<<<<< HEAD:Source/Lib/Common/Codec/EbMotionEstimation.h
 #if OIS_BASED_INTRA
     extern EbErrorType open_loop_intra_search_sb(
         PictureParentControlSet_t   *picture_control_set_ptr,
@@ -54,12 +55,16 @@ extern "C" {
 
 #else
     extern EbErrorType OpenLoopIntraSearchLcu(
+=======
+    extern EbErrorType open_loop_intra_search_sb(
+>>>>>>> master:Source/Lib/Common/Codec/EbMotionEstimation.h
         PictureParentControlSet_t   *picture_control_set_ptr,
         uint32_t                       sb_index,
         MotionEstimationContext_t   *context_ptr,
         EbPictureBufferDesc_t       *input_ptr,
         EbAsm                       asm_type);
 #endif
+
 
     int8_t Sort3Elements(uint32_t a, uint32_t b, uint32_t c);
 #define a_b_c  0
