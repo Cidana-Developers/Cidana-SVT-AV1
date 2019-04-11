@@ -21,9 +21,13 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
 link_directories(${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/lib/x64)
 link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/msvc)
 endif(MSVC OR MSYS OR MINGW OR WIN32)
-if (UNIX)
+if (UNIX AND NOT APPLE)
 link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/linux)
-endif(UNIX)
+endif(UNIX AND NOT APPLE)
+
+if (APPLE)
+link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/mac)
+endif(APPLE)
 
 
 # Define helper functions and macros used by Google Test.
@@ -61,7 +65,7 @@ if (UNIX)
         gtest_all 
         pthread
         m
-		aom)
+		    aom)
         
 endif(UNIX)
 

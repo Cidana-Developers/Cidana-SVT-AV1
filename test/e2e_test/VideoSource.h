@@ -1,55 +1,64 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+/******************************************************************************
+ * @file VideoSource.h
+ *
+ * @brief Abstract class for reading video source file.
+ *
+ * @author Cidana-Ryan
+ *
+ ******************************************************************************/
+
 #ifndef _SVT_TEST_VIDEO_SOURCE_H_
 #define _SVT_TEST_VIDEO_SOURCE_H_
 #include "EbSvtAv1Enc.h"
 #include "VideoFrame.h"
 
-// Abstract base class for test video source
 class VideoSource {
   public:
     virtual ~VideoSource() {
         deinit_frame_buffer();
     };
-	// Prepare stream.
-	virtual EbErrorType open_source() = 0;
-	// Close stream.
-	virtual void close_source() = 0;
-	// Get next frame.
+    /*!\brief Prepare stream. */
+    virtual EbErrorType open_source() = 0;
+    /*!\brief Close stream. */
+    virtual void close_source() = 0;
+    /*!\brief Get next frame. */
     virtual EbSvtIOFormat *get_next_frame() = 0;
-    // Get frame ny index.
-    virtual EbSvtIOFormat *get_frame_by_index(const uint32_t index ) = 0;
-    // Get current frame index.
+    /*!\brief Get frame by index. */
+    virtual EbSvtIOFormat *get_frame_by_index(const uint32_t index) = 0;
+    /*!\brief Get current frame index. */
     virtual uint32_t get_frame_index() {
         return current_frame_index_;
     };
-    // Get current frame size in byte
+    /*!\brief Get current frame size in bytes. */
     virtual uint32_t get_frame_size() {
         return frame_size_;
     };
-    // Get video width
-    virtual uint32_t get_width() {
-        return width_;
-    };
-    // Get video width
+    /*!\brief Get video width with padding. SVT-AV1 support only multiple of 8
+     * resolutions. We will add some padding on right side if needed.  */
     virtual uint32_t get_width_with_padding() {
         return width_with_padding_;
     };
-    // Get video height
+    /*!\brief Get video height with oadding.SVT-AV1 support only multiple of 8
+     * resolutions. We will add some padding on bottom if needed.*/
     virtual uint32_t get_height_with_padding() {
         return height_with_padding_;
     };
-    // Get video bit_depth
+    /*!\brief Get video bit_depth */
     virtual uint32_t get_bit_depth() {
         return bit_depth_;
     };
-    // Get video image format.
+    /*!\brief Get video image format. */
     virtual VideoImageFormat get_image_format() {
         return image_format_;
     }
-	// Get total frame count.
-	virtual uint32_t get_frame_count() {
-		return frame_count_;
-	}
-
+    /*!\brief Get total frame count. */
+    virtual uint32_t get_frame_count() {
+        return frame_count_;
+    }
 
   protected:
     bool is_ten_bit_mode() {

@@ -16,7 +16,9 @@
 
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
+#ifdef ENABLE_DEBUG_MONITOR
 #include "VideoMonitor.h"
+#endif
 
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
@@ -86,8 +88,10 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
         recon_sink_ = nullptr;
         refer_dec_ = nullptr;
         output_file_ = nullptr;
+#ifdef ENABLE_DEBUG_MONITOR
         recon_monitor_ = nullptr;
         ref_monitor_ = nullptr;
+#endif
         obu_frame_header_size_ = 0;
     }
     virtual ~SvtAv1E2ETestFramework() {
@@ -103,6 +107,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
             delete output_file_;
             output_file_ = nullptr;
         }
+#ifdef ENABLE_DEBUG_MONITOR
         if (recon_monitor_) {
             delete recon_monitor_;
             recon_monitor_ = nullptr;
@@ -111,6 +116,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
             delete ref_monitor_;
             ref_monitor_ = nullptr;
         }
+#endif
     }
 
   protected:
@@ -132,8 +138,10 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     ReconSink *recon_sink_;
     RefDecoder *refer_dec_;
     IvfFile *output_file_;
+#ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
+#endif
     uint8_t obu_frame_header_size_;
 };
 

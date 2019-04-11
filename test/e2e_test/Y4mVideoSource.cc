@@ -1,7 +1,18 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+/******************************************************************************
+ * @file Y4mVideoSource.h
+ *
+ * @brief Impelmentation of Y4mVideoSource class for reading y4m file.
+ *
+ * @author Cidana-Ryan
+ *
+ ******************************************************************************/
 #include <memory.h>
 #include <stdlib.h>
 #include "Y4mVideoSource.h"
-#define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
                                const VideoImageFormat format,
@@ -23,18 +34,22 @@ Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
     frame_buffer_ = nullptr;
     image_format_ = format;
     packed_ten_bit_mode = true;
+
+#ifdef ENABLE_DEBUG_MONITOR
     monitor = nullptr;
+#endif
 }
 
 Y4MVideoSource::~Y4MVideoSource() {
     if (file_handle_ != nullptr) {
         fclose(file_handle_);
     }
+#ifdef ENABLE_DEBUG_MONITOR
     if (monitor != nullptr)
         delete monitor;
+#endif
 }
 
-// Prepare stream, and get first frame.
 EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
     if (file_handle_ != nullptr)
@@ -61,6 +76,7 @@ EbErrorType Y4MVideoSource::open_source() {
     }
 
     current_frame_index_ = -1;
+#ifdef ENABLE_DEBUG_MONITOR
     monitor = new VideoMonitor(
         width_with_padding_,
         height_with_padding_,
@@ -68,20 +84,23 @@ EbErrorType Y4MVideoSource::open_source() {
         bit_depth_,
         packed_ten_bit_mode,
         "Y4M Source");
+#endif
 
     return EB_ErrorNone;
 }
 
-// Prepare stream, and get first frame.
 void Y4MVideoSource::close_source() {
     if (file_handle_) {
         fclose(file_handle_);
         file_handle_ = nullptr;
     }
+
+#ifdef ENABLE_DEBUG_MONITOR
     if (monitor) {
         delete monitor;
         monitor = nullptr;
     }
+#endif
     deinit_frame_buffer();
     frame_count_ = 0;
 }
@@ -90,7 +109,7 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
     if (index > frame_count_) {
         return nullptr;
     }
-    // Seek to index frame
+    // Seek to frame by index
     fseek(file_handle_, index * frame_length_ + header_length_, SEEK_SET);
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
@@ -99,14 +118,16 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
     return frame_buffer_;
 }
 
-// Get next frame.
 EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
     ++current_frame_index_;
+
+#ifdef ENABLE_DEBUG_MONITOR
     monitor->draw_frame(
         frame_buffer_->luma, frame_buffer_->cb, frame_buffer_->cr);
+#endif
     return frame_buffer_;
 }
 
@@ -341,7 +362,6 @@ uint32_t Y4MVideoSource::read_input_frame() {
     frame_buffer_->crStride = (width_with_padding_ >> width_downsize);
 
     // Read raw data from file
-
     const unsigned int bottom_padding = height_with_padding_ - height_;
     const unsigned int righ_padding = width_with_padding_ - width_;
     unsigned int read_len = 0;

@@ -619,6 +619,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
     VideoFrame ref_frame;
     memset(&ref_frame, 0, sizeof(ref_frame));
     while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
+#ifdef ENABLE_DEBUG_MONITOR
         if (ref_monitor_ == nullptr) {
             ref_monitor_ = new VideoMonitor(ref_frame.width,
                                             ref_frame.height,
@@ -631,6 +632,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
             ref_monitor_->draw_frame(
                 ref_frame.planes[0], ref_frame.planes[1], ref_frame.planes[2]);
         }
+#endif
         // compare tools
         if (recon_sink_) {
             // Compare ref decode output with recon
@@ -642,6 +644,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
                                     video_src_->get_height_with_padding() *
                                     (video_src_->get_bit_depth() > 8 ? 2 : 1);
 
+#ifdef ENABLE_DEBUG_MONITOR
                 // Output to monitor for debug
                 if (recon_monitor_ == nullptr) {
                     recon_monitor_ = new VideoMonitor(
@@ -659,6 +662,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
                                                mug->mug_buf + luma_len,
                                                mug->mug_buf + luma_len * 5 / 4);
                 }
+#endif
 
                 // Do compare image
                 ASSERT_EQ(compare_image(mug, &ref_frame), true)

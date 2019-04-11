@@ -1,9 +1,16 @@
+/*
+ * Copyright(c) 2019 Intel Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
+/******************************************************************************
+ * @file Y4mVideoSource.h
+ *
+ * @brief Impelmentation of YuvVideoSource class for reading y4m file.
+ *
+ * @author Cidana-Ryan
+ *
+ ******************************************************************************/
 #include "YuvVideosource.h"
-
-#define LEFT_INPUT_PADDING 0
-#define RIGHT_INPUT_PADDING 0
-#define TOP_INPUT_PADDING 0
-#define BOTTOM_INPUT_PADDING 0
 
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 
