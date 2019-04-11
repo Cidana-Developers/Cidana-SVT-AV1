@@ -277,6 +277,26 @@ static INLINE int get_txfm1d_size(TXFM_TYPE txfm_type) {
     }
 }
 
+static INLINE bool is_txfm_valid(TxType tx_type, int w, int h) {
+    const TX_TYPE_1D vert_type = vtx_tab[tx_type];
+    const TX_TYPE_1D horz_type = htx_tab[tx_type];
+    const int max_size[TX_TYPES_1D] = {64, 16, 16, 32};
+    if (w <= max_size[horz_type] && h <= max_size[vert_type])
+        return true;
+    else
+        return false;
+}
+
+static INLINE int32_t get_txb_wide(TxSize tx_size) {
+    tx_size = av1_get_adjusted_tx_size(tx_size);
+    return tx_size_wide[tx_size];
+}
+
+static INLINE int32_t get_txb_high(TxSize tx_size) {
+    tx_size = av1_get_adjusted_tx_size(tx_size);
+    return tx_size_high[tx_size];
+}
+
 #ifdef __cplusplus
 }
 #endif
