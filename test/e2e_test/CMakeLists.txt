@@ -75,7 +75,9 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
                         
     cxx_executable_with_flags(SvtAv1E2ETests "${cxx_default}"
       "${lib_list}" ${all_files})
-    target_link_libraries(SvtAv1E2ETests SDL2.lib aom.lib)
+    target_link_libraries(SvtAv1E2ETests 
+    #SDL2.lib 
+    aom.lib)
     set_target_properties(SvtAv1E2ETests
                         PROPERTIES
                         COMPILE_DEFINITIONS "GTEST_LINKED_AS_SHARED_LIBRARY=1")
