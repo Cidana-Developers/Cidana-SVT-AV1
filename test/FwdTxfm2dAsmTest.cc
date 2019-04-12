@@ -125,7 +125,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             return;
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
-            if (is_txfm_valid(type, width_, height_) == false)
+            if (is_txfm_allowed(type, width_, height_) == false)
                 continue;
 
             const int loops = 10;
