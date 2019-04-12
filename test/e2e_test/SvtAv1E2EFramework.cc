@@ -69,10 +69,10 @@ bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
     const uint32_t height = ref_frame->disp_height;
     unsigned int i = 0;
     if (ref_frame->bits_per_sample == 8) {
-        for (int l = 0; l < height; l++) {
+        for (uint32_t l = 0; l < height; l++) {
             const uint8_t *s = recon->mug_buf + l * width;
             const uint8_t *d = ref_frame->planes[0] + l * ref_frame->stride[0];
-            for (int r = 0; r < width; r++) {
+            for (uint32_t r = 0; r < width; r++) {
                 if (s[r] != d[r * 2])  // ref decoder use 2bytes to store 8 bits
                                        // depth pix.
                     return false;
@@ -80,22 +80,22 @@ bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
             }
         }
 
-        for (int l = 0; l < (height >> 1); l++) {
+        for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint8_t *s =
                 (recon->mug_buf + width * height) + l * (width >> 1);
             const uint8_t *d = ref_frame->planes[1] + l * ref_frame->stride[1];
-            for (int r = 0; r < (width >> 1); r++) {
+            for (uint32_t r = 0; r < (width >> 1); r++) {
                 if (s[r] != d[r * 2])
                     return false;
                 i++;
             }
         }
 
-        for (int l = 0; l < (height >> 1); l++) {
+        for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint8_t *s =
                 (recon->mug_buf + width * height * 5 / 4) + l * (width >> 1);
             const uint8_t *d = ref_frame->planes[2] + l * ref_frame->stride[2];
-            for (int r = 0; r < (width >> 1); r++) {
+            for (uint32_t r = 0; r < (width >> 1); r++) {
                 if (s[r] != d[r * 2])
                     return false;
                 i++;
@@ -103,37 +103,37 @@ bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
         }
     } else  // 10bit mode.
     {
-        for (int l = 0; l < height; l++) {
+        for (uint32_t l = 0; l < height; l++) {
             const uint16_t *s = (uint16_t *)(recon->mug_buf + l * width * 2);
             const uint16_t *d =
                 (uint16_t *)(ref_frame->planes[0] + l * ref_frame->stride[0]);
-            for (int r = 0; r < width; r++) {
+            for (uint32_t r = 0; r < width; r++) {
                 if (s[r] != d[r])
                     return false;
                 i++;
             }
         }
 
-        for (int l = 0; l < (height >> 1); l++) {
+        for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint16_t *s =
                 (uint16_t *)(recon->mug_buf + width * height * 2 +
                              l * (width >> 1) * 2);
             const uint16_t *d =
                 (uint16_t *)(ref_frame->planes[1] + l * ref_frame->stride[1]);
-            for (int r = 0; r < (width >> 1); r++) {
+            for (uint32_t r = 0; r < (width >> 1); r++) {
                 if (s[r] != d[r])
                     return false;
                 i++;
             }
         }
 
-        for (int l = 0; l < (height >> 1); l++) {
+        for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint16_t *s =
                 (uint16_t *)(recon->mug_buf + width * height * 5 / 4 * 2 +
                              l * (width >> 1) * 2);
             const uint16_t *d =
                 (uint16_t *)(ref_frame->planes[2] + l * ref_frame->stride[2]);
-            for (int r = 0; r < (width >> 1); r++) {
+            for (uint32_t r = 0; r < (width >> 1); r++) {
                 if (s[r] != d[r])
                     return false;
                 i++;
@@ -145,7 +145,7 @@ bool compare_image(const ReconSink::ReconMug *recon, VideoFrame *ref_frame) {
 
 double psnr_8bit(const uint8_t *p1, const uint8_t *p2, const uint32_t size) {
     double mse = 0.0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         const uint8_t I = p1[i];
         const uint8_t K = p2[i];
         const int32_t diff = I - K;
@@ -161,9 +161,9 @@ double psnr_8bit(const uint8_t *p1, const uint8_t *p2, const uint32_t size) {
     return psnr;
 }
 
-float psnr_10bit(const uint16_t *p1, const uint16_t *p2, const uint32_t size) {
+double psnr_10bit(const uint16_t *p1, const uint16_t *p2, const uint32_t size) {
     double mse = 0.0;
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         const uint16_t I = p1[i];
         const uint16_t K = p2[i];
         const int32_t diff = I - K;
@@ -391,7 +391,6 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::run_encode_process() {
     bool src_file_eos = false;
     bool enc_file_eos = false;
     bool rec_file_eos = recon_sink_ ? false : true;
-    int ref_frame_count = 0;
     do {
         if (!src_file_eos) {
             frame = (uint8_t *)video_src_->get_next_frame();
@@ -707,8 +706,8 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
                 // Calculate psnr with input frame and
                 // recon frame
                 uint32_t index = video_src_->get_frame_index();
-                EbSvtIOFormat *frame =
-                    video_src_->get_frame_by_index(ref_frame.timestamp);
+                EbSvtIOFormat *frame = video_src_->get_frame_by_index(
+                    (const uint32_t)ref_frame.timestamp);
                 if (frame) {
                     double luma_psnr = 0.0;
                     double cb_psnr = 0.0;
@@ -775,7 +774,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::get_recon_frame() {
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;
-            printf("recon image frame: %lu\n", new_mug->time_stamp);
+            printf("recon image frame: %llu\n", new_mug->time_stamp);
             recon_sink_->fill_mug(new_mug);
         }
     } while (true);

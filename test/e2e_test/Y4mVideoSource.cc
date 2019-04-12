@@ -209,7 +209,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
             int line_len = 0;
             char c;
             do {
-                line[line_len++] = c = fgetc(file_handle_);
+                line[line_len++] = c = (char)fgetc(file_handle_);
             } while (c != ' ' && c != 0x0A && line_len < 80);
             if (strncmp("420p10", line, 6) == 0) {
                 bit_depth_ = 10;
