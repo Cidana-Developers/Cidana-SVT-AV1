@@ -14,7 +14,7 @@
 #include "RefDecoder.h"
 
 RefDecoder *create_reference_decoder() {
-    RefDecoder::RefDecoderErr ret;
+    RefDecoder::RefDecoderErr ret = RefDecoder::REF_CODEC_OK;
     RefDecoder *decoder = new RefDecoder(ret);
     if (decoder && ret != RefDecoder::REF_CODEC_OK) {
         // decoder object is create but init failed
@@ -38,6 +38,7 @@ static VideoImageFormat trans_video_format(aom_img_fmt_t fmt) {
     case AOM_IMG_FMT_I44416: return IMG_FMT_444P10_PACKED;
     default: break;
     }
+    return IMG_FMT_422;
 }
 
 RefDecoder::RefDecoder(RefDecoder::RefDecoderErr &ret) {
