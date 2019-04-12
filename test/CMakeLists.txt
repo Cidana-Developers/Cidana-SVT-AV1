@@ -102,4 +102,5 @@ install(TARGETS SvtAv1UnitTests RUNTIME DESTINATION bin)
 add_test(SvtAv1UnitTests ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/SvtAv1UnitTests)
 
 add_subdirectory (api_test)
+add_subdirectory (e2e_test)
 
