@@ -10,7 +10,7 @@
  * @author Cidana-Ryan
  *
  ******************************************************************************/
-#include "YuvVideosource.h"
+#include "YuvVideoSource.h"
 
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 

@@ -13,7 +13,7 @@
 
 #include "EbSvtAv1Enc.h"
 #include "Y4mVideoSource.h"
-#include "YuvVideosource.h"
+#include "YuvVideoSource.h"
 #include "gtest/gtest.h"
 #include "RefDecoder.h"
 #include "SvtAv1E2EFramework.h"
