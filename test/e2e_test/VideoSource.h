@@ -86,17 +86,17 @@ class VideoSource {
             free(frame_buffer_->cr);
             frame_buffer_->cr = nullptr;
         }
-        if (frame_buffer_->lumaExt != nullptr) {
-            free(frame_buffer_->lumaExt);
-            frame_buffer_->lumaExt = nullptr;
+        if (frame_buffer_->luma_ext != nullptr) {
+            free(frame_buffer_->luma_ext);
+            frame_buffer_->luma_ext = nullptr;
         }
-        if (frame_buffer_->cbExt != nullptr) {
-            free(frame_buffer_->cbExt);
-            frame_buffer_->cbExt = nullptr;
+        if (frame_buffer_->cb_ext != nullptr) {
+            free(frame_buffer_->cb_ext);
+            frame_buffer_->cb_ext = nullptr;
         }
-        if (frame_buffer_->crExt != nullptr) {
-            free(frame_buffer_->crExt);
-            frame_buffer_->crExt = nullptr;
+        if (frame_buffer_->cr_ext != nullptr) {
+            free(frame_buffer_->cr_ext);
+            frame_buffer_->cr_ext = nullptr;
         }
         free(frame_buffer_);
         frame_buffer_ = nullptr;
@@ -138,9 +138,9 @@ class VideoSource {
         frame_buffer_->origin_y = 0;
 
         // SVT-AV1 use pixel size as stride?
-        frame_buffer_->yStride = luma_size;
-        frame_buffer_->cbStride = chroma_size;
-        frame_buffer_->crStride = chroma_size;
+        frame_buffer_->y_stride = luma_size;
+        frame_buffer_->cb_stride = chroma_size;
+        frame_buffer_->cr_stride = chroma_size;
 
         if (is_ten_bit_mode() && packed_ten_bit_mode) {
             luma_size *= 2;
@@ -166,27 +166,27 @@ class VideoSource {
         }
 
         if (is_ten_bit_mode() && !packed_ten_bit_mode) {
-            frame_buffer_->lumaExt = (uint8_t *)malloc(luma_size);
-            if (!frame_buffer_->lumaExt) {
+            frame_buffer_->luma_ext = (uint8_t *)malloc(luma_size);
+            if (!frame_buffer_->luma_ext) {
                 deinit_frame_buffer();
                 return EB_ErrorInsufficientResources;
             }
 
-            frame_buffer_->cbExt = (uint8_t *)malloc(chroma_size);
-            if (!frame_buffer_->cbExt) {
+            frame_buffer_->cb_ext = (uint8_t *)malloc(chroma_size);
+            if (!frame_buffer_->cb_ext) {
                 deinit_frame_buffer();
                 return EB_ErrorInsufficientResources;
             }
 
-            frame_buffer_->cr = (uint8_t *)malloc(chroma_size);
-            if (!frame_buffer_->crExt) {
+            frame_buffer_->cr_ext = (uint8_t *)malloc(chroma_size);
+            if (!frame_buffer_->cr_ext) {
                 deinit_frame_buffer();
                 return EB_ErrorInsufficientResources;
             }
         } else {
-            frame_buffer_->lumaExt = nullptr;
-            frame_buffer_->cbExt = nullptr;
-            frame_buffer_->crExt = nullptr;
+            frame_buffer_->luma_ext = nullptr;
+            frame_buffer_->cb_ext = nullptr;
+            frame_buffer_->cr_ext = nullptr;
         }
 
         return EB_ErrorNone;

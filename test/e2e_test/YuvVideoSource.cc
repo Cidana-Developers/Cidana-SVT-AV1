@@ -91,9 +91,9 @@ uint32_t YuvVideoSource::read_input_frame() {
         return 0;
     }
 
-    frame_buffer_->yStride = input_padded_width;
-    frame_buffer_->cbStride = input_padded_width >> 1;
-    frame_buffer_->crStride = input_padded_width >> 1;
+    frame_buffer_->y_stride = input_padded_width;
+    frame_buffer_->cb_stride = input_padded_width >> 1;
+    frame_buffer_->cr_stride = input_padded_width >> 1;
 
     readSize = (uint64_t)SIZE_OF_ONE_FRAME_IN_BYTES(input_padded_width,
                                                     input_padded_height);

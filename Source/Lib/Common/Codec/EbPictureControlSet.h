@@ -23,26 +23,30 @@
 #include "EbRestoration.h"
 #include "noise_model.h"
 
-#if CDEF_M
-#include "EbCdef.h"
+#if CABAC_UP
+#include "EbMdRateEstimation.h"
 #endif
 
-#if ICOPY
+#include "EbCdef.h"
+
+
 #include"av1me.h"
 #include "hash_motion.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define SEGMENT_ENTROPY_BUFFER_SIZE         0x989680// Entropy Bitstream Buffer Size
+#define SEGMENT_ENTROPY_BUFFER_SIZE         40000000 // Entropy Bitstream Buffer Size
 #define PACKETIZATION_PROCESS_BUFFER_SIZE SEGMENT_ENTROPY_BUFFER_SIZE
 #define HISTOGRAM_NUMBER_OF_BINS            256
 #define MAX_NUMBER_OF_REGIONS_IN_WIDTH      4
 #define MAX_NUMBER_OF_REGIONS_IN_HEIGHT     4
+#if RC
+#define MAX_REF_QP_NUM                      81
+#else
 #define MAX_REF_QP_NUM                      52
-
+#endif
     // Segment Macros
 #define SEGMENT_MAX_COUNT   64
 #define SEGMENT_COMPLETION_MASK_SET(mask, index)        MULTI_LINE_MACRO_BEGIN (mask) |= (((uint64_t) 1) << (index)); MULTI_LINE_MACRO_END
@@ -13477,14 +13481,6 @@ extern "C" {
     };
 
     typedef struct MacroblockPlane {
-#if !MACRO_BLOCK_CLEANUP
-        DECLARE_ALIGNED(16, int16_t, src_diff[MAX_SB_SQUARE]);
-        tran_low_t *qcoeff;
-        tran_low_t *coeff;
-        uint16_t *eobs;
-        uint8_t *txb_entropy_ctx;
-        struct Buf2d src;
-#endif
 
         // Quantizer setings
         // These are used/accessed only in the quantization process
@@ -13583,6 +13579,7 @@ extern "C" {
         // Marks if we need to use 16bit frame buffers (1: yes, 0: no).
         int32_t use_highbitdepth;
         int32_t bit_depth;
+        int32_t color_format;
         int32_t subsampling_x;
         int32_t subsampling_y;
         int32_t width;
@@ -13615,19 +13612,14 @@ extern "C" {
         int32_t tile_row_start_sb[MAX_TILE_ROWS + 1];  // valid for 0 <= i <= tile_rows
         int32_t tile_width, tile_height;               // In MI units
         struct PictureParentControlSet_s               *p_pcs_ptr;
-#if FAST_SG
         int8_t  sg_filter_mode;
         int32_t sg_frame_ep_cnt[SGRPROJ_PARAMS];
         int32_t sg_frame_ep;
         int8_t  sg_ref_frame_ep[2];
-#endif
-#if FAST_SG
         int8_t  wn_filter_mode;
-#endif
 
-#if ICOPY
+
         struct PictureControlSet_s               *pcs_ptr;
-#endif
     } Av1Common;
 
     /**************************************
@@ -13676,7 +13668,6 @@ extern "C" {
      **************************************/
     struct CodedTreeblock_s;
     struct LargestCodingUnit_s;
-#if ICOPY
 #define MAX_MESH_STEP 4
 
     typedef struct MESH_PATTERN {
@@ -13704,11 +13695,10 @@ extern "C" {
         MESH_PATTERN mesh_patterns[MAX_MESH_STEP];
 
     } SPEED_FEATURES;
-#endif
 
     typedef struct PictureControlSet_s
     {
-        EbObjectWrapper_t                    *sequence_control_set_wrapper_ptr;
+        EbObjectWrapper                    *sequence_control_set_wrapper_ptr;
         
         EbPictureBufferDesc_t                *recon_picture_ptr;
         EbPictureBufferDesc_t                *film_grain_picture_ptr;
@@ -13718,13 +13708,13 @@ extern "C" {
         EbPictureBufferDesc_t                *input_frame16bit;
 
         struct PictureParentControlSet_s     *parent_pcs_ptr;  //The parent of this PCS.
-        EbObjectWrapper_t                    *picture_parent_control_set_wrapper_ptr;
+        EbObjectWrapper                    *picture_parent_control_set_wrapper_ptr;
         EntropyCoder_t                       *entropy_coder_ptr;
         // Packetization (used to encode SPS, PPS, etc)
         Bitstream_t                          *bitstreamPtr;
 
         // Reference Lists
-        EbObjectWrapper_t                    *ref_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST];
+        EbObjectWrapper                    *ref_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST];
         uint8_t                               ref_pic_qp_array[MAX_NUM_OF_REF_PIC_LIST];
         EB_SLICE                              ref_slice_type_array[MAX_NUM_OF_REF_PIC_LIST];
 
@@ -13732,6 +13722,7 @@ extern "C" {
         uint64_t                              picture_number;
         uint8_t                               temporal_layer_index;
         
+        EbColorFormat                         color_format;
         
         EncDecSegments_t                     *enc_dec_segment_ctrl;
 
@@ -13745,7 +13736,6 @@ extern "C" {
         EbBool                                entropy_coding_pic_done;
         EbHandle                              intra_mutex;
         uint32_t                              intra_coded_area;
-#if CDEF_M
         uint32_t                              tot_seg_searched_cdef;
         EbHandle                              cdef_search_mutex;
 
@@ -13758,14 +13748,13 @@ extern "C" {
         uint16_t *src[3];        //dlfed recon in 16bit form
         uint16_t *ref_coeff[3];  //input video in 16bit form
 
-#endif
-#if REST_M
+
         uint32_t                              tot_seg_searched_rest;
         EbHandle                              rest_search_mutex;
         uint16_t                              rest_segments_total_count;
         uint8_t                               rest_segments_column_count;
         uint8_t                               rest_segments_row_count;            
-#endif
+
         // Mode Decision Config
         MdcLcuData_t                         *mdc_sb_array;
 
@@ -13887,13 +13876,11 @@ extern "C" {
         int32_t                               cdef_preset[4];
         WienerInfo                            wiener_info[MAX_MB_PLANE];
         SgrprojInfo                           sgrproj_info[MAX_MB_PLANE];
-#if ICOPY
         SPEED_FEATURES sf;
         search_site_config ss_cfg;//CHKN this might be a seq based
         hash_table hash_table;
         CRC_CALCULATOR crc_calculator1;
         CRC_CALCULATOR crc_calculator2;
-#endif
 
     } PictureControlSet_t;
 
@@ -13953,17 +13940,18 @@ extern "C" {
     // Parent is created before the Child, and continue to live more. Child PCS only lives the exact time needed to encode the picture: from ME to EC/ALF.
     typedef struct PictureParentControlSet_s
     {
-        EbObjectWrapper_t                    *sequence_control_set_wrapper_ptr;
-        EbObjectWrapper_t                    *input_picture_wrapper_ptr;
-        EbObjectWrapper_t                    *reference_picture_wrapper_ptr;
-        EbObjectWrapper_t                    *pa_reference_picture_wrapper_ptr;
+        EbObjectWrapper                    *sequence_control_set_wrapper_ptr;
+        EbObjectWrapper                    *input_picture_wrapper_ptr;
+        EbObjectWrapper                    *reference_picture_wrapper_ptr;
+        EbObjectWrapper                    *pa_reference_picture_wrapper_ptr;
         EbPictureBufferDesc_t                *enhanced_picture_ptr;
+        EbPictureBufferDesc_t                *chroma_downsampled_picture_ptr; //if 422/444 input, down sample to 420 for MD
         PredictionStructure_t                *pred_struct_ptr;          // need to check
-        struct SequenceControlSet_s          *sequence_control_set_ptr;
+        struct SequenceControlSet          *sequence_control_set_ptr;
         struct PictureParentControlSet_s     *ref_pa_pcs_array[MAX_NUM_OF_REF_PIC_LIST];
-        EbObjectWrapper_t                    *p_pcs_wrapper_ptr;
-        EbObjectWrapper_t                    *previous_picture_control_set_wrapper_ptr;
-        EbObjectWrapper_t                    *output_stream_wrapper_ptr;
+        EbObjectWrapper                    *p_pcs_wrapper_ptr;
+        EbObjectWrapper                    *previous_picture_control_set_wrapper_ptr;
+        EbObjectWrapper                    *output_stream_wrapper_ptr;
         Av1Common                            *av1_cm;
         
         // Data attached to the picture. This includes data passed from the application, or other data the encoder attaches
@@ -13982,9 +13970,7 @@ extern "C" {
         EbBool                                eos_coming;
         uint8_t                               picture_qp;
         uint64_t                              picture_number;
-#if BASE_LAYER_REF
         uint64_t                              last_islice_picture_number;
-#endif
         EbPicnoiseClass                       pic_noise_class;
         EB_SLICE                              slice_type;
         uint8_t                               pred_struct_index;
@@ -14031,10 +14017,10 @@ extern "C" {
         uint32_t                              cb_sse;
 
         // Pre Analysis
-        EbObjectWrapper_t                    *ref_pa_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST];
+        EbObjectWrapper                    *ref_pa_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST];
         uint64_t                              ref_pic_poc_array[MAX_NUM_OF_REF_PIC_LIST];
         uint16_t                            **variance;
-        uint8_t                             **yMean;
+        uint8_t                             **y_mean;
         uint8_t                             **cbMean;
         uint8_t                             **crMean;
         uint32_t                              pre_assignment_buffer_count;
@@ -14046,9 +14032,8 @@ extern "C" {
         uint8_t                              *zz_cost_array;
         // Non moving index array
         uint8_t                              *non_moving_index_array;
-#if NEW_PRED_STRUCT
         int                                   kf_zeromotion_pct; // percent of zero motion blocks
-#endif
+
         uint8_t                               fade_out_from_black;
         uint8_t                               fade_in_to_black;
         EbBool                                is_pan;
@@ -14102,9 +14087,6 @@ extern "C" {
         int32_t                               intra_max_distance[4];
         int32_t                               inter_min_distance[4];
         int32_t                               inter_max_distance[4];
-#if !INTRA_INTER_FAST_LOOP
-        uint8_t                              *cmplx_status_sb;            // used by EncDecProcess()
-#endif
         // Histograms
         uint32_t                          ****picture_histogram;
         uint64_t                              average_intensity_per_region[MAX_NUMBER_OF_REGIONS_IN_WIDTH][MAX_NUMBER_OF_REGIONS_IN_HEIGHT][3];
@@ -14128,20 +14110,13 @@ extern "C" {
         EbHandle                              rc_distortion_histogram_mutex;
         
         // Open loop Intra candidate Search Results
-#if OIS_BASED_INTRA
         ois_sb_results_t                    **ois_sb_results;
-#else
-        OisCu32Cu16Results_t                **ois_cu32_cu16_results;
-        OisCu8Results_t                     **ois_cu8_results;
-#endif
         // Dynamic GOP
         EbPred                                pred_structure;
         uint8_t                               hierarchical_levels;
         uint16_t                              full_sb_count;
-#if NEW_PRED_STRUCT
         EbBool                                init_pred_struct_position_flag;
         int8_t                                hierarchical_layers_diff;
-#endif        
         // ME Tools
         EbBool                                use_subpel_flag;
         EbBool                                enable_hme_flag;
@@ -14151,14 +14126,7 @@ extern "C" {
 
         // MD
         EbEncMode                             enc_mode;
-#if ADAPTIVE_DEPTH_PARTITIONING
-        EB_SB_DEPTH_MODE                     *sb_depth_mode_array;
-#else
-        EbLcuDepthMode                       *sb_md_mode_array;
-#endif		
-#if !CHROMA_BLIND
-        EbChromaMode                          chroma_mode;
-#endif
+        EB_SB_DEPTH_MODE                     *sb_depth_mode_array;		
         EbSbComplexityStatus                 *complex_sb_array;
         EbCu8x8Mode                           cu8x8_mode;
         EbBool                                use_src_ref;
@@ -14170,9 +14138,6 @@ extern "C" {
         uint8_t                               intra_pred_mode;
 #if M8_SKIP_BLK
         uint8_t                               skip_sub_blks;
-#endif
-#if TWO_FAST_LOOP
-        uint8_t                               enable_two_fast_loops;
 #endif
         //**********************************************************************************************************//
         FRAME_TYPE                            av1FrameType;
@@ -14216,10 +14181,8 @@ extern "C" {
         const qm_val_t                       *gqmatrix[NUM_QM_LEVELS][3][TX_SIZES_ALL];
         Quants                                quants;
         Dequants                              deq;
-#if MD_10BIT_FIX
         Quants                                quantsMd;
         Dequants                              deqMd;
-#endif
         int32_t                               min_qmlevel;
         int32_t                               max_qmlevel;
         // Encoder
@@ -14319,30 +14282,20 @@ extern "C" {
         aom_film_grain_t                      film_grain_params;
         struct aom_denoise_and_model_t       *denoise_and_model;
         EbBool                                enable_in_loop_motion_estimation_flag;
-#if REST_M       
         RestUnitSearchInfo                   *rusi_picture[3];//for 3 planes
-#endif
-#if FAST_CDEF
         int8_t                                cdef_filter_mode;
         int32_t                               cdef_frame_strength;
         int32_t                               cdf_ref_frame_strenght;
         int32_t                               use_ref_frame_cdef_strength;
-#endif
         uint8_t                               tx_search_level;
         uint64_t                              tx_weight;
         uint8_t                               tx_search_reduced_set;
         uint8_t                               skip_tx_search;
         uint8_t                               interpolation_search_level;
         uint8_t                               nsq_search_level;
-#if NSQ_OPTIMASATION
         uint8_t                               nsq_max_shapes_md; // max number of shapes to be tested in MD
-#endif
-#if ICOPY
         uint8_t                              sc_content_detected;
-#endif
-#if IBC_MODES
         uint8_t                              ibc_mode;
-#endif
     } PictureParentControlSet_t;
 
 
@@ -14355,11 +14308,12 @@ extern "C" {
         uint16_t                           top_padding;
         uint16_t                           bot_padding;
         EB_BITDEPTH                        bit_depth;
+        EbColorFormat                      color_format;
         uint32_t                           sb_sz;
         uint32_t                           sb_size_pix;   //since we still have lot of code assuming 64x64 LCU, we add a new paramter supporting both128x128 and 64x64, 
                                                           //ultimately the fixed code supporting 64x64 should be upgraded to use 128x128 and the above could be removed.
         uint32_t                           max_depth;
-        EbBool                             is16bit;
+        //EbBool                             is16bit;
         uint32_t                           ten_bit_format;
         uint32_t                           compressed_ten_bit_format;
         uint16_t                           enc_dec_segment_col;
@@ -14367,7 +14321,7 @@ extern "C" {
         EbEncMode                          enc_mode;
         uint8_t                            speed_control;
         uint16_t                           film_grain_noise_level;
-        uint32_t                           encoder_bit_depth;
+        //uint32_t                           encoder_bit_depth;
         EbBool                             ext_block_flag;
         EbBool                             in_loop_me_flag;
 
@@ -14451,7 +14405,7 @@ extern "C" {
         //    int64_t first_time_stamp_ever;
         //
         //    RATE_CONTROL rc;
-        //    double framerate;
+        //    double frame_rate;
         //
         //    // NOTE(zoeliu): Any inter frame allows maximum of REF_FRAMES inter
         //    // references; Plus the currently coded frame itself, it is needed to allocate

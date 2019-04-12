@@ -150,7 +150,7 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
     const double max_error_;
     const TxSize txfm_size_;
     const TxType txfm_type_;
-    TXFM_2D_FLIP_CFG cfg_;
+    Txfm2DFlipCfg cfg_;
     DECLARE_ALIGNED(32, int16_t, input_test_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, double, input_ref_[MAX_TX_SQUARE]);

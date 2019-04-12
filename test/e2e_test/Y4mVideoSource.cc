@@ -357,9 +357,9 @@ uint32_t Y4MVideoSource::read_input_frame() {
     }
 
     // SVT-AV1 use pixel size as stride?
-    frame_buffer_->yStride = width_with_padding_;
-    frame_buffer_->cbStride = (width_with_padding_ >> width_downsize);
-    frame_buffer_->crStride = (width_with_padding_ >> width_downsize);
+    frame_buffer_->y_stride = width_with_padding_;
+    frame_buffer_->cb_stride = (width_with_padding_ >> width_downsize);
+    frame_buffer_->cr_stride = (width_with_padding_ >> width_downsize);
 
     // Read raw data from file
     const unsigned int bottom_padding = height_with_padding_ - height_;
@@ -377,13 +377,13 @@ uint32_t Y4MVideoSource::read_input_frame() {
         memset(eb_input_ptr + width_ * pixel_byte_size,
                0x14,
                righ_padding * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->yStride * pixel_byte_size;
-        filled_len += frame_buffer_->yStride * pixel_byte_size;
+        eb_input_ptr += frame_buffer_->y_stride * pixel_byte_size;
+        filled_len += frame_buffer_->y_stride * pixel_byte_size;
     }
     for (i = 0; i < bottom_padding; ++i) {
         memset(eb_input_ptr, 0x14, width_with_padding_ * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->yStride * pixel_byte_size;
-        filled_len += frame_buffer_->yStride * pixel_byte_size;
+        eb_input_ptr += frame_buffer_->y_stride * pixel_byte_size;
+        filled_len += frame_buffer_->y_stride * pixel_byte_size;
     }
     // Cb
     eb_input_ptr = frame_buffer_->cb;
@@ -398,15 +398,15 @@ uint32_t Y4MVideoSource::read_input_frame() {
         memset(eb_input_ptr + (width_ >> width_downsize) * pixel_byte_size,
                0x14,
                (righ_padding >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->cbStride * pixel_byte_size;
-        filled_len += frame_buffer_->cbStride * pixel_byte_size;
+        eb_input_ptr += frame_buffer_->cb_stride * pixel_byte_size;
+        filled_len += frame_buffer_->cb_stride * pixel_byte_size;
     }
     for (i = 0; i < (bottom_padding >> height_downsize); ++i) {
         memset(eb_input_ptr,
                0x14,
                (width_with_padding_ >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->cbStride * pixel_byte_size;
-        filled_len += frame_buffer_->cbStride * pixel_byte_size;
+        eb_input_ptr += frame_buffer_->cb_stride * pixel_byte_size;
+        filled_len += frame_buffer_->cb_stride * pixel_byte_size;
     }
 
     // Cr
@@ -423,15 +423,15 @@ uint32_t Y4MVideoSource::read_input_frame() {
         memset(eb_input_ptr + (width_ >> width_downsize) * pixel_byte_size,
                0x14,
                (righ_padding >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->crStride * pixel_byte_size;
-        filled_len += frame_buffer_->crStride * pixel_byte_size;
+        eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
+        filled_len += frame_buffer_->cr_stride * pixel_byte_size;
     }
     for (i = 0; i < (bottom_padding >> height_downsize); ++i) {
         memset(eb_input_ptr,
                0x14,
                (width_with_padding_ >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->crStride * pixel_byte_size;
-        filled_len += frame_buffer_->crStride * pixel_byte_size;
+        eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
+        filled_len += frame_buffer_->cr_stride * pixel_byte_size;
     }
 
     //     printf("Target:[%dx%d:%d],Read[%d]\r\n",

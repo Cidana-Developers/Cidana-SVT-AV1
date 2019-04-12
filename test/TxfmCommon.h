@@ -85,7 +85,7 @@ void av1_iidentity32_c(const int32_t *input, int32_t *output, int8_t cos_bit,
 void av1_iidentity64_c(const int32_t *input, int32_t *output, int8_t cos_bit,
                        const int8_t *stage_range);
 
-void Av1TransformConfig(TxType tx_type, TxSize tx_size, TXFM_2D_FLIP_CFG *cfg);
+void Av1TransformConfig(TxType tx_type, TxSize tx_size, Txfm2DFlipCfg *cfg);
 
 typedef void (*Txfm1dFunc)(const int32_t *input, int32_t *output,
                            int8_t cos_bit, const int8_t *stage_range);
@@ -94,7 +94,7 @@ typedef void (*TxfmFwd2dFunc)(int16_t *input, int32_t *output,
                               uint32_t input_stride, TxType transform_type,
                               uint8_t bit_depth);
 
-static INLINE Txfm1dFunc fwd_txfm_type_to_func(TXFM_TYPE txfm_type) {
+static INLINE Txfm1dFunc fwd_txfm_type_to_func(TxfmType txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4: return av1_fdct4_new;
     case TXFM_TYPE_DCT8: return av1_fdct8_new;
@@ -114,7 +114,7 @@ static INLINE Txfm1dFunc fwd_txfm_type_to_func(TXFM_TYPE txfm_type) {
     }
 }
 
-static INLINE Txfm1dFunc inv_txfm_type_to_func(TXFM_TYPE txfm_type) {
+static INLINE Txfm1dFunc inv_txfm_type_to_func(TxfmType txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4: return av1_idct4_new;
     case TXFM_TYPE_DCT8: return av1_idct8_new;
@@ -257,7 +257,7 @@ static INLINE bool valid_txsize_txtype(TxSize txfm_size, TxType txfm_type) {
     return av1_ext_tx_used[txfm_set_type][txfm_type] != 0;
 }
 
-static INLINE int get_txfm1d_size(TXFM_TYPE txfm_type) {
+static INLINE int get_txfm1d_size(TxfmType txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4:
     case TXFM_TYPE_ADST4:
@@ -275,6 +275,26 @@ static INLINE int get_txfm1d_size(TXFM_TYPE txfm_type) {
     case TXFM_TYPE_IDENTITY64: return 64;
     default: assert(0); return 0;
     }
+}
+
+static INLINE bool is_txfm_valid(TxType tx_type, int w, int h) {
+    const TX_TYPE_1D vert_type = vtx_tab[tx_type];
+    const TX_TYPE_1D horz_type = htx_tab[tx_type];
+    const int max_size[TX_TYPES_1D] = {64, 16, 16, 32};
+    if (w <= max_size[horz_type] && h <= max_size[vert_type])
+        return true;
+    else
+        return false;
+}
+
+static INLINE int32_t get_txb_wide(TxSize tx_size) {
+    tx_size = av1_get_adjusted_tx_size(tx_size);
+    return tx_size_wide[tx_size];
+}
+
+static INLINE int32_t get_txb_high(TxSize tx_size) {
+    tx_size = av1_get_adjusted_tx_size(tx_size);
+    return tx_size_high[tx_size];
 }
 
 #ifdef __cplusplus

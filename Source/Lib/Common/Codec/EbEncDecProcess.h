@@ -40,17 +40,17 @@ extern "C" {
      **************************************/
     typedef struct EncDecContext_s
     {
-        EbFifo_t                              *mode_decision_input_fifo_ptr;
-        EbFifo_t                              *enc_dec_output_fifo_ptr;
-        EbFifo_t                              *enc_dec_feedback_fifo_ptr;
-        EbFifo_t                              *picture_demux_output_fifo_ptr;   // to picture-manager
+        EbFifo                              *mode_decision_input_fifo_ptr;
+        EbFifo                              *enc_dec_output_fifo_ptr;
+        EbFifo                              *enc_dec_feedback_fifo_ptr;
+        EbFifo                              *picture_demux_output_fifo_ptr;   // to picture-manager
         int16_t                               *transform_inner_array_ptr;
         MdRateEstimationContext_t             *md_rate_estimation_ptr;
         ModeDecisionContext_t                 *md_context;
         const BlockGeom                       *blk_geom;
 
         // TMVP
-        EbReferenceObject_t                   *reference_object_write_ptr;
+        EbReferenceObject                   *reference_object_write_ptr;
 
         // MCP Context
         MotionCompensationPredictionContext_t *mcp_context;
@@ -65,15 +65,8 @@ extern "C" {
         EbPictureBufferDesc_t                 *transform_buffer;
         EbPictureBufferDesc_t                 *input_samples;
         EbPictureBufferDesc_t                 *input_sample16bit_buffer;
-#if !FILT_PROC
-        EbPictureBufferDesc_t                 *trial_frame_rst;
-#endif
         // temporary buffers for decision making of LF (LPF_PICK_FROM_FULL_IMAGE).
         // Since recon switches between reconPtr and referencePtr, the temporary buffers sizes used the referencePtr's which has padding,...
-#if !FILT_PROC
-        EbPictureBufferDesc_t                 *temp_lf_recon_picture_ptr;
-        EbPictureBufferDesc_t                 *temp_lf_recon_picture16bit_ptr;
-#endif
         EbPictureBufferDesc_t                 *inverse_quant_buffer;
         // Lambda
 #if ADD_DELTA_QP_SUPPORT
@@ -90,7 +83,7 @@ extern "C" {
 
         //  Context Variables---------------------------------
         CodingUnit_t                          *cu_ptr;
-        const CodedUnitStats_t                *cu_stats;
+        const CodedUnitStats                *cu_stats;
         uint16_t                               cu_origin_x; // within the picture
         uint16_t                               cu_origin_y; // within the picture
         uint8_t                                sb_sz;
@@ -99,6 +92,7 @@ extern "C" {
         int16_t                                x_mv_amvp_candidate_array_list0[MAX_NUM_OF_AMVP_CANDIDATES];
         uint8_t                                txb_itr;
         EbBool                                 is16bit; //enable 10 bit encode in CL
+        EbColorFormat                          color_format;
         uint64_t                               tot_intra_coded_area;
         uint8_t                                intra_coded_area_sb[MAX_NUMBER_OF_TREEBLOCKS_PER_PICTURE];//percentage of intra coded area 0-100%
         uint8_t                                pmp_masking_level_enc_dec;
@@ -130,9 +124,7 @@ extern "C" {
         uint8_t                                upsample_above;
         uint8_t                                upsample_left_chroma;
         uint8_t                                upsample_above_chroma; 
-#if !CHROMA_BLIND
-        int16_t                                pred_buf_q3[CFL_BUF_SQUARE];
-#endif
+
         uint16_t                               coded_area_sb;
         uint16_t                               coded_area_sb_uv;
 
@@ -140,9 +132,7 @@ extern "C" {
         uint8_t                                is_inter;
         uint8_t                                reduced_tx_set_used;
 #endif
-#if CHROMA_BLIND
         EbBool                                 evaluate_cfl_ep; // 0: CFL is evaluated @ mode decision, 1: CFL is evaluated @ encode pass
-#endif
     } EncDecContext_t;
 
     /**************************************
@@ -150,11 +140,12 @@ extern "C" {
      **************************************/
     extern EbErrorType enc_dec_context_ctor(
         EncDecContext_t        **context_dbl_ptr,
-        EbFifo_t                *mode_decision_configuration_input_fifo_ptr,
-        EbFifo_t                *packetization_output_fifo_ptr,
-        EbFifo_t                *feedback_fifo_ptr,
-        EbFifo_t                *picture_demux_fifo_ptr,
+        EbFifo                *mode_decision_configuration_input_fifo_ptr,
+        EbFifo                *packetization_output_fifo_ptr,
+        EbFifo                *feedback_fifo_ptr,
+        EbFifo                *picture_demux_fifo_ptr,
         EbBool                   is16bit,
+        EbColorFormat            color_format,
         uint32_t                 max_input_luma_width,
         uint32_t                 max_input_luma_height);
 
