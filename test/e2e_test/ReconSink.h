@@ -18,6 +18,11 @@
 #include <memory.h>
 #include "VideoFrame.h"
 
+/** ReconSink is a class designed to collect YUV video frames. It provides
+ * interfaces for generating, store and destory frame containers. It can be
+ * implemented with file-mode or buffer-mode to store the video frames, and it
+ * also provides inside sorting by timestamp.
+ */
 class ReconSink {
   public:
     /** ReconSinkType is enumerate type of sink type, file or buffer mode */

@@ -42,7 +42,8 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
     }
     virtual ~SvtAv1E2EParamBase() {
     }
-    virtual void init_test() final override {
+    /** initialization for test */
+    void init_test() override {
         // create recon sink before setup parameter of encoder
         VideoFrameParam param;
         memset(&param, 0, sizeof(param));
@@ -82,11 +83,13 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
       public:                                                             \
         test_name() : SvtAv1E2EParamBase(#param_name) {                   \
         }                                                                 \
-        virtual void init_test(const size_t i) {                          \
+        /** initialization for test */                                    \
+        void init_test(const size_t i) {                                  \
             ctxt_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
             SvtAv1E2EParamBase::init_test();                              \
         }                                                                 \
-        virtual void run_conformance_test() {                             \
+        /** run for the conformance test */                               \
+        void run_conformance_test() {                                     \
             for (size_t i = 0; i < SIZE_VALID_PARAM(param_name); ++i) {   \
                 SvtAv1E2EParamBase::SetUp();                              \
                 init_test(i);                                             \
@@ -97,10 +100,10 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         }                                                                 \
                                                                           \
       protected:                                                          \
-        virtual void SetUp() override {                                   \
+        void SetUp() override {                                           \
             /* skip SvtAv1E2EParamBase::SetUp() */                        \
         }                                                                 \
-        virtual void TearDown() override {                                \
+        void TearDown() override {                                        \
             /* skip SvtAv1E2EParamBase::TearDown() */                     \
         }                                                                 \
     };

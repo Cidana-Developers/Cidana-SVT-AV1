@@ -19,6 +19,11 @@
 #include "aom/aomdx.h"
 #include "VideoFrame.h"
 
+/** RefDecoder is a class designed for a refenece tool of conformance
+ * test. It provides decoding AV1 compressed data with OBU frames, its output is
+ * the YUV frame in display order. User should call get_frame right after
+ * process_data to avoid missing any video frame
+ */
 class RefDecoder {
   public:
     /** RefDecoderErr is enumerate type of errors from decoder, refered to

@@ -52,7 +52,7 @@ class ReconSinkFile : public ReconSink {
         }
         record_list_.clear();
     }
-    virtual void fill_mug(ReconMug *mug) override {
+    void fill_mug(ReconMug *mug) override {
         if (recon_file_ && mug->filled_size &&
             mug->filled_size <= mug->mug_size &&
             mug->time_stamp < (uint64_t)frame_count_) {
@@ -80,7 +80,7 @@ class ReconSinkFile : public ReconSink {
         }
         delete_mug(mug);
     }
-    virtual const ReconMug *take_mug(const uint64_t time_stamp) override {
+    const ReconMug *take_mug(const uint64_t time_stamp) override {
         if (recon_file_ == nullptr)
             return nullptr;
 
@@ -109,13 +109,13 @@ class ReconSinkFile : public ReconSink {
 
         return mug;
     }
-    virtual const ReconMug *take_mug_inorder(const uint32_t index) override {
+    const ReconMug *take_mug_inorder(const uint32_t index) override {
         return take_mug(index);
     }
-    virtual void pour_mug(ReconMug *mug) override {
+    void pour_mug(ReconMug *mug) override {
         delete_mug(mug);
     }
-    virtual bool is_compelete() override {
+    bool is_compelete() override {
         if (record_list_.size() < frame_count_)
             return false;
         std::sort(record_list_.begin(), record_list_.end());
@@ -125,9 +125,13 @@ class ReconSinkFile : public ReconSink {
     }
 
   public:
-    FILE *recon_file_;
-    uint64_t max_frame_ts_;
-    std::vector<uint32_t> record_list_;
+    FILE *recon_file_; /**< file handle to dave reconstruction video frames, set
+                          it to public for accessable by create_recon_sink */
+
+  protected:
+    uint64_t max_frame_ts_; /**< maximun timestamp of current frames in list */
+    std::vector<uint32_t> record_list_; /**< list of frame timstamp, to help
+                                           check if the file is completed*/
 };
 
 class ReconSinkBufferSort_ASC {
@@ -149,7 +153,7 @@ class ReconSinkBuffer : public ReconSink {
             mug_list_.pop_back();
         }
     }
-    virtual void fill_mug(ReconMug *mug) override {
+    void fill_mug(ReconMug *mug) override {
         if (mug->time_stamp < (uint64_t)frame_count_) {
             mug_list_.push_back(mug);
             std::sort(
@@ -157,19 +161,19 @@ class ReconSinkBuffer : public ReconSink {
         } else  // drop the frames out of limitation
             delete_mug(mug);
     }
-    virtual const ReconMug *take_mug(const uint64_t time_stamp) override {
+    const ReconMug *take_mug(const uint64_t time_stamp) override {
         for (ReconMug *mug : mug_list_) {
             if (mug->time_stamp == time_stamp)
                 return mug;
         }
         return nullptr;
     }
-    virtual const ReconMug *take_mug_inorder(const uint32_t index) override {
+    const ReconMug *take_mug_inorder(const uint32_t index) override {
         if (index < mug_list_.size())
             return mug_list_.at(index);
         return nullptr;
     }
-    virtual void pour_mug(ReconMug *mug) override {
+    void pour_mug(ReconMug *mug) override {
         std::vector<ReconMug *>::iterator it =
             std::find(mug_list_.begin(), mug_list_.end(), mug);
         if (it != mug_list_.end()) {  // if the mug is in list
@@ -178,7 +182,7 @@ class ReconSinkBuffer : public ReconSink {
         } else  // only delete the mug not in list
             delete_mug(mug);
     }
-    virtual bool is_compelete() override {
+    bool is_compelete() override {
         if (mug_list_.size() < frame_count_)
             return false;
 
@@ -188,8 +192,8 @@ class ReconSinkBuffer : public ReconSink {
         return true;
     }
 
-  public:
-    std::vector<ReconMug *> mug_list_;
+  protected:
+    std::vector<ReconMug *> mug_list_; /**< list of frame containers */
 };
 
 ReconSink *create_recon_sink(const VideoFrameParam &param,

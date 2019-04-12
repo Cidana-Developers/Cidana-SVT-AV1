@@ -58,7 +58,8 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
  */
 class SvtAv1E2ESimpleFileTest : public SvtAv1E2ETestFramework {
   protected:
-    virtual void init_test() final override {
+    /** initialization for test */
+    void init_test() override {
         output_file_ = new IvfFile("output.av1");
         SvtAv1E2ETestFramework::init_test();
     }
@@ -89,7 +90,8 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleFileTest,
  */
 class SvtAv1E2EReconFileTest : public SvtAv1E2ETestFramework {
   protected:
-    virtual void init_test() final override {
+    /** initialization for test */
+    void init_test() override {
         // create recon sink before setup parameter of encoder
         VideoFrameParam param;
         memset(&param, 0, sizeof(param));
@@ -130,7 +132,8 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconFileTest,
  */
 class SvtAv1E2EReconBufferTest : public SvtAv1E2ETestFramework {
   protected:
-    virtual void init_test() final override {
+    /** initialization for test */
+    void init_test() override {
         // create recon sink before setup parameter of encoder
         VideoFrameParam param;
         memset(&param, 0, sizeof(param));
@@ -172,7 +175,8 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
  */
 class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {
   protected:
-    virtual void init_test() final override {
+    /** initialization for test */
+    void init_test() override {
         // create recon sink before setup parameter of encoder
         VideoFrameParam param;
         memset(&param, 0, sizeof(param));

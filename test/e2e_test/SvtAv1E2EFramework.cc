@@ -273,6 +273,7 @@ void SvtAv1E2ETestBase::TearDown() {
     video_src_->close_source();
 }
 
+/** initialization for test */
 void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
     ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
@@ -362,6 +363,7 @@ svt_av1_test_e2e::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
 #endif
 }
 
+/** initialization for test */
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::init_test() {
     SvtAv1E2ETestBase::init_test();
 #if TILES

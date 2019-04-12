@@ -52,16 +52,19 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
   protected:
     virtual void SetUp() override;
     virtual void TearDown() override;
+    /** initialization for test */
     virtual void init_test();
+    /** close for test */
     virtual void close_test();
+    /** test processing body */
     virtual void run_encode_process() = 0;
 
   private:
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
 
   protected:
-    VideoSource *video_src_;
-    SvtAv1Context ctxt_;
+    VideoSource *video_src_; /**< video souce context */
+    SvtAv1Context ctxt_;     /**< AV1 encoder context */
 };
 
 /** SvtAv1E2ETestFramework is a class with impelmention of video source control,
@@ -88,29 +91,42 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     virtual ~SvtAv1E2ETestFramework();
 
   protected:
+    /** initialization for test */
     virtual void init_test() override;
-    virtual void run_encode_process() final override;
+    /** test processing body */
+    void run_encode_process() override;
 
   private:
+    /** write ivf header to output file */
     void write_output_header();
+    /** write compressed data into file
+     * @param output  compressed data from encoder
+     */
     void write_compress_data(const EbBufferHeaderType *output);
+    /** process compressed data by write to file for send to decoder
+     * @param data  compressed data from encoder
+     */
     void process_compress_data(const EbBufferHeaderType *data);
+    /** send compressed data to decoder
+     * @param data  compressed data from encoder, single OBU
+     * @param size  size of compressed data
+     */
     void decode_compress_data(const uint8_t *data, const uint32_t size);
 
   protected:
-    // plug-in for test data
-    // recon-data pin
+    /** get reconstruction frame from encoder, it should call after send data
+     * into decoder */
     virtual void get_recon_frame();
-    // psnr pin
-    // protected:
-    ReconSink *recon_sink_;
-    RefDecoder *refer_dec_;
-    IvfFile *output_file_;
+
+  protected:
+    ReconSink *recon_sink_; /**< reconstruction frame collection */
+    RefDecoder *refer_dec_; /**< reference decoder context */
+    IvfFile *output_file_;  /**< file handle for save encoder output data */
+    uint8_t obu_frame_header_size_; /**< size of obu frame header */
 #ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
 #endif
-    uint8_t obu_frame_header_size_;
 };
 
 }  // namespace svt_av1_test_e2e
