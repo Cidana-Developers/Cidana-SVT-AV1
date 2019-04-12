@@ -39,6 +39,13 @@ namespace {
 using InvTxfm2dAsmParam = std::tuple<int, int>;
 using InvSqrTxfm2dFun = void (*)(const int32_t *input, uint16_t *output,
                                  int32_t stride, TxType tx_type, int32_t bd);
+using InvRectTxfm2dType1Func = void (*)(const int32_t *input, uint16_t *output,
+                                        int32_t stride, TxType tx_type,
+                                        TxSize tx_size, int32_t eob,
+                                        int32_t bd);
+using InvRectTxfm2dType2Func = void (*)(const int32_t *input, uint16_t *output,
+                                        int32_t stride, TxType tx_type,
+                                        TxSize tx_size, int32_t bd);
 typedef struct {
     const char *name;
     InvSqrTxfm2dFun ref_func;
@@ -46,7 +53,12 @@ typedef struct {
     IsTxTypeImpFunc check_imp_func;
 } InvSqrTxfmFuncPair;
 
-#define FUNC_PAIRS(name, type, is_tx_type_imp)                    \
+typedef struct {
+    InvRectTxfm2dType2Func ref_func;
+    InvRectTxfm2dType2Func test_func;
+} InvRectType2TxfmFuncPair;
+
+#define SQR_FUNC_PAIRS(name, type, is_tx_type_imp)                \
     {                                                             \
         #name, reinterpret_cast < InvSqrTxfm2dFun > (name##_c),   \
             reinterpret_cast < InvSqrTxfm2dFun > (name##_##type), \
@@ -71,20 +83,62 @@ static bool is_tx_type_imp_64x64_sse4(const TxType tx_type) {
 }
 
 static const InvSqrTxfmFuncPair inv_txfm_c_avx2_func_pairs[TX_64X64 + 1] = {
-    FUNC_PAIRS(av1_inv_txfm2d_add_4x4, avx2, all_txtype_imp),
-    FUNC_PAIRS(av1_inv_txfm2d_add_8x8, avx2, all_txtype_imp),
-    FUNC_PAIRS(av1_inv_txfm2d_add_16x16, avx2, all_txtype_imp),
-    FUNC_PAIRS(av1_inv_txfm2d_add_32x32, avx2, is_tx_type_imp_32x32_avx2),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_4x4, avx2, all_txtype_imp),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_8x8, avx2, all_txtype_imp),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_16x16, avx2, all_txtype_imp),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_32x32, avx2, is_tx_type_imp_32x32_avx2),
     EMPTY_FUNC_PAIRS(av1_inv_txfm2d_add_64x64),
 };
 
 static const InvSqrTxfmFuncPair inv_txfm_c_sse4_1_func_pairs[TX_64X64 + 1] = {
-    FUNC_PAIRS(av1_inv_txfm2d_add_4x4, sse4_1, dct_adst_combine_imp),
-    FUNC_PAIRS(av1_inv_txfm2d_add_8x8, sse4_1, dct_adst_combine_imp),
-    FUNC_PAIRS(av1_inv_txfm2d_add_16x16, sse4_1, dct_adst_combine_imp),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_4x4, sse4_1, dct_adst_combine_imp),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_8x8, sse4_1, dct_adst_combine_imp),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_16x16, sse4_1, dct_adst_combine_imp),
     EMPTY_FUNC_PAIRS(av1_inv_txfm2d_add_32x32),
-    FUNC_PAIRS(av1_inv_txfm2d_add_64x64, sse4_1, is_tx_type_imp_64x64_sse4),
+    SQR_FUNC_PAIRS(av1_inv_txfm2d_add_64x64, sse4_1, is_tx_type_imp_64x64_sse4),
 };
+
+// from TX_4X8 to TX_SIZES_ALL
+static const InvRectTxfm2dType1Func rect_type1_ref_funcs[TX_SIZES_ALL] = {
+    // square transform
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,  // 4x8 and 8x4
+    av1_inv_txfm2d_add_8x16_c,
+    av1_inv_txfm2d_add_16x8_c,
+    av1_inv_txfm2d_add_16x32_c,
+    av1_inv_txfm2d_add_32x16_c,
+    av1_inv_txfm2d_add_32x64_c,
+    av1_inv_txfm2d_add_64x32_c,
+    nullptr,
+    nullptr,  // 4x16 and 16x4
+    av1_inv_txfm2d_add_8x32_c,
+    av1_inv_txfm2d_add_32x8_c,
+    av1_inv_txfm2d_add_16x64_c,
+    av1_inv_txfm2d_add_64x16_c};
+
+static const InvRectType2TxfmFuncPair inv_4x8{av1_inv_txfm2d_add_4x8_c,
+                                              av1_inv_txfm2d_add_4x8_sse4_1};
+static const InvRectType2TxfmFuncPair inv_8x4{av1_inv_txfm2d_add_8x4_c,
+                                              av1_inv_txfm2d_add_8x4_sse4_1};
+static const InvRectType2TxfmFuncPair inv_4x16{av1_inv_txfm2d_add_4x16_c,
+                                               av1_inv_txfm2d_add_4x16_sse4_1};
+static const InvRectType2TxfmFuncPair inv_16x4{av1_inv_txfm2d_add_16x4_c,
+                                               av1_inv_txfm2d_add_16x4_sse4_1};
+static const InvRectType2TxfmFuncPair *get_rect_type2_func_pair(
+    const TxSize tx_size) {
+    switch (tx_size) {
+    case TX_4X8: return &inv_4x8;
+    case TX_8X4: return &inv_8x4;
+    case TX_4X16: return &inv_4x16;
+    case TX_16X4: return &inv_16x4;
+    default: return nullptr;
+    }
+}
 
 const int deterministic_seed = 0xa42b;
 /**
@@ -158,12 +212,81 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
         }
     }
 
+    void run_rect_type1_txfm_match_test(const TxSize tx_size) {
+        const int width = get_txb_wide(tx_size);
+        const int height = get_txb_high(tx_size);
+        const int max_eob = av1_get_max_eob(tx_size);
+        const InvRectTxfm2dType1Func test_func = av1_highbd_inv_txfm_add_avx2;
+        const InvRectTxfm2dType1Func ref_func = rect_type1_ref_funcs[tx_size];
+        if (ref_func == nullptr)
+            return;
+
+        for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
+            TxType type = static_cast<TxType>(tx_type);
+
+            if (is_txfm_allowed(type, width, height) == false)
+                continue;
+
+            const int loops = 1;
+            for (int k = 0; k < loops; k++) {
+                populate_with_random(width, height);
+
+                ref_func(
+                    input_, output_ref_, stride_, type, tx_size, max_eob, bd_);
+                test_func(
+                    input_, output_test_, stride_, type, tx_size, max_eob, bd_);
+
+                EXPECT_EQ(0,
+                          memcmp(output_ref_,
+                                 output_test_,
+                                 height * stride_ * sizeof(output_test_[0])))
+                    << "loop: " << k << " tx_type: " << tx_type
+                    << " tx_size: " << tx_size << " asm_type: " << asm_type_;
+            }
+        }
+    }
+
+    void run_rect_type2_txfm_match_test(const TxSize tx_size) {
+        const int width = get_txb_wide(tx_size);
+        const int height = get_txb_high(tx_size);
+        const InvRectType2TxfmFuncPair *test_pair =
+            get_rect_type2_func_pair(tx_size);
+        if (test_pair == nullptr)
+            return;
+
+        for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
+            TxType type = static_cast<TxType>(tx_type);
+
+            if (is_txfm_allowed(type, width, height) == false)
+                continue;
+
+            const int loops = 1;
+            for (int k = 0; k < loops; k++) {
+                populate_with_random(width, height);
+
+                test_pair->ref_func(
+                    input_, output_ref_, stride_, type, tx_size, bd_);
+                test_pair->test_func(
+                    input_, output_test_, stride_, type, tx_size, bd_);
+
+                EXPECT_EQ(0,
+                          memcmp(output_ref_,
+                                 output_test_,
+                                 height * stride_ * sizeof(output_test_[0])))
+                    << "loop: " << k << " tx_type: " << tx_type
+                    << " tx_size: " << tx_size << " asm_type: " << asm_type_;
+            }
+        }
+    }
+
   private:
     void populate_with_random(const int width, const int height) {
         std::uniform_int_distribution<> dist_nbit;
         decltype(dist_nbit)::param_type param{0, (1 << bd_) - 1};
         dist_nbit.param(param);
 
+        memset(output_ref_, 0, sizeof(output_ref_));
+        memset(output_test_, 0, sizeof(output_test_));
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 input_[i * stride_ + j] = input_dist_nbit_(gen_);
@@ -192,6 +315,20 @@ TEST_P(InvTxfm2dAsmTest, sqr_txfm_match_test) {
     for (int i = TX_4X4; i <= TX_64X64; i++) {
         const TxSize tx_size = static_cast<TxSize>(i);
         run_sqr_txfm_match_test(tx_size);
+    }
+}
+
+TEST_P(InvTxfm2dAsmTest, rect_type1_txfm_match_test) {
+    for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
+        const TxSize tx_size = static_cast<TxSize>(i);
+        run_rect_type1_txfm_match_test(tx_size);
+    }
+}
+
+TEST_P(InvTxfm2dAsmTest, rect_type2_txfm_match_test) {
+    for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
+        const TxSize tx_size = static_cast<TxSize>(i);
+        run_rect_type2_txfm_match_test(tx_size);
     }
 }
 
