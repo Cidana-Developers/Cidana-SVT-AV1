@@ -192,7 +192,7 @@ class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {
     }
 };
 
-TEST_P(SvtAv1E2EConformanceTest, DISABLE_run_conformance_test) {
+TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
     init_test();
     run_encode_process();
     close_test();

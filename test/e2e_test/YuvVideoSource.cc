@@ -31,6 +31,7 @@ YuvVideoSource::YuvVideoSource(const std::string &file_name,
 YuvVideoSource::~YuvVideoSource() {
     if (file_handle_ != nullptr) {
         fclose(file_handle_);
+        file_handle_ = nullptr;
     }
 }
 

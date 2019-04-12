@@ -41,6 +41,11 @@ cp "$SOURCE_DIR"Bin/Debug/* .
 ./SvtAv1ApiTests --gtest_filter=EncApi*.*-EncApiTest.repeat_normal_setup
 ./SvtAv1ApiTests --gtest_filter=EncParam*.*
 ./SvtAv1ApiTests --gtest_filter=EncApiTest.repeat_normal_setup
+./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2ESimpleTest.*
+./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EReconBufferTest.*
+./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EConformance*.*
+./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EParam*.*
+
 
 # capture
 lcov --capture --base-directory $SOURCE_DIR --directory . --output-file svt_av1_test.info

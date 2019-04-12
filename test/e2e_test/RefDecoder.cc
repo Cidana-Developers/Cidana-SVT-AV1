@@ -56,7 +56,7 @@ RefDecoder::~RefDecoder() {
 }
 
 RefDecoder::RefDecoderErr RefDecoder::process_data(const uint8_t *data,
-                                                   uint32_t size) {
+                                                   const uint32_t size) {
     aom_codec_err_t err = aom_codec_decode(&codec_, data, size, nullptr);
     if (err != AOM_CODEC_OK) {
         printf("decoder decode error: %d!", err);

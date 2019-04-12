@@ -7,7 +7,7 @@
  *
  * @brief Impelmentation of End to End test framework
  *
- * @author Cidana-Edmond
+ * @author Cidana-Edmond Cidana-Ryan
  *
  ******************************************************************************/
 
@@ -645,7 +645,7 @@ void svt_av1_test_e2e::SvtAv1E2ETestFramework::process_compress_data(
 }
 
 void svt_av1_test_e2e::SvtAv1E2ETestFramework::decode_compress_data(
-    const uint8_t *data, uint32_t size) {
+    const uint8_t *data, const uint32_t size) {
     ASSERT_NE(data, nullptr);
     ASSERT_GT(size, 0);
 

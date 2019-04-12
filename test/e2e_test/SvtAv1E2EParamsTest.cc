@@ -82,7 +82,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
       public:                                                             \
         test_name() : SvtAv1E2EParamBase(#param_name) {                   \
         }                                                                 \
-        virtual void init_test(size_t i) {                                \
+        virtual void init_test(const size_t i) {                          \
             ctxt_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
             SvtAv1E2EParamBase::init_test();                              \
         }                                                                 \
@@ -106,5 +106,5 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
     };
 
 /** Test case for enc_mode*/
-DEFINE_PARAM_TEST_CLASS(EncE2EParamEncModeTest, enc_mode);
-PARAM_TEST(EncE2EParamEncModeTest);
+DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEncModeTest, enc_mode);
+PARAM_TEST(SvtAv1E2EParamEncModeTest);

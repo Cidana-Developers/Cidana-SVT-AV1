@@ -80,7 +80,7 @@ class ReconSinkFile : public ReconSink {
         }
         delete_mug(mug);
     }
-    virtual const ReconMug *take_mug(uint64_t time_stamp) override {
+    virtual const ReconMug *take_mug(const uint64_t time_stamp) override {
         if (recon_file_ == nullptr)
             return nullptr;
 
@@ -109,7 +109,7 @@ class ReconSinkFile : public ReconSink {
 
         return mug;
     }
-    virtual const ReconMug *take_mug_inorder(uint32_t index) override {
+    virtual const ReconMug *take_mug_inorder(const uint32_t index) override {
         return take_mug(index);
     }
     virtual void pour_mug(ReconMug *mug) override {
@@ -126,7 +126,7 @@ class ReconSinkFile : public ReconSink {
 
   public:
     FILE *recon_file_;
-    uint32_t max_frame_ts_;
+    uint64_t max_frame_ts_;
     std::vector<uint32_t> record_list_;
 };
 
@@ -157,14 +157,14 @@ class ReconSinkBuffer : public ReconSink {
         } else  // drop the frames out of limitation
             delete_mug(mug);
     }
-    virtual const ReconMug *take_mug(uint64_t time_stamp) override {
+    virtual const ReconMug *take_mug(const uint64_t time_stamp) override {
         for (ReconMug *mug : mug_list_) {
             if (mug->time_stamp == time_stamp)
                 return mug;
         }
         return nullptr;
     }
-    virtual const ReconMug *take_mug_inorder(uint32_t index) override {
+    virtual const ReconMug *take_mug_inorder(const uint32_t index) override {
         if (index < mug_list_.size())
             return mug_list_.at(index);
         return nullptr;

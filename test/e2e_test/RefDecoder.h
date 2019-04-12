@@ -99,7 +99,7 @@ class RefDecoder {
      * REF_CODEC_OK -- no error found in processing
      * others -- errors found in process, refer to RefDecoderErr
      */
-    RefDecoderErr process_data(const uint8_t *data, uint32_t size);
+    RefDecoderErr process_data(const uint8_t *data, const uint32_t size);
     /** Get a video frame after data proceed
      * @param frame  the video frame with its attributes
      * @return

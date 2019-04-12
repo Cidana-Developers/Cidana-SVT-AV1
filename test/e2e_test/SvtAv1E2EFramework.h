@@ -95,7 +95,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     void write_output_header();
     void write_compress_data(const EbBufferHeaderType *output);
     void process_compress_data(const EbBufferHeaderType *data);
-    void decode_compress_data(const uint8_t *data, uint32_t size);
+    void decode_compress_data(const uint8_t *data, const uint32_t size);
 
   protected:
     // plug-in for test data

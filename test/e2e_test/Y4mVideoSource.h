@@ -28,7 +28,7 @@ class Y4MVideoSource : public VideoSource {
     /*!\brief Prepare stream. */
     EbErrorType open_source() override;
     /*!\brief Close stream. */
-    virtual void close_source() override;
+    void close_source() override;
     /*!\brief Get next frame. */
     EbSvtIOFormat *get_next_frame() override;
     /*!\brief Get frame ny index. */

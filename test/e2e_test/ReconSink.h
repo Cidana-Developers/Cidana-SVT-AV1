@@ -72,7 +72,7 @@ class ReconSink {
     /** Get maximum video frame number in sink
      * @param count  the maximum video frame number
      */
-    void set_frame_count(uint32_t count) {
+    void set_frame_count(const uint32_t count) {
         frame_count_ = count;
     }
     /** Get an empty video frame container from sink
@@ -103,14 +103,14 @@ class ReconSink {
      * ReconMug -- a container of video frame
      * nullptr -- no available container by this timestamp
      */
-    virtual const ReconMug* take_mug(uint64_t time_stamp) = 0;
+    virtual const ReconMug* take_mug(const uint64_t time_stamp) = 0;
     /** Interface of get a container with video frame by index
      * @param index  the index of container to retreive
      * @return
      * ReconMug -- a container of video frame
      * nullptr -- no available container by index
      */
-    virtual const ReconMug* take_mug_inorder(uint32_t index) = 0;
+    virtual const ReconMug* take_mug_inorder(const uint32_t index) = 0;
     /** Interface of destroy a container and remove from sink
      * @param mug  the container to distroy
      */
