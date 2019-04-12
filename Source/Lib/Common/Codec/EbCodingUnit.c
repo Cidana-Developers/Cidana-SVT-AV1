@@ -8,6 +8,7 @@
 #include "EbCodingUnit.h"
 #include "EbUtility.h"
 #include "EbTransformUnit.h"
+#include "EbPictureControlSet.h"
 
 /*
 Tasks & Questions
@@ -48,11 +49,8 @@ EbErrorType largest_coding_unit_ctor(
     largestCodingUnitPtr->index = sb_index;
 
     uint32_t cu_i;
-#if MEM_RED4
     uint32_t  tot_cu_num = sb_size_pix == 128 ? 1024 : 256;
-#else
-    uint32_t  tot_cu_num = 1024;
-#endif
+
 
     EB_MALLOC(CodingUnit_t*, largestCodingUnitPtr->final_cu_arr, sizeof(CodingUnit_t) * tot_cu_num, EB_N_PTR);
 
@@ -75,6 +73,7 @@ EbErrorType largest_coding_unit_ctor(
     coeffInitData.maxWidth = SB_STRIDE_Y;
     coeffInitData.maxHeight = SB_STRIDE_Y;
     coeffInitData.bit_depth = EB_32BIT;
+    coeffInitData.color_format = picture_control_set->color_format;
     coeffInitData.left_padding = 0;
     coeffInitData.right_padding = 0;
     coeffInitData.top_padding = 0;

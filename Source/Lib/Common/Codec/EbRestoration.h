@@ -180,23 +180,26 @@ extern "C" {
 #error "Wiener filter currently only works if WIENER_FILT_PREC_BITS == 7"
 #endif
 
-    typedef struct {
+    typedef struct WienerInfo 
+    {
         DECLARE_ALIGNED(16, InterpKernel, vfilter);
         DECLARE_ALIGNED(16, InterpKernel, hfilter);
     } WienerInfo;
 
-    typedef struct {
+    typedef struct SgrprojInfo 
+    {
         int32_t ep;
         int32_t xqd[2];
     } SgrprojInfo;
 
-    typedef struct {
+    typedef struct RestorationUnitInfo 
+    {
         RestorationType restoration_type;
         WienerInfo wiener_info;
         SgrprojInfo sgrproj_info;
     } RestorationUnitInfo;
 
-    typedef struct {
+    typedef struct AV1PixelRect {
         int32_t left, top, right, bottom;
     } AV1PixelRect;
 
@@ -211,21 +214,24 @@ extern "C" {
 #define RESTORATION_COLBUFFER_HEIGHT \
   (RESTORATION_PROC_UNIT_SIZE + 2 * RESTORATION_BORDER)
 
-    typedef struct {
+    typedef struct RestorationLineBuffers 
+    {
         // Temporary buffers to save/restore 3 lines above/below the restoration
         // stripe.
         uint16_t tmp_save_above[RESTORATION_BORDER][RESTORATION_LINEBUFFER_WIDTH];
         uint16_t tmp_save_below[RESTORATION_BORDER][RESTORATION_LINEBUFFER_WIDTH];
     } RestorationLineBuffers;
 
-    typedef struct {
+    typedef struct RestorationStripeBoundaries 
+    {
         uint8_t *stripe_boundary_above;
         uint8_t *stripe_boundary_below;
         int32_t stripe_boundary_stride;
         int32_t stripe_boundary_size;
     } RestorationStripeBoundaries;
 
-    typedef struct RestorationInfo {
+    typedef struct RestorationInfo 
+    {
         RestorationType frame_restoration_type;
         int32_t restoration_unit_size;
 
@@ -261,7 +267,7 @@ extern "C" {
         wiener_info->vfilter[6] = wiener_info->hfilter[6] = WIENER_FILT_TAP0_MIDV;
     }
 
-    typedef struct {
+    typedef struct RestorationTileLimits {
         int32_t h_start, h_end, v_start, v_end;
     } RestorationTileLimits;
 
@@ -296,9 +302,8 @@ extern "C" {
     // Finally tmpbuf is a scratch buffer used by the sgrproj filter which should
     // be at least SGRPROJ_TMPBUF_SIZE big.
     void av1_loop_restoration_filter_unit(
-#if REST_NEED_B
         uint8_t need_bounadaries,
-#endif
+
         const RestorationTileLimits *limits, const RestorationUnitInfo *rui,
         const RestorationStripeBoundaries *rsb, RestorationLineBuffers *rlbs,
         const AV1PixelRect *tile_rect, int32_t tile_stripe0, int32_t ss_x, int32_t ss_y,
@@ -307,18 +312,18 @@ extern "C" {
 
     //void av1_loop_restoration_filter_frame(Yv12BufferConfig *frame,
     //                                       Av1Common *cm, int32_t optimized_lr);
-    typedef void(*rest_unit_visitor_t)(const RestorationTileLimits *limits,
+    typedef void(*RestUnitVisitor)(const RestorationTileLimits *limits,
         const AV1PixelRect *tile_rect,
         int32_t rest_unit_idx, void *priv);
 
-    typedef void(*rest_tile_start_visitor_t)(int32_t tile_row, int32_t tile_col,
+    typedef void(*RestTileStartVisitor)(int32_t tile_row, int32_t tile_col,
         void *priv);
 
     // Call on_rest_unit for each loop restoration unit in the frame. At the start
     // of each tile, call on_tile.
     //void av1_foreach_rest_unit_in_frame(Av1Common *cm, int32_t plane,
-    //                                    rest_tile_start_visitor_t on_tile,
-    //                                    rest_unit_visitor_t on_rest_unit,
+    //                                    RestTileStartVisitor on_tile,
+    //                                    RestUnitVisitor on_rest_unit,
     //                                    void *priv);
 
     // Return 1 iff the block at mi_row, mi_col with size bsize is a
@@ -393,8 +398,8 @@ extern "C" {
 
 
 
-#if REST_M
-    typedef struct {
+    typedef struct RestUnitSearchInfo 
+    {
         // The best coefficients for Wiener or Sgrproj restoration
         WienerInfo wiener;
         SgrprojInfo sgrproj;
@@ -406,7 +411,7 @@ extern "C" {
         // index. Indices: WIENER, SGRPROJ, SWITCHABLE.
         RestorationType best_rtype[RESTORE_TYPES - 1];
     } RestUnitSearchInfo;
-#endif
+
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -63,7 +63,7 @@ namespace {
  * Test cases:
  * - C/AV1FwdTxfm1dTest.run_fwd_accuracy_check
  */
-using FwdTxfm1dParam = std::tuple<TXFM_TYPE, int>;
+using FwdTxfm1dParam = std::tuple<TxfmType, int>;
 class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
   public:
     AV1FwdTxfm1dTest()
@@ -103,9 +103,9 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
     }
 
   private:
-    const int max_error_;       /**< max error allowed */
-    int txfm_size_;             /**< transform size, max transform is DCT64 */
-    const TXFM_TYPE txfm_type_; /**< tx type, including dct, iadst, idtx */
+    const int max_error_;      /**< max error allowed */
+    int txfm_size_;            /**< transform size, max transform is DCT64 */
+    const TxfmType txfm_type_; /**< tx type, including dct, iadst, idtx */
     DECLARE_ALIGNED(32, int32_t, input_test_[MAX_TX_SIZE]);
     DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SIZE]);
     DECLARE_ALIGNED(32, double, input_ref_[MAX_TX_SIZE]);

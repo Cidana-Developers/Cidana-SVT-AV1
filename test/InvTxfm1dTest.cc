@@ -40,7 +40,7 @@ using svt_av1_test_tool::SVTRandom;
 using svt_av1_test_tool::round_shift;
 namespace {
 
-using InvTxfm1dParam = std::tuple<TXFM_TYPE, int>;
+using InvTxfm1dParam = std::tuple<TxfmType, int>;
 /**
  * @brief Unit test for inverse 1d tx functions:
  * - av1_idct{4, 8, 16, 32, 64}_new
@@ -102,9 +102,9 @@ class AV1InvTxfm1dTest : public ::testing::TestWithParam<InvTxfm1dParam> {
     }
 
   private:
-    const int max_error_;       /**< max error allowed */
-    int txfm_size_;             /**< transform size, max transform is DCT64 */
-    const TXFM_TYPE txfm_type_; /**< tx type, including dct, iadst, idtx */
+    const int max_error_;      /**< max error allowed */
+    int txfm_size_;            /**< transform size, max transform is DCT64 */
+    const TxfmType txfm_type_; /**< tx type, including dct, iadst, idtx */
     DECLARE_ALIGNED(32, int32_t, input_[MAX_TX_SIZE]);
     DECLARE_ALIGNED(32, int32_t, output_[MAX_TX_SIZE]);
     DECLARE_ALIGNED(32, int32_t, inv_output_[MAX_TX_SIZE]);

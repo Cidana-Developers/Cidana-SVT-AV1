@@ -45,13 +45,13 @@ INLINE void reference_dct_1d(const double *in, double *out, int size) {
 // 'double' input & output.
 static void fadst4_ref(const tran_low_t *input, tran_low_t *output) {
     //  16384 * sqrt(2) * sin(kPi/9) * 2 / 3
-    const tran_high_t sinpi_1_9 = 5283;
-    const tran_high_t sinpi_2_9 = 9929;
-    const tran_high_t sinpi_3_9 = 13377;
-    const tran_high_t sinpi_4_9 = 15212;
+    const TranHigh sinpi_1_9 = 5283;
+    const TranHigh sinpi_2_9 = 9929;
+    const TranHigh sinpi_3_9 = 13377;
+    const TranHigh sinpi_4_9 = 15212;
 
-    tran_high_t x0, x1, x2, x3;
-    tran_high_t s0, s1, s2, s3, s4, s5, s6, s7;
+    TranHigh x0, x1, x2, x3;
+    TranHigh s0, s1, s2, s3, s4, s5, s6, s7;
     x0 = input[0];
     x1 = input[1];
     x2 = input[2];
@@ -136,7 +136,7 @@ INLINE void reference_txfm_1d(TX_TYPE_1D type, const double *in, double *out,
     }
 }
 
-INLINE TX_TYPE_1D get_txfm1d_types(TXFM_TYPE txfm_type) {
+INLINE TX_TYPE_1D get_txfm1d_types(TxfmType txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4:
     case TXFM_TYPE_DCT8:
