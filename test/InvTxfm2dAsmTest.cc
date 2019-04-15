@@ -36,7 +36,6 @@
 
 namespace {
 
-using InvTxfm2dAsmParam = std::tuple<int, int>;
 using InvSqrTxfm2dFun = void (*)(const int32_t *input, uint16_t *output,
                                  int32_t stride, TxType tx_type, int32_t bd);
 using InvRectTxfm2dType1Func = void (*)(const int32_t *input, uint16_t *output,
@@ -160,27 +159,23 @@ const int deterministic_seed = 0xa42b;
  * AssembleType: avx2 and sse4_1
  *
  */
-class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
+class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
   public:
-    InvTxfm2dAsmTest()
-        : bd_(TEST_GET_PARAM(0)),
-          asm_type_(TEST_GET_PARAM(1)),
-          gen_(deterministic_seed) {
-        // input is the dequant values, the range is set according to
-        // spec 7.12.3
-        decltype(input_dist_nbit_)::param_type param{-(1 << (bd_ + 7)),
-                                                     (1 << (bd_ + 7)) - 1};
-        input_dist_nbit_.param(param);
+    InvTxfm2dAsmTest() : bd_(GetParam()), gen_(deterministic_seed) {
+        decltype(u_nbit_)::param_type u_param{0, (1 << bd_) - 1};
+        u_nbit_.param(u_param);
+        decltype(s_nbit_)::param_type s_param{-(1 << bd_) + 1, (1 << bd_) - 1};
+        s_nbit_.param(s_param);
     }
 
     ~InvTxfm2dAsmTest() {
         aom_clear_system_state();
     }
 
-    void run_sqr_txfm_match_test(const TxSize tx_size) {
+    void run_sqr_txfm_match_test(const TxSize tx_size, int asm_type) {
         const int width = get_txb_wide(tx_size);
         const int height = get_txb_high(tx_size);
-        InvSqrTxfmFuncPair pair = (asm_type_ == 0)
+        InvSqrTxfmFuncPair pair = (asm_type == 0)
                                       ? inv_txfm_c_avx2_func_pairs[tx_size]
                                       : inv_txfm_c_sse4_1_func_pairs[tx_size];
         if (pair.ref_func == nullptr || pair.test_func == nullptr)
@@ -195,9 +190,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
             if (is_tx_type_imp(type) == false)
                 continue;
 
-            const int loops = 1;
+            const int loops = 100;
             for (int k = 0; k < loops; k++) {
-                populate_with_random(width, height);
+                populate_with_random(width, height, type, tx_size);
 
                 pair.ref_func(input_, output_ref_, stride_, type, bd_);
                 pair.test_func(input_, output_test_, stride_, type, bd_);
@@ -207,7 +202,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
                                  output_test_,
                                  height * stride_ * sizeof(output_test_[0])))
                     << "loop: " << k << " tx_type: " << tx_type
-                    << " tx_size: " << tx_size << " asm_type: " << asm_type_;
+                    << " tx_size: " << tx_size << " asm_type: " << asm_type;
             }
         }
     }
@@ -227,9 +222,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
             if (is_txfm_allowed(type, width, height) == false)
                 continue;
 
-            const int loops = 1;
+            const int loops = 100;
             for (int k = 0; k < loops; k++) {
-                populate_with_random(width, height);
+                populate_with_random(width, height, type, tx_size);
 
                 ref_func(
                     input_, output_ref_, stride_, type, tx_size, max_eob, bd_);
@@ -241,7 +236,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
                                  output_test_,
                                  height * stride_ * sizeof(output_test_[0])))
                     << "loop: " << k << " tx_type: " << tx_type
-                    << " tx_size: " << tx_size << " asm_type: " << asm_type_;
+                    << " tx_size: " << tx_size;
             }
         }
     }
@@ -260,9 +255,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
             if (is_txfm_allowed(type, width, height) == false)
                 continue;
 
-            const int loops = 1;
+            const int loops = 100;
             for (int k = 0; k < loops; k++) {
-                populate_with_random(width, height);
+                populate_with_random(width, height, type, tx_size);
 
                 test_pair->ref_func(
                     input_, output_ref_, stride_, type, tx_size, bd_);
@@ -274,24 +269,51 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
                                  output_test_,
                                  height * stride_ * sizeof(output_test_[0])))
                     << "loop: " << k << " tx_type: " << tx_type
-                    << " tx_size: " << tx_size << " asm_type: " << asm_type_;
+                    << " tx_size: " << tx_size;
             }
         }
     }
 
   private:
-    void populate_with_random(const int width, const int height) {
-        std::uniform_int_distribution<> dist_nbit;
-        decltype(dist_nbit)::param_type param{0, (1 << bd_) - 1};
-        dist_nbit.param(param);
+    void populate_with_random(const int width, const int height,
+                              const TxType tx_type, const TxSize tx_size) {
+
+        using FwdTxfm2dFunc = void (*)(int16_t * input,
+                                       int32_t * output,
+                                       uint32_t stride,
+                                       TxType tx_type,
+                                       uint8_t bd);
+
+        const FwdTxfm2dFunc fwd_txfm_func[TX_SIZES_ALL] = {
+            Av1TransformTwoD_4x4_c,   Av1TransformTwoD_8x8_c,
+            Av1TransformTwoD_16x16_c, Av1TransformTwoD_32x32_c,
+            Av1TransformTwoD_64x64_c, av1_fwd_txfm2d_4x8_c,
+            av1_fwd_txfm2d_8x4_c,     av1_fwd_txfm2d_8x16_c,
+            av1_fwd_txfm2d_16x8_c,    av1_fwd_txfm2d_16x32_c,
+            av1_fwd_txfm2d_32x16_c,   av1_fwd_txfm2d_32x64_c,
+            av1_fwd_txfm2d_64x32_c,   av1_fwd_txfm2d_4x16_c,
+            av1_fwd_txfm2d_16x4_c,    av1_fwd_txfm2d_8x32_c,
+            av1_fwd_txfm2d_32x8_c,    av1_fwd_txfm2d_16x64_c,
+            av1_fwd_txfm2d_64x16_c,
+        };
 
         memset(output_ref_, 0, sizeof(output_ref_));
         memset(output_test_, 0, sizeof(output_test_));
+        memset(input_, 0, sizeof(input_));
+        memset(tmp_input_, 0, sizeof(tmp_input_));
+        memset(pixel_input_, 0, sizeof(pixel_input_));
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
-                input_[i * stride_ + j] = input_dist_nbit_(gen_);
+                pixel_input_[i * stride_ + j] = s_nbit_(gen_);
                 output_ref_[i * stride_ + j] = output_test_[i * stride_ + j] =
-                    dist_nbit(gen_);
+                    u_nbit_(gen_);
+            }
+        }
+
+        fwd_txfm_func[tx_size](pixel_input_, tmp_input_, stride_, tx_type, bd_);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                input_[i * stride_ + j] = tmp_input_[i * width + j];
             }
         }
 
@@ -300,21 +322,24 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<InvTxfm2dAsmParam> {
 
   private:
     std::mt19937 gen_;                                /**< seed for random */
-    std::uniform_int_distribution<> input_dist_nbit_; /**< generate random for
-                                                         input buffer for 8bit
-                                                         and 10bit coeffs */
+    std::uniform_int_distribution<> u_nbit_;
+    std::uniform_int_distribution<> s_nbit_;
+
     const int bd_;       /**< input param 8bit or 10bit */
-    const int asm_type_; /**< 0: avx2, 1: sse4_1 */
     static const int stride_ = MAX_TX_SIZE;
+    DECLARE_ALIGNED(32, int16_t, pixel_input_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, int32_t, input_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, int32_t, tmp_input_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, uint16_t, output_test_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, uint16_t, output_ref_[MAX_TX_SQUARE]);
 };
 
 TEST_P(InvTxfm2dAsmTest, sqr_txfm_match_test) {
-    for (int i = TX_4X4; i <= TX_64X64; i++) {
-        const TxSize tx_size = static_cast<TxSize>(i);
-        run_sqr_txfm_match_test(tx_size);
+    for (int asm_type = 0; asm_type < 2; ++asm_type) {
+        for (int i = TX_4X4; i <= TX_64X64; i++) {
+            const TxSize tx_size = static_cast<TxSize>(i);
+            run_sqr_txfm_match_test(tx_size, asm_type);
+        }
     }
 }
 
@@ -332,9 +357,7 @@ TEST_P(InvTxfm2dAsmTest, rect_type2_txfm_match_test) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(
-    ASM, InvTxfm2dAsmTest,
-    ::testing::Combine(::testing::Values(static_cast<int>(AOM_BITS_8),
-                                         static_cast<int>(AOM_BITS_10)),
-                       ::testing::Values(0, 1)));
+INSTANTIATE_TEST_CASE_P(ASM, InvTxfm2dAsmTest,
+                        ::testing::Values(static_cast<int>(AOM_BITS_8),
+                                          static_cast<int>(AOM_BITS_10)));
 }  // namespace
