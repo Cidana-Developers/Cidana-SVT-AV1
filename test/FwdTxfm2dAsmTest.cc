@@ -128,7 +128,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             if (is_txfm_allowed(type, width_, height_) == false)
                 continue;
 
-            if(is_tx_type_imp(type) == false)
+            if (is_tx_type_imp(type) == false)
                 continue;
 
             const int loops = 100;
@@ -160,18 +160,17 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
         return;
     }
 
-    bool is_tx_type_imp(TxType type){
-        switch(tx_size_){
+    bool is_tx_type_imp(TxType type) {
+        switch (tx_size_) {
         case TX_64X64:
         case TX_16X32:
         case TX_32X8:
         case TX_8X32:
-            if(type == IDTX || type == DCT_DCT)
+            if (type == IDTX || type == DCT_DCT)
                 return true;
             else
                 return false;
-        case TX_32X16:
-            return type == IDTX ? true : false;
+        case TX_32X16: return type == IDTX ? true : false;
         case TX_16X8:
         case TX_8X16:
         case TX_32X64:
@@ -185,10 +184,8 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
         case TX_32X32:
         case TX_16X16:
         case TX_8X8:
-        case TX_4X4:
-            return true;
-        default:
-            return false;
+        case TX_4X4: return true;
+        default: return false;
         }
     }
 

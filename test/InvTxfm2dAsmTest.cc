@@ -33,6 +33,7 @@
 #include "aom_dsp_rtcd.h"
 #include "EbTransforms.h"
 #include "TxfmCommon.h"
+#include "av1_inv_txfm_ssse3.h"
 
 namespace {
 
@@ -274,10 +275,106 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         }
     }
 
+    void run_lowbd_txfm_match_test(const TxSize tx_size) {
+        if (bd_ > 8)
+            return;
+        const int width = get_txb_wide(tx_size);
+        const int height = get_txb_high(tx_size);
+        const int max_eob = av1_get_max_eob(tx_size);
+        using LowbdInvRectTxfmRefFunc = void (*)(const int32_t *input,
+                                                 uint16_t *output,
+                                                 int32_t stride,
+                                                 TxType tx_type,
+                                                 TxSize tx_size,
+                                                 int32_t eob,
+                                                 int32_t bd);
+        using LowbdInvSqrTxfmRefFunc = void (*)(const int32_t *input,
+                                                uint16_t *output,
+                                                int32_t stride,
+                                                TxType tx_type,
+                                                int32_t bd);
+        const LowbdInvSqrTxfmRefFunc lowbd_sqr_ref_funcs[TX_SIZES] = {
+            av1_inv_txfm2d_add_4x4_c,
+            av1_inv_txfm2d_add_8x8_c,
+            av1_inv_txfm2d_add_16x16_c,
+            av1_inv_txfm2d_add_32x32_c,
+            av1_inv_txfm2d_add_64x64_c};
+        const LowbdInvRectTxfmRefFunc lowbd_rect_ref_funcs[TX_SIZES_ALL] = {
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            av1_inv_txfm2d_add_8x16_c,
+            av1_inv_txfm2d_add_16x8_c,
+            av1_inv_txfm2d_add_16x32_c,
+            av1_inv_txfm2d_add_32x16_c,
+            av1_inv_txfm2d_add_32x64_c,
+            av1_inv_txfm2d_add_64x32_c,
+            nullptr,
+            nullptr,
+            av1_inv_txfm2d_add_8x32_c,
+            av1_inv_txfm2d_add_32x8_c,
+            av1_inv_txfm2d_add_16x64_c,
+            av1_inv_txfm2d_add_64x16_c};
+
+        if (tx_size >= TX_SIZES && lowbd_rect_ref_funcs[tx_size] == nullptr)
+            return;
+
+        for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
+            TxType type = static_cast<TxType>(tx_type);
+
+            if (is_txfm_allowed(type, width, height) == false)
+                continue;
+
+            const int loops = 100;
+            for (int k = 0; k < loops; k++) {
+                populate_with_random(width, height, type, tx_size);
+
+                // copy to lowbd output buffer from short buffer
+                DECLARE_ALIGNED(32, uint8_t, lowbd_output_test_[MAX_TX_SQUARE]);
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++)
+                        lowbd_output_test_[i * stride_ + j] =
+                            static_cast<uint8_t>(output_test_[i * stride_ + j]);
+                }
+
+                av1_lowbd_inv_txfm2d_add_ssse3(input_,
+                                               lowbd_output_test_,
+                                               stride_,
+                                               type,
+                                               tx_size,
+                                               max_eob);
+                if (tx_size >= TX_SIZES)
+                    lowbd_rect_ref_funcs[tx_size](input_,
+                                                  output_ref_,
+                                                  stride_,
+                                                  type,
+                                                  tx_size,
+                                                  max_eob,
+                                                  bd_);
+                else
+                    lowbd_sqr_ref_funcs[tx_size](
+                        input_, output_ref_, stride_, type, bd_);
+
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++) {
+                        uint8_t ref =
+                            static_cast<uint8_t>(output_ref_[i * stride_ + j]);
+                        ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
+                            << "loop: " << k << " tx_type: " << tx_type
+                            << " tx_size: " << tx_size;
+                    }
+                }
+            }
+        }
+    }
+
   private:
     void populate_with_random(const int width, const int height,
                               const TxType tx_type, const TxSize tx_size) {
-
         using FwdTxfm2dFunc = void (*)(int16_t * input,
                                        int32_t * output,
                                        uint32_t stride,
@@ -321,11 +418,11 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
   private:
-    std::mt19937 gen_;                                /**< seed for random */
+    std::mt19937 gen_; /**< seed for random */
     std::uniform_int_distribution<> u_nbit_;
     std::uniform_int_distribution<> s_nbit_;
 
-    const int bd_;       /**< input param 8bit or 10bit */
+    const int bd_; /**< input param 8bit or 10bit */
     static const int stride_ = MAX_TX_SIZE;
     DECLARE_ALIGNED(32, int16_t, pixel_input_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, int32_t, input_[MAX_TX_SQUARE]);
@@ -354,6 +451,13 @@ TEST_P(InvTxfm2dAsmTest, rect_type2_txfm_match_test) {
     for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
         const TxSize tx_size = static_cast<TxSize>(i);
         run_rect_type2_txfm_match_test(tx_size);
+    }
+}
+
+TEST_P(InvTxfm2dAsmTest, lowbd_txfm_match_test) {
+    for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
+        const TxSize tx_size = static_cast<TxSize>(i);
+        run_lowbd_txfm_match_test(tx_size);
     }
 }
 
