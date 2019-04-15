@@ -93,7 +93,7 @@ class RefDecoder {
      * @param ret the error code found in construction
      */
     RefDecoder(RefDecoderErr &ret);
-    /** Constructor of ReconSink	  */
+    /** Destructor of ReconSink	  */
     virtual ~RefDecoder();
 
   public:

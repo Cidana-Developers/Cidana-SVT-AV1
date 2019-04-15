@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "SvtAv1E2EFramework.h"
 
-using namespace svt_av1_test_e2e;
+using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_test_vector;
 
 /**
@@ -191,6 +191,8 @@ class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {
         // create reference decoder
         refer_dec_ = create_reference_decoder();
         ASSERT_NE(refer_dec_, nullptr) << "can not create reference decoder!!";
+
+		collect_ = new PerformanceCollect(typeid(this).name());
 
         SvtAv1E2ETestFramework::init_test();
     }
