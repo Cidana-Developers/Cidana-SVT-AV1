@@ -121,7 +121,6 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
 
     void run_match_test() {
         TxfmFuncPair pair = txfm_func_pairs[tx_size_];
-        std::cout << pair.name << std::endl;
         if (pair.ref_func == nullptr || pair.test_func == nullptr)
             return;
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
@@ -240,7 +239,7 @@ TEST_P(FwdTxfm2dAsmTest, match_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    AVX2, FwdTxfm2dAsmTest,
+    TX, FwdTxfm2dAsmTest,
     ::testing::Combine(::testing::Range(static_cast<int>(TX_4X4),
                                         static_cast<int>(TX_SIZES_ALL), 1),
                        ::testing::Values(static_cast<int>(AOM_BITS_8),
