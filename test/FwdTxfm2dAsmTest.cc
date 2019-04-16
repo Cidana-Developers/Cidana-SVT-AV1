@@ -125,15 +125,18 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             return;
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
-            if (is_txfm_valid(type, width_, height_) == false)
+            if (is_txfm_allowed(type, width_, height_) == false)
                 continue;
 
-            const int loops = 10;
+            if (is_tx_type_imp(type) == false)
+                continue;
+
+            const int loops = 100;
             for (int k = 0; k < loops; k++) {
                 populate_with_random();
 
-                pair.ref_func(input_, output_ref_, stride, type, bd_);
-                pair.test_func(input_, output_test_, stride, type, bd_);
+                pair.ref_func(input_, output_ref_, stride_, type, bd_);
+                pair.test_func(input_, output_test_, stride_, type, bd_);
 
                 for (int i = 0; i < height_; i++)
                     for (int j = 0; j < width_; j++)
@@ -150,11 +153,40 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     void populate_with_random() {
         for (int i = 0; i < height_; i++) {
             for (int j = 0; j < width_; j++) {
-                input_[i * stride + j] = dist_nbit_(gen_);
+                input_[i * stride_ + j] = dist_nbit_(gen_);
             }
         }
 
         return;
+    }
+
+    bool is_tx_type_imp(TxType type) {
+        switch (tx_size_) {
+        case TX_64X64:
+        case TX_16X32:
+        case TX_32X8:
+        case TX_8X32:
+            if (type == IDTX || type == DCT_DCT)
+                return true;
+            else
+                return false;
+        case TX_32X16: return type == IDTX ? true : false;
+        case TX_16X8:
+        case TX_8X16:
+        case TX_32X64:
+        case TX_64X32:
+        case TX_16X64:
+        case TX_64X16:
+        case TX_4X8:
+        case TX_8X4:
+        case TX_4X16:
+        case TX_16X4:
+        case TX_32X32:
+        case TX_16X16:
+        case TX_8X8:
+        case TX_4X4: return true;
+        default: return false;
+        }
     }
 
   private:
@@ -165,7 +197,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     const int bd_;         /**< input param 8bit or 10bit */
     int width_;
     int height_;
-    static const int stride = MAX_TX_SIZE;
+    static const int stride_ = MAX_TX_SIZE;
     DECLARE_ALIGNED(32, int16_t, input_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, int32_t, output_ref_[MAX_TX_SQUARE]);
