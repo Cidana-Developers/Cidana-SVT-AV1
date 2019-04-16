@@ -73,7 +73,6 @@ RefDecoder::RefDecoderErr RefDecoder::get_frame(VideoFrame &frame) {
         return REF_CODEC_NEED_MORE_INPUT;
     }
     trans_video_frame(img, frame);
-    printf("ref_frame_count %d\n", ref_frame_cnt_++);
     return REF_CODEC_OK;
 }
 

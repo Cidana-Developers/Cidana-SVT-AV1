@@ -16,6 +16,7 @@
 
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
+#include "PerformanceCollect.h"
 #ifdef ENABLE_DEBUG_MONITOR
 #include "VideoMonitor.h"
 #endif
@@ -23,11 +24,11 @@
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
 
-/** @defgroup svt_av1_test_e2e Test framework for E2E test
+/** @defgroup svt_av1_e2e_test Test framework for E2E test
  *  Defines the framework body of E2E test for the mainly test progress
  *  @{
  */
-namespace svt_av1_test_e2e {
+namespace svt_av1_e2e_test {
 
 using namespace svt_av1_e2e_test_vector;
 
@@ -123,13 +124,14 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     RefDecoder *refer_dec_; /**< reference decoder context */
     IvfFile *output_file_;  /**< file handle for save encoder output data */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
+    PerformanceCollect *collect_;   /**< performance and time collection*/
 #ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
 #endif
 };
 
-}  // namespace svt_av1_test_e2e
+}  // namespace svt_av1_e2e_test
 /** @} */  // end of svt_av1_e2e_test_vector
 
 #endif  //_SVT_AV1_E2E_FRAMEWORK_H_

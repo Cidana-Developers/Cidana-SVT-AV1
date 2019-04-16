@@ -32,7 +32,7 @@
  * frame_rate_denominator
  */
 
-using namespace svt_av1_test_e2e;
+using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_test_vector;
 
 class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
@@ -85,8 +85,17 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         }                                                                 \
         /** initialization for test */                                    \
         void init_test(const size_t i) {                                  \
+            collect_ = new PerformanceCollect(typeid(this).name());       \
             ctxt_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
             SvtAv1E2EParamBase::init_test();                              \
+        }                                                                 \
+        /** close for test */                                             \
+        void close_test() {                                               \
+            SvtAv1E2EParamBase::close_test();                             \
+            if (collect_) {                                               \
+                delete collect_;                                          \
+                collect_ = nullptr;                                       \
+            }                                                             \
         }                                                                 \
         /** run for the conformance test */                               \
         void run_conformance_test() {                                     \

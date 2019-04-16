@@ -50,7 +50,7 @@ class ReconSink {
         frame_size_ = calculate_frame_size(video_param_);
         frame_count_ = 0;
     }
-    /** Constructor of ReconSink	  */
+    /** Destructor of ReconSink	  */
     virtual ~ReconSink() {
     }
     /** Get sink type
