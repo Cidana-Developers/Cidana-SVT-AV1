@@ -199,7 +199,7 @@ static std::vector<FwdTxfm2dParam> gen_txfm_2d_params() {
     return param_vec;
 }
 
-INSTANTIATE_TEST_CASE_P(C, AV1FwdTxfm2dTest,
+INSTANTIATE_TEST_CASE_P(TX, AV1FwdTxfm2dTest,
                         ::testing::ValuesIn(gen_txfm_2d_params()));
 
 }  // namespace

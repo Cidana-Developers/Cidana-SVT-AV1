@@ -294,7 +294,7 @@ TEST_P(QuantizeTest, input_random_all_q_all) {
 
 #ifndef FULL_UNIT_TEST
 INSTANTIATE_TEST_CASE_P(
-    AVX2, QuantizeTest,
+    Quant, QuantizeTest,
     ::testing::Combine(::testing::Values(static_cast<int>(TX_16X16),
                                          static_cast<int>(TX_32X32),
                                          static_cast<int>(TX_64X64)),
@@ -302,7 +302,7 @@ INSTANTIATE_TEST_CASE_P(
                                          static_cast<int>(AOM_BITS_10))));
 #else
 INSTANTIATE_TEST_CASE_P(
-    AVX2, QuantizeTest,
+    Quant, QuantizeTest,
     ::testing::Combine(::testing::Range(static_cast<int>(TX_4X4),
                                         static_cast<int>(TX_SIZES_ALL), 1),
                        ::testing::Values(static_cast<int>(AOM_BITS_8),

@@ -48,7 +48,7 @@
  */
 namespace {
 const int deterministic_seeds = 0xa42b;
-static void generate_random_prob(uint8_t *const probas, const int total_bits,
+static void generate_random_prob(uint8_t *const probas, const int total_probas,
                                  const int prob_gen_method) {
     std::mt19937 gen(deterministic_seeds);
     std::uniform_int_distribution<> prob_uni_dist(0, 255);
@@ -57,35 +57,35 @@ static void generate_random_prob(uint8_t *const probas, const int total_bits,
 
     switch (prob_gen_method) {
         // extreme probas
-    case 0: memset(probas, 0, sizeof(probas)); break;
+    case 0: memset(probas, 0, total_probas * sizeof(probas[0])); break;
     case 1:
-        for (int i = 0; i < total_bits; ++i)
+        for (int i = 0; i < total_probas; ++i)
             probas[i] = 255;
         break;
         //
     case 2:
-        for (int i = 0; i < total_bits; ++i)
+        for (int i = 0; i < total_probas; ++i)
             probas[i] = 128;
         break;
     case 3:
         // uniform distribution between 0 ~ 255
-        for (int i = 0; i < total_bits; ++i)
+        for (int i = 0; i < total_probas; ++i)
             probas[i] = prob_uni_dist(gen);
         break;
     case 4:
         // low probability
-        for (int i = 0; i < total_bits; ++i)
+        for (int i = 0; i < total_probas; ++i)
             probas[i] = lowprob_uni_dist(gen);
         break;
     case 5:
         // high probability
-        for (int i = 0; i < total_bits; ++i)
+        for (int i = 0; i < total_probas; ++i)
             probas[i] = 255 - lowprob_uni_dist(gen);
         break;
     case 6:
     default:
         // mix high and low probability
-        for (int i = 0; i < total_bits; ++i) {
+        for (int i = 0; i < total_probas; ++i) {
             bool flip = flip_dist(gen);
             probas[i] =
                 flip ? lowprob_uni_dist(gen) : 255 - lowprob_uni_dist(gen);
@@ -101,7 +101,7 @@ static void generate_random_bits(uint8_t *const test_bits, const int total_bits,
 
     // setup test bits
     switch (bit_gen_method) {
-    case 0: memset(test_bits, 0, sizeof(test_bits)); break;
+    case 0: memset(test_bits, 0, total_bits * sizeof(test_bits[0])); break;
     case 1:
         for (int i = 0; i < total_bits; ++i)
             test_bits[i] = 1;
@@ -111,7 +111,7 @@ static void generate_random_bits(uint8_t *const test_bits, const int total_bits,
     }
 }
 
-TEST(BitstreamWriter, write_bits_random) {
+TEST(Entropy_BitstreamWriter, write_bits_random) {
     const int num_tests = 10;
     for (int n = 0; n < num_tests; ++n) {
         // generate various proba
@@ -153,7 +153,7 @@ TEST(BitstreamWriter, write_bits_random) {
     }
 }
 
-TEST(BitstreamWriter, write_literal_extreme_int) {
+TEST(Entropy_BitstreamWriter, write_literal_extreme_int) {
     // test max int
     constexpr int32_t max_int = std::numeric_limits<int32_t>::max();
     constexpr int32_t min_int = std::numeric_limits<int32_t>::min();
@@ -175,7 +175,7 @@ TEST(BitstreamWriter, write_literal_extreme_int) {
         << "read min_int fail";
 }
 
-TEST(BitstreamWriter, write_symbol_no_update) {
+TEST(Entropy_BitstreamWriter, write_symbol_no_update) {
     aom_writer bw = {0};
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
@@ -198,7 +198,7 @@ TEST(BitstreamWriter, write_symbol_no_update) {
     EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 1);
 }
 
-TEST(BitstreamWriter, write_symbol_with_update) {
+TEST(Entropy_BitstreamWriter, write_symbol_with_update) {
     aom_writer bw = {0};
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
