@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <algorithm>
 // workaround to eliminate the compiling warning on linux
 // The macro will conflict with definition in gtest.h
 #ifdef __USE_GNU
@@ -185,9 +186,13 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             TxType type = static_cast<TxType>(tx_type);
             const IsTxTypeImpFunc is_tx_type_imp = pair.check_imp_func;
 
+            // tx_type and tx_size are not compatible in the av1-spec.
+            // like the max size of adst transform is 16, and max size of
+            // identity transform is 32.
             if (is_txfm_allowed(type, width, height) == false)
                 continue;
 
+            // Some tx_type is not implemented yet, so we will skip this;
             if (is_tx_type_imp(type) == false)
                 continue;
 
@@ -220,8 +225,18 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
 
+            // tx_type and tx_size are not compatible in the av1-spec.
+            // like the max size of adst transform is 16, and max size of
+            // identity transform is 32.
             if (is_txfm_allowed(type, width, height) == false)
                 continue;
+
+            // Some tx_type is implemented but will crash the unit test.
+            // Skip this kind of test and fail it instead.
+            if (is_rect_type1_crash_case(tx_size, type)) {
+                FAIL();
+                continue;
+            }
 
             const int loops = 100;
             for (int k = 0; k < loops; k++) {
@@ -232,7 +247,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                 test_func(
                     input_, output_test_, stride_, type, tx_size, max_eob, bd_);
 
-                EXPECT_EQ(0,
+                ASSERT_EQ(0,
                           memcmp(output_ref_,
                                  output_test_,
                                  height * stride_ * sizeof(output_test_[0])))
@@ -253,6 +268,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
 
+            // tx_type and tx_size are not compatible in the av1-spec.
+            // like the max size of adst transform is 16, and max size of
+            // identity transform is 32.
             if (is_txfm_allowed(type, width, height) == false)
                 continue;
 
@@ -265,7 +283,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                 test_pair->test_func(
                     input_, output_test_, stride_, type, tx_size, bd_);
 
-                EXPECT_EQ(0,
+                ASSERT_EQ(0,
                           memcmp(output_ref_,
                                  output_test_,
                                  height * stride_ * sizeof(output_test_[0])))
@@ -326,6 +344,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
 
+            // tx_type and tx_size are not compatible in the av1-spec.
+            // like the max size of adst transform is 16, and max size of
+            // identity transform is 32.
             if (is_txfm_allowed(type, width, height) == false)
                 continue;
 
@@ -373,6 +394,33 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
   private:
+    // TODO(wenyao): update these cases as these issues are fixed.
+    bool is_rect_type1_crash_case(const TxSize tx_size, const TxType tx_type) {
+        std::vector<TxType> invalid_types;
+        switch (tx_size) {
+        case TX_16X32:
+            invalid_types = std::vector<TxType>{H_DCT, H_ADST, H_FLIPADST};
+            break;
+        case TX_32X64:
+        case TX_64X32:
+            invalid_types = std::vector<TxType>{IDTX, V_DCT, H_DCT};
+            break;
+        case TX_16X64:
+            invalid_types =
+                std::vector<TxType>{IDTX, V_DCT, H_DCT, H_ADST, H_FLIPADST};
+            break;
+        case TX_64X16:
+            invalid_types =
+                std::vector<TxType>{IDTX, V_DCT, H_DCT, V_ADST, V_FLIPADST};
+            break;
+        default: break;
+        }
+
+        auto it =
+            std::find(invalid_types.begin(), invalid_types.end(), tx_type);
+        return it == invalid_types.end() ? false : true;
+    }
+
     void populate_with_random(const int width, const int height,
                               const TxType tx_type, const TxSize tx_size) {
         using FwdTxfm2dFunc = void (*)(int16_t * input,
@@ -441,21 +489,21 @@ TEST_P(InvTxfm2dAsmTest, sqr_txfm_match_test) {
 }
 
 TEST_P(InvTxfm2dAsmTest, rect_type1_txfm_match_test) {
-    for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
+    for (int i = TX_4X8; i < TX_SIZES_ALL; i++) {
         const TxSize tx_size = static_cast<TxSize>(i);
         run_rect_type1_txfm_match_test(tx_size);
     }
 }
 
 TEST_P(InvTxfm2dAsmTest, rect_type2_txfm_match_test) {
-    for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
+    for (int i = TX_4X8; i < TX_SIZES_ALL; i++) {
         const TxSize tx_size = static_cast<TxSize>(i);
         run_rect_type2_txfm_match_test(tx_size);
     }
 }
 
 TEST_P(InvTxfm2dAsmTest, lowbd_txfm_match_test) {
-    for (int i = TX_4X8; i <= TX_SIZES_ALL; i++) {
+    for (int i = TX_4X4; i < TX_SIZES_ALL; i++) {
         const TxSize tx_size = static_cast<TxSize>(i);
         run_lowbd_txfm_match_test(tx_size);
     }

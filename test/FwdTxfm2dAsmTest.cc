@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <new>
+#include <algorithm>
 
 // workaround to eliminate the compiling warning on linux
 // The macro will conflict with definition in gtest.h
@@ -125,11 +126,22 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             return;
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
+            // tx_type and tx_size are not compatible in the av1-spec.
+            // like the max size of adst transform is 16, and max size of
+            // identity transform is 32.
             if (is_txfm_allowed(type, width_, height_) == false)
                 continue;
 
+            // Some tx_type is not implemented yet, so we will skip this;
             if (is_tx_type_imp(type) == false)
                 continue;
+
+            // Some tx_type is implemented but will crash the unit test.
+            // Skip this kind of test and fail it instead.
+            if (is_crash_case(tx_size_, type)) {
+                FAIL();
+                continue;
+            }
 
             const int loops = 100;
             for (int k = 0; k < loops; k++) {
@@ -150,6 +162,26 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     }
 
   private:
+    // TODO(wenyao): update these cases as these issues are fixed.
+    bool is_crash_case(const TxSize tx_size, TxType tx_type) {
+        std::vector<TxSize> crashed_tx_sizes = {TX_16X16,
+                                                TX_32X32,
+                                                TX_64X64,
+                                                TX_8X4,
+                                                TX_16X32,
+                                                TX_32X16,
+                                                TX_32X64,
+                                                TX_64X32,
+                                                TX_16X4,
+                                                TX_8X32,
+                                                TX_32X8,
+                                                TX_16X64,
+                                                TX_64X16};
+        auto pos = std::find(
+            crashed_tx_sizes.begin(), crashed_tx_sizes.end(), tx_size_);
+        return pos == crashed_tx_sizes.end() ? false : true;
+    }
+
     void populate_with_random() {
         for (int i = 0; i < height_; i++) {
             for (int j = 0; j < width_; j++) {
