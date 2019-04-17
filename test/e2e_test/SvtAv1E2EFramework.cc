@@ -161,9 +161,10 @@ void SvtAv1E2ETestBase::TearDown() {
 /** initialization for test */
 void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
-	/** TODO: encoder_color_format should be set with input source format*/
-	ctxt_.enc_params.encoder_color_format = EB_YUV420;
-	return_error =
+    /** TODO: encoder_color_format should be set with input source format*/
+    ctxt_.enc_params.encoder_color_format = EB_YUV420;
+    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
+    return_error =
         eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_svt_enc_set_parameter return error:" << return_error;
@@ -291,13 +292,16 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
     bool rec_file_eos = recon_sink_ ? false : true;
     do {
         if (!src_file_eos) {
-            {
+            if (frame_count) {
                 TimeAutoCount counter(READ_SRC, collect_);
                 frame = (uint8_t *)video_src_->get_next_frame();
             }
             {
                 TimeAutoCount counter(ENCODING, collect_);
-                if (frame != nullptr) {
+                if (frame != nullptr && frame_count) {
+                    frame_count--;  // TODO: only walk-around for recon hangup
+                                    // issue, count frame in framework to avoid
+                                    // call last get_next_frame
                     // Fill in Buffers Header control data
                     ctxt_.input_picture_buffer->p_buffer = frame;
                     ctxt_.input_picture_buffer->n_filled_len =
@@ -335,8 +339,9 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         // recon
         if (recon_sink_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
-            get_recon_frame();
             rec_file_eos = recon_sink_->is_compelete();
+            if (!rec_file_eos)
+                get_recon_frame();
         }
 
         if (!enc_file_eos) {
@@ -355,14 +360,18 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                 if (return_error != EB_NoErrorEmptyQueue && enc_out) {
                     TimeAutoCount counter(CONFORMANCE, collect_);
                     process_compress_data(enc_out);
-
                     if (enc_out->flags & EB_BUFFERFLAG_EOS) {
                         enc_file_eos = true;
                         printf("Encoder EOS\n");
                         break;
                     }
-                } else
+                } else {
+                    if (return_error != EB_NoErrorEmptyQueue) {
+                        enc_file_eos = true;
+                        GTEST_FAIL() << "decoder return: " << return_error;
+                    }
                     break;
+                }
 
                 // Release the output buffer
                 if (enc_out != nullptr) {
@@ -374,13 +383,14 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 
-    if (collect_ && frame_count) {
+    if (collect_) {
+        frame_count = video_src_->get_frame_count();
         uint64_t total_enc_time = collect_->read_count(ENCODING);
         if (total_enc_time) {
             printf("Enc Performance: %.2fsec/frame (%.4fFPS)\n",
                    (double)total_enc_time / frame_count / 1000,
                    (double)frame_count * 1000 / total_enc_time);
-		}
+        }
     }
 }
 

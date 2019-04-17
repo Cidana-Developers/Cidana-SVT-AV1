@@ -28,7 +28,8 @@ class PerformanceCollect {
         uint64_t last_start_tick; /**< time tick of last start of counting */
         uint64_t count_ticks;     /**< time ticks sum of every counting */
         const std::string name;   /**< name of test item */
-        Collector(const std::string name, uint64_t unite_tick) : name(name) {
+        Collector(const std::string &name, const uint64_t unite_tick)
+            : name(name) {
             init_tick = unite_tick ? unite_tick : get_time_tick();
             last_start_tick = 0;
             count_ticks = 0;
@@ -47,9 +48,8 @@ class PerformanceCollect {
          */
         std::string to_string() {
             uint64_t total_ticks = get_time_tick() - init_tick;
-            std::string print = "item(" + name +
-                                ") cost: " + std::to_string(count_ticks) +
-                                "ms, ";
+            std::string print =
+                "[" + name + "] cost: " + std::to_string(count_ticks) + "ms, ";
             print +=
                 "usage: " + std::to_string(count_ticks * 100 / total_ticks) +
                 "%\n";
@@ -71,7 +71,7 @@ class PerformanceCollect {
         while (collect_vec_.size()) {
             CollectHandle p = collect_vec_.back();
             collect_vec_.pop_back();
-            printf("%s", p->to_string().c_str());
+            printf("%s%s", test_name_.c_str(), p->to_string().c_str());
         }
     }
     /** Start counting time of specificate test item
@@ -80,7 +80,7 @@ class PerformanceCollect {
      * CollectHandle -- the handle of time collecter <br>
      * nullptr -- can not create a collector
      */
-    CollectHandle start_count(const std::string item_name) {
+    CollectHandle start_count(const std::string &item_name) {
         CollectHandle collector = nullptr;
         for (CollectHandle p : collect_vec_) {
             if (p->name.compare(item_name) == 0) {
@@ -115,7 +115,7 @@ class PerformanceCollect {
      * @return
      * the perid of time in counting
      */
-    uint64_t read_count(const std::string item_name) {
+    uint64_t read_count(const std::string &item_name) {
         for (CollectHandle p : collect_vec_) {
             if (p->name.compare(item_name) == 0) {
                 return p->count_ticks;
@@ -141,9 +141,9 @@ class PerformanceCollect {
  * PerformanceCollect */
 class TimeAutoCount {
   public:
-    TimeAutoCount(const std::string name, PerformanceCollect *counter)
+    TimeAutoCount(const std::string &name, PerformanceCollect *counter)
         : counter_(counter) {
-		collect_ = nullptr;
+        collect_ = nullptr;
         if (counter_) {
             collect_ = counter_->start_count(name);
         }
