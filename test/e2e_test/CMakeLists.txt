@@ -61,11 +61,11 @@ if (UNIX)
 
     # Link the Encoder App
      target_link_libraries (SvtAv1E2ETests
+        aom
         SvtAv1Enc
         gtest_all 
         pthread
-        m
-		    aom)
+        m)
         
 endif(UNIX)
 

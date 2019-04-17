@@ -93,13 +93,19 @@ static const TestVideoVector video_src_vectors[] = {
                     8},
 };
 
-static const TestVideoVector recon_file_vectors[] = {
-    TestVideoVector{"../../test/vectors/hantro_collage_w352h288.yuv",
-                    YUM_VIDEO_FILE,
-                    IMG_FMT_420,
-                    352,
-                    288,
-                    8},
+static const TestVideoVector comformance_test_vectors[] = {
+	TestVideoVector{"../../test/vectors/jellyfish-420-180p.y4m",
+					Y4M_VIDEO_FILE,
+					IMG_FMT_420,
+					320,
+					180,
+					8},
+	TestVideoVector{"../../test/vectors/jellyfish-420p10-180p.y4m",
+					Y4M_VIDEO_FILE,
+					IMG_FMT_420,
+					320,
+					180,
+					10},
 };
 
 static const TestVideoVector smoking_vectors[] = {

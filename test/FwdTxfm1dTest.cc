@@ -72,12 +72,12 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
     }
 
     void run_fwd_accuracy_check() {
-        SVTRandom rnd;
+        SVTRandom rnd(10, true);
         const int count_test_block = 5000;
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < txfm_size_; ++ni) {
-                input_test_[ni] = rnd.random_10s();
+                input_test_[ni] = rnd.random();
                 input_ref_[ni] = static_cast<double>(input_test_[ni]);
                 output_test_[ni] = 0;
                 output_ref_[ni] = 255;  // setup different output
@@ -117,7 +117,7 @@ TEST_P(AV1FwdTxfm1dTest, run_fwd_accuracy_check) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    C, AV1FwdTxfm1dTest,
+    TX, AV1FwdTxfm1dTest,
     ::testing::Values(
         FwdTxfm1dParam(TXFM_TYPE_DCT4, 7), FwdTxfm1dParam(TXFM_TYPE_DCT8, 7),
         FwdTxfm1dParam(TXFM_TYPE_DCT16, 7), FwdTxfm1dParam(TXFM_TYPE_DCT32, 7),

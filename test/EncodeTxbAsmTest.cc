@@ -129,7 +129,7 @@ TEST_P(EncodeTxbInitLevelTest, txb_init_levels_assmbly) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    AVX2, EncodeTxbInitLevelTest,
+    Entropy, EncodeTxbInitLevelTest,
     ::testing::Combine(::testing::Values(&av1_txb_init_levels_avx2),
                        ::testing::Range(0, static_cast<int>(TX_SIZES_ALL), 1)));
 }  // namespace

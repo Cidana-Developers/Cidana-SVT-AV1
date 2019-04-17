@@ -277,7 +277,7 @@ static INLINE int get_txfm1d_size(TxfmType txfm_type) {
     }
 }
 
-static INLINE bool is_txfm_valid(TxType tx_type, int w, int h) {
+static INLINE bool is_txfm_allowed(TxType tx_type, int w, int h) {
     const TX_TYPE_1D vert_type = vtx_tab[tx_type];
     const TX_TYPE_1D horz_type = htx_tab[tx_type];
     const int max_size[TX_TYPES_1D] = {64, 16, 16, 32};
@@ -295,6 +295,26 @@ static INLINE int32_t get_txb_wide(TxSize tx_size) {
 static INLINE int32_t get_txb_high(TxSize tx_size) {
     tx_size = av1_get_adjusted_tx_size(tx_size);
     return tx_size_high[tx_size];
+}
+
+using IsTxTypeImpFunc = bool (*)(const TxType tx_type);
+static INLINE bool all_txtype_imp(const TxType tx_type) {
+    return true;
+}
+
+static INLINE bool dct_adst_combine_imp(const TxType tx_type) {
+    switch (tx_type) {
+    case DCT_DCT:
+    case ADST_DCT:
+    case DCT_ADST:
+    case ADST_ADST:
+    case FLIPADST_DCT:
+    case DCT_FLIPADST:
+    case FLIPADST_FLIPADST:
+    case ADST_FLIPADST:
+    case FLIPADST_ADST: return true;
+    default: return false;
+    }
 }
 
 #ifdef __cplusplus
