@@ -12,6 +12,7 @@
  ******************************************************************************/
 #include <memory.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "Y4mVideoSource.h"
 
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
@@ -171,7 +172,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         switch (first_char) {
         case 'W':  // Width
         {
-            fscanf(file_handle_, "%d ", &width_);
+            assert(fscanf(file_handle_, "%d ", &width_) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
             width_with_padding_ = width_;
             if (width_ % 8 != 0)
@@ -179,7 +180,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         } break;
         case 'H':  // Height
         {
-            fscanf(file_handle_, "%d ", &height_);
+            assert(fscanf(file_handle_, "%d ", &height_) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
             height_with_padding_ = height_;
             if (height_ % 8 != 0)
@@ -188,19 +189,19 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         case 'F':  // Frame rate
         {
             uint32_t tmp1, tmp2;
-            fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2);
+            assert(fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'I':  // Interlacing
         {
             char tmp;
-            fscanf(file_handle_, "%c ", &tmp);
+            assert(fscanf(file_handle_, "%c ", &tmp) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'A':  // Pixel aspect ratio.
         {
             uint32_t tmp1, tmp2;
-            fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2);
+            assert(fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'C':  // Color space
