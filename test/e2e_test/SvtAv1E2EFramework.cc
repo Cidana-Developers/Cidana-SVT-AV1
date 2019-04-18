@@ -400,9 +400,22 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
 
     if (ref_compare_) {
         TimeAutoCount counter(CONFORMANCE, collect_);
-        ref_compare_->flush_video();
+        ASSERT_TRUE(ref_compare_->flush_video());
     }
 
+    int count = 0;
+    double psnr[4];
+    pnsr_statistics_.get_statistics(count, psnr[0], psnr[1], psnr[2], psnr[3]);
+    if (count > 0) {
+        printf(
+            "PSNR: %d frames, total: %0.4f, luma: %0.4f, cb: %0.4f, cr: "
+            "%0.4f\r\n",
+            count,
+            psnr[0],
+            psnr[1],
+            psnr[2],
+            psnr[3]);
+    }
     if (collect_) {
         frame_count = video_src_->get_frame_count();
         uint64_t total_enc_time = collect_->read_count(ENCODING);
@@ -490,8 +503,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
 
     case (EB_BUFFERFLAG_HAS_TD | EB_BUFFERFLAG_SHOW_EXT):
 
-        // terminate previous ivf packet, update the combined size of packets
-        // sent
+        // terminate previous ivf packet, update the combined size of
+        // packets sent
         update_prev_ivf_header(output_file_);
 
         // Write a new IVF frame header to file as a TD is in the packet
@@ -503,8 +516,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
                output->n_filled_len - (obu_frame_header_size_ + TD_SIZE),
                output_file_->file);
 
-        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
-        // packet to show another frame, a new IVF is needed
+        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to
+        // the packet to show another frame, a new IVF is needed
         write_ivf_frame_header(output_file_,
                                (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer + output->n_filled_len -
@@ -517,8 +530,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
 
     case (EB_BUFFERFLAG_HAS_TD):
 
-        // terminate previous ivf packet, update the combined size of packets
-        // sent
+        // terminate previous ivf packet, update the combined size of
+        // packets sent
         update_prev_ivf_header(output_file_);
 
         // Write a new IVF frame header to file as a TD is in the packet
@@ -539,12 +552,12 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
         output_file_->byte_count_since_ivf +=
             (output->n_filled_len - (obu_frame_header_size_ + TD_SIZE));
 
-        // terminate previous ivf packet, update the combined size of packets
-        // sent
+        // terminate previous ivf packet, update the combined size of
+        // packets sent
         update_prev_ivf_header(output_file_);
 
-        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
-        // packet to show another frame, a new IVF is needed
+        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to
+        // the packet to show another frame, a new IVF is needed
         write_ivf_frame_header(output_file_,
                                (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer + output->n_filled_len -
@@ -698,7 +711,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
                                  frame.width >> 1,
                                  frame.height >> 1);
         }
-        printf("Do psnr %0.4f, %0.4f, %0.4f\r\n", luma_psnr, cb_psnr, cr_psnr);
+        pnsr_statistics_.add(luma_psnr, cb_psnr, cr_psnr);
+        // TODO: Check PSNR value reasonable here?
     }
 }
 

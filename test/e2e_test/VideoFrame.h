@@ -13,6 +13,8 @@
 #ifndef _SVT_TEST_VIDEO_FRAME_H_
 #define _SVT_TEST_VIDEO_FRAME_H_
 
+#include <memory.h>
+
 /** VideoImageFormat defines the format of YUV video */
 typedef enum VideoImageFormat {
     IMG_FMT_YV12,

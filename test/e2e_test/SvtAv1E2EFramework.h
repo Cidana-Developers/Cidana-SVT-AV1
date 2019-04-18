@@ -17,6 +17,7 @@
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
 #include "PerformanceCollect.h"
+#include "CompareTools.h"
 #ifdef ENABLE_DEBUG_MONITOR
 #include "VideoMonitor.h"
 #endif
@@ -133,6 +134,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     PerformanceCollect *collect_;   /**< performance and time collection*/
     VideoSource *psnr_src_;         /**< video source context for psnr */
     ICompareSink *ref_compare_; /**< sink of reference to compare with recon*/
+    svt_av1_e2e_tools::PsnrStatistics pnsr_statistics_;
 #ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
