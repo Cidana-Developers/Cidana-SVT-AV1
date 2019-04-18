@@ -624,7 +624,9 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
 #endif
 
                 // Do compare image
-                ASSERT_EQ(compare_image(mug, &ref_frame), true)
+                ASSERT_EQ(compare_image(
+                              mug, &ref_frame, video_src_->get_image_format()),
+                          true)
                     << "image compare failed on " << ref_frame.timestamp;
 
                 // Calculate psnr with input frame and
@@ -652,16 +654,16 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
                                                luma_len / 2);
                         cb_psnr = psnr_10bit(
                             (const uint16_t *)frame->cb,
-                            (const uint16_t *)mug->mug_buf + luma_len,
+                            (const uint16_t *)(mug->mug_buf + luma_len),
                             luma_len >> 3);
                         cr_psnr = psnr_10bit(
                             (const uint16_t *)frame->cr,
-                            (const uint16_t *)mug->mug_buf + luma_len * 5 / 4,
+                            (const uint16_t *)(mug->mug_buf + luma_len * 5 / 4),
                             luma_len >> 3);
                     }
                     printf(
                         "Do psnr %0.4f, %0.4f, "
-                        "%0.f4\r\n",
+                        "%0.4f\r\n",
                         luma_psnr,
                         cb_psnr,
                         cr_psnr);
