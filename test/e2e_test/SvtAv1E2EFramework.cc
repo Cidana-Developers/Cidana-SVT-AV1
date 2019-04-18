@@ -214,7 +214,8 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     return video_src;
 }
 
-svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework() {
+svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
+    : psnr_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
     recon_sink_ = nullptr;
     refer_dec_ = nullptr;
     output_file_ = nullptr;
@@ -670,6 +671,10 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
             }
         }
     };
+}
+
+void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
+    const VideoFrame &frame) {
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {

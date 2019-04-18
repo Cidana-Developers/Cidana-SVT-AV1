@@ -60,11 +60,11 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
     /** test processing body */
     virtual void run_encode_process() = 0;
 
-  private:
+  protected:
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
 
   protected:
-    VideoSource *video_src_; /**< video souce context */
+    VideoSource *video_src_; /**< video source context */
     SvtAv1Context ctxt_;     /**< AV1 encoder context */
 };
 
@@ -113,6 +113,11 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
      * @param size  size of compressed data
      */
     void decode_compress_data(const uint8_t *data, const uint32_t size);
+    /** check video frame psnr with source
+     * @param data  compressed data from encoder, single OBU
+     * @param size  size of compressed data
+     */
+    void check_psnr(const VideoFrame &frame);
 
   protected:
     /** get reconstruction frame from encoder, it should call after send data
@@ -125,6 +130,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     IvfFile *output_file_;  /**< file handle for save encoder output data */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect *collect_;   /**< performance and time collection*/
+    VideoSource *psnr_src_;         /**< video source context for psnr */
 #ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
