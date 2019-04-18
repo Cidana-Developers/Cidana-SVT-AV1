@@ -63,7 +63,6 @@ static __inline void mem_put_le16(void *vmem, int32_t val) {
 }
 
 using namespace svt_av1_e2e_test;
-using namespace svt_av1_e2e_tools;
 
 SvtAv1E2ETestBase::SvtAv1E2ETestBase()
     : video_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
@@ -400,6 +399,19 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 
+    int count = 0;
+    double psnr[4];
+    pnsr_statistics.get_statistics(count, psnr[0], psnr[1], psnr[2], psnr[3]);
+    if (1) {  // count > 0) {
+        printf(
+            "PSNR: %d frames, total:%0.4f, luma:%0.4f, cb: %0.4f, cr:%0.4f\r\n",
+            count,
+            psnr[0],
+            psnr[1],
+            psnr[2],
+            psnr[3]);
+    }
+
     if (collect_) {
         frame_count = video_src_->get_frame_count();
         uint64_t total_enc_time = collect_->read_count(ENCODING);
@@ -702,7 +714,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
                                  frame.width >> 1,
                                  frame.height >> 1);
         }
-        printf("Do psnr %0.4f, %0.4f, %0.4f\r\n", luma_psnr, cb_psnr, cr_psnr);
+        pnsr_statistics.add(luma_psnr, cb_psnr, cr_psnr);
+        // TODO: Check PSNR value reasonable here?
     }
 }
 

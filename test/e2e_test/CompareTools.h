@@ -185,5 +185,49 @@ static inline double psnr_10bit(const uint16_t *p1, const uint32_t stride1,
     return psnr;
 }
 
+class PsnrStatistics {
+  public:
+    PsnrStatistics() {
+        psnr_total_ = 0;
+        psnr_luma_ = 0;
+        psnr_cb_ = 0;
+        psnr_cr_ = 0;
+        count_ = 0;
+    }
+    ~PsnrStatistics() {
+    }
+    void add(const double psnr_luma, const double psnr_cb,
+             const double psnr_cr) {
+        psnr_luma_ += psnr_luma;
+        psnr_cb_ += psnr_cb;
+        psnr_cr_ += psnr_cr;
+        psnr_total_ += (psnr_luma + psnr_cb + psnr_cr) / 3;
+        count_++;
+    }
+
+    void get_statistics(int &count, double &total, double &luma, double &cb,
+                        double &cr) {
+        count = count_;
+        if (count != 0) {
+            total = psnr_total_ / count_;
+            luma = psnr_luma_ / count_;
+            cb = psnr_cb_ / count_;
+            cr = psnr_cr_ / count_;
+        } else {
+            total = 0;
+            luma = 0;
+            cb = 0;
+            cr = 0;
+        }
+    }
+
+  private:
+    double psnr_total_;
+    double psnr_luma_;
+    double psnr_cb_;
+    double psnr_cr_;
+    int count_;
+};
+
 }  // namespace svt_av1_e2e_tools
 #endif  // !_COMPARE_TOOLS_H_
