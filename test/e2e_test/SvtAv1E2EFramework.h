@@ -121,8 +121,9 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
 
   protected:
     /** get reconstruction frame from encoder, it should call after send data
+     * @param is_eos  flag of recon frames is eos
      * into decoder */
-    virtual void get_recon_frame();
+    virtual void get_recon_frame(bool &is_eos);
 
   protected:
     ReconSink *recon_sink_; /**< reconstruction frame collection */

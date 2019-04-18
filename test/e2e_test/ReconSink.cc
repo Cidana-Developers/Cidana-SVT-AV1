@@ -233,19 +233,19 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
         return true; /**< default return suceess if not found recon frame */
     }
     bool flush_video() override {
+        bool is_all_same = true;
         for (const VideoFrame *frame : frame_vec_) {
             const ReconMug *mug = friend_->take_mug(frame->timestamp);
             if (mug) {
-                bool is_same =
-                    svt_av1_e2e_tools::compare_image(mug, frame, frame->format);
-                if (!is_same) {
+                if (!svt_av1_e2e_tools::compare_image(
+                        mug, frame, frame->format)) {
                     printf("ref_frame(%u) compare failed!!\n",
                            (uint32_t)frame->timestamp);
-                    return false;
+                    is_all_same = false;
                 }
             }
         }
-        return true;
+        return is_all_same;
     }
 
   private:
