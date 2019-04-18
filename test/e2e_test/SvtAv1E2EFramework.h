@@ -131,6 +131,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect *collect_;   /**< performance and time collection*/
     VideoSource *psnr_src_;         /**< video source context for psnr */
+    ICompareSink *ref_compare_; /**< sink of reference to compare with recon*/
 #ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;

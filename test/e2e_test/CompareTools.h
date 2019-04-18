@@ -16,11 +16,13 @@
 
 #include <stdint.h>
 #include <math.h>
+#include <float.h>
 #include "ReconSink.h"
 
 namespace svt_av1_e2e_tools {
 static inline bool compare_image(const ReconSink::ReconMug *recon,
-                                 VideoFrame *ref_frame, VideoImageFormat fmt) {
+                                 const VideoFrame *ref_frame,
+                                 VideoImageFormat fmt) {
     const uint32_t width = ref_frame->disp_width;
     const uint32_t height = ref_frame->disp_height;
     unsigned int i = 0;

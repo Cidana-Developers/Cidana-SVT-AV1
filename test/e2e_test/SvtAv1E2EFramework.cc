@@ -225,6 +225,7 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
 #endif
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
+    ref_compare_ = nullptr;
 }
 
 svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
@@ -248,6 +249,10 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
         psnr_src_->close_source();
         delete psnr_src_;
         psnr_src_ = nullptr;
+    }
+    if (ref_compare_) {
+        delete ref_compare_;
+        ref_compare_ = nullptr;
     }
 #ifdef ENABLE_DEBUG_MONITOR
     if (recon_monitor_) {
@@ -392,6 +397,11 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
             } while (src_file_eos);
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
+
+    if (ref_compare_) {
+        TimeAutoCount counter(CONFORMANCE, collect_);
+        ref_compare_->flush_video();
+    }
 
     if (collect_) {
         frame_count = video_src_->get_frame_count();
@@ -602,47 +612,40 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
                 ref_frame.planes[0], ref_frame.planes[1], ref_frame.planes[2]);
         }
 #endif
-        // compare tools
         if (recon_sink_) {
-            // Compare ref decode output with recon
-            // output.
-            const ReconSink::ReconMug *mug =
-                recon_sink_->take_mug(ref_frame.timestamp);
-            if (mug) {
-                uint32_t luma_len = video_src_->get_width_with_padding() *
-                                    video_src_->get_height_with_padding() *
-                                    (video_src_->get_bit_depth() > 8 ? 2 : 1);
+            // compare tools
+            if (ref_compare_ == nullptr) {
+                ref_compare_ = create_ref_compare_sink(ref_frame, recon_sink_);
+                ASSERT_NE(ref_compare_, nullptr);
+            }
+            // Compare ref decode output with recon output.
+            ASSERT_TRUE(ref_compare_->compare_video(ref_frame))
+                << "image compare failed on " << ref_frame.timestamp;
+
+            // PSNR tool
+            check_psnr(ref_frame);
 
 #ifdef ENABLE_DEBUG_MONITOR
-                // Output to monitor for debug
-                if (recon_monitor_ == nullptr) {
-                    recon_monitor_ = new VideoMonitor(
-                        video_src_->get_width_with_padding(),
-                        video_src_->get_height_with_padding(),
-                        (video_src_->get_bit_depth() > 8)
-                            ? video_src_->get_width_with_padding() * 2
-                            : video_src_->get_width_with_padding(),
-                        video_src_->get_bit_depth(),
-                        true,
-                        "Recon");
-                }
-                if (recon_monitor_) {
-                    recon_monitor_->draw_frame(mug->mug_buf,
-                                               mug->mug_buf + luma_len,
-                                               mug->mug_buf + luma_len * 5 / 4);
-                }
-#endif
-
-                // Do compare image
-                ASSERT_EQ(compare_image(
-                              mug, &ref_frame, video_src_->get_image_format()),
-                          true)
-                    << "image compare failed on " << ref_frame.timestamp;
-
-                check_psnr(ref_frame);
+            // Output to monitor for debug
+            if (recon_monitor_ == nullptr) {
+                recon_monitor_ = new VideoMonitor(
+                    video_src_->get_width_with_padding(),
+                    video_src_->get_height_with_padding(),
+                    (video_src_->get_bit_depth() > 8)
+                        ? video_src_->get_width_with_padding() * 2
+                        : video_src_->get_width_with_padding(),
+                    video_src_->get_bit_depth(),
+                    true,
+                    "Recon");
             }
+            if (recon_monitor_) {
+                recon_monitor_->draw_frame(mug->mug_buf,
+                                           mug->mug_buf + luma_len,
+                                           mug->mug_buf + luma_len * 5 / 4);
+            }
+#endif
         }
-    };
+    }
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(

@@ -44,6 +44,52 @@ typedef struct VideoFrame : public VideoFrameParam {
     uint32_t bits_per_sample; /** for packed formats */
     void *context;
     uint64_t timestamp;
+    bool is_own_buf; /**< flag of own video plane buffers*/
+    VideoFrame() {
+        /** do nothing */
+    }
+    VideoFrame(const VideoFrame &origin) {
+        *this = origin;
+        is_own_buf = true;
+        uint32_t luma_len = stride[0] * height * (bits_per_sample > 8 ? 2 : 1);
+        planes[0] = new uint8_t[luma_len];
+        if (planes[0])
+            memcpy(planes[0], origin.planes[0], luma_len);
+        planes[1] = new uint8_t[luma_len];
+        if (planes[1]) {  // TODO: only support 420
+            memcpy(planes[1], origin.planes[1], luma_len >> 2);
+        }
+        planes[2] = new uint8_t[luma_len];
+        if (planes[2]) {  // TODO: only support 420
+            memcpy(planes[2], origin.planes[2], luma_len >> 2);
+        }
+        if (origin.planes[3]) {
+            planes[3] = new uint8_t[luma_len];
+            if (planes[3]) {  // aloha channel
+                memcpy(planes[3], origin.planes[3], luma_len);
+            }
+        }
+    }
+    ~VideoFrame() {
+        if (is_own_buf) {
+            if (planes[0]) {
+                delete[] planes[0];
+                planes[0] = nullptr;
+            }
+            if (planes[1]) {
+                delete[] planes[1];
+                planes[1] = nullptr;
+            }
+            if (planes[2]) {
+                delete[] planes[2];
+                planes[2] = nullptr;
+            }
+            if (planes[3]) {
+                delete[] planes[3];
+                planes[3] = nullptr;
+            }
+        }
+    }
 } VideoFrame;
 
 #endif  //_SVT_TEST_VIDEO_FRAME_H_

@@ -15,6 +15,7 @@
 #include <vector>
 #include <algorithm>
 #include "ReconSink.h"
+#include "CompareTools.h"
 
 #if _WIN32
 #define fseeko64 _fseeki64
@@ -196,6 +197,71 @@ class ReconSinkBuffer : public ReconSink {
     std::vector<ReconMug *> mug_list_; /**< list of frame containers */
 };
 
+class RefSink : public ICompareSink, ReconSinkBuffer {
+  public:
+    RefSink(VideoFrameParam fmt, ReconSink *my_friend) : ReconSinkBuffer(fmt) {
+        friend_ = my_friend;
+        frame_vec_.clear();
+    }
+    virtual ~RefSink() {
+        while (frame_vec_.size()) {
+            const VideoFrame *p = frame_vec_.back();
+            frame_vec_.pop_back();
+            if (p) {
+                printf("Reference Sink still remain frames when delete(%u)\n",
+                       (uint32_t)p->timestamp);
+                delete p;
+            }
+        }
+        friend_ = nullptr;
+    }
+
+  public:
+    bool compare_video(const VideoFrame &frame) override {
+        const ReconMug *mug = friend_->take_mug(frame.timestamp);
+        if (mug) {
+            bool is_same =
+                svt_av1_e2e_tools::compare_image(mug, &frame, frame.format);
+            if (!is_same) {
+                printf("ref_frame(%u) compare failed!!\n",
+                       (uint32_t)frame.timestamp);
+            }
+            return is_same;
+        } else {
+            clone_frame(frame);
+        }
+        return true; /**< default return suceess if not found recon frame */
+    }
+    bool flush_video() override {
+        for (const VideoFrame *frame : frame_vec_) {
+            const ReconMug *mug = friend_->take_mug(frame->timestamp);
+            if (mug) {
+                bool is_same =
+                    svt_av1_e2e_tools::compare_image(mug, frame, frame->format);
+                if (!is_same) {
+                    printf("ref_frame(%u) compare failed!!\n",
+                           (uint32_t)frame->timestamp);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+  private:
+    void clone_frame(const VideoFrame &frame) {
+        VideoFrame *new_frame = new VideoFrame(frame);
+        if (new_frame)
+            frame_vec_.push_back(new_frame);
+        else
+            printf("out of memory for clone video frame!!\n");
+    }
+
+  private:
+    ReconSink *friend_;
+    std::vector<const VideoFrame *> frame_vec_;
+};
+
 ReconSink *create_recon_sink(const VideoFrameParam &param,
                              const char *file_path) {
     ReconSinkFile *new_sink = new ReconSinkFile(param, file_path);
@@ -210,4 +276,9 @@ ReconSink *create_recon_sink(const VideoFrameParam &param,
 
 ReconSink *create_recon_sink(const VideoFrameParam &param) {
     return new ReconSinkBuffer(param);
+}
+
+ICompareSink *create_ref_compare_sink(const VideoFrameParam &param,
+                                      ReconSink *recon) {
+    return new RefSink(param, recon);
 }
