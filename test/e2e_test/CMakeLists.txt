@@ -61,11 +61,12 @@ if (UNIX)
 
     # Link the Encoder App
      target_link_libraries (SvtAv1E2ETests
+        aom
         SvtAv1Enc
         gtest_all 
         pthread
-        m
-		    aom)
+        m)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/lib -lSDL2 -lm -liconv -Wl,-framework,CoreAudio -Wl,-framework,AudioToolbox -Wl,-framework,ForceFeedback -lobjc -Wl,-framework,CoreVideo -Wl,-framework,Cocoa -Wl,-framework,Carbon -Wl,-framework,IOKit -Wl,-weak_framework,QuartzCore -Wl,-weak_framework,Metal")
         
 endif(UNIX)
 

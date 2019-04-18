@@ -20,13 +20,13 @@
 
 namespace svt_av1_e2e_tools {
 static inline bool compare_image(const ReconSink::ReconMug *recon,
-                                 VideoFrame *ref_frame) {
+                                 VideoFrame *ref_frame, VideoImageFormat fmt) {
     const uint32_t width = ref_frame->disp_width;
     const uint32_t height = ref_frame->disp_height;
     unsigned int i = 0;
-    // TODO: Cidana-Wenyao to Cidana-Ryan
-    // Add some comment to support 422 or 444 later.There is an assumption that
-    // the color format is 420
+    // Support 420 only, need add more code for 422 & 444.
+    if (fmt != IMG_FMT_420 && fmt != IMG_FMT_420P10_PACKED)
+        return true;
     if (ref_frame->bits_per_sample == 8) {
         for (uint32_t l = 0; l < height; l++) {
             const uint8_t *s = recon->mug_buf + l * width;
@@ -104,9 +104,7 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
 
 static inline double psnr_8bit(const uint8_t *p1, const uint8_t *p2,
                                const uint32_t size) {
-    // TODO: Cidana-Wenyao to Cidana-Ryan
-    // p1 and p2 image has the same layout ? I mean they may have different
-    // stride for the same width.
+    // Assert that, p1 p2 hase same size and no stirde issue.
     double mse = 0.0;
     for (uint32_t i = 0; i < size; i++) {
         const uint8_t I = p1[i];
@@ -126,10 +124,11 @@ static inline double psnr_8bit(const uint8_t *p1, const uint8_t *p2,
 
 static inline double psnr_10bit(const uint16_t *p1, const uint16_t *p2,
                                 const uint32_t size) {
+    // Assert that, p1 p2 hase same size and no stirde issue.
     double mse = 0.0;
     for (uint32_t i = 0; i < size; i++) {
-        const uint16_t I = p1[i];
-        const uint16_t K = p2[i];
+        const uint16_t I = p1[i] & 0x2F;
+        const uint16_t K = p2[i] & 0x2F;
         const int32_t diff = I - K;
         mse += diff * diff;
     }
