@@ -161,9 +161,10 @@ void SvtAv1E2ETestBase::TearDown() {
 /** initialization for test */
 void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
-	/** TODO: encoder_color_format should be set with input source format*/
-	ctxt_.enc_params.encoder_color_format = EB_YUV420;
-	return_error =
+    /** TODO: encoder_color_format should be set with input source format*/
+    ctxt_.enc_params.encoder_color_format = EB_YUV420;
+    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
+    return_error =
         eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_svt_enc_set_parameter return error:" << return_error;
@@ -213,7 +214,8 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     return video_src;
 }
 
-svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework() {
+svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
+    : psnr_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
     recon_sink_ = nullptr;
     refer_dec_ = nullptr;
     output_file_ = nullptr;
@@ -223,6 +225,8 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework() {
 #endif
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
+    recon_eos_from_enc = 0;
+    input_eos_from_enc = 0;
 }
 
 svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
@@ -241,6 +245,11 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
     if (collect_) {
         delete collect_;
         collect_ = nullptr;
+    }
+    if (psnr_src_) {
+        psnr_src_->close_source();
+        delete psnr_src_;
+        psnr_src_ = nullptr;
     }
 #ifdef ENABLE_DEBUG_MONITOR
     if (recon_monitor_) {
@@ -265,6 +274,10 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::init_test() {
 #endif
     obu_frame_header_size_ =
         has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
+
+    ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
+    EbErrorType err = psnr_src_->open_source();
+    ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
@@ -297,7 +310,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
             }
             {
                 TimeAutoCount counter(ENCODING, collect_);
-                if (frame != nullptr) {
+                if (frame != nullptr && frame_count) {
+                    frame_count--;
                     // Fill in Buffers Header control data
                     ctxt_.input_picture_buffer->p_buffer = frame;
                     ctxt_.input_picture_buffer->n_filled_len =
@@ -314,7 +328,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                                   ctxt_.enc_handle, ctxt_.input_picture_buffer))
                         << "eb_svt_enc_send_picture error at: "
                         << ctxt_.input_picture_buffer->pts;
-                } else if (!src_file_eos) {
+                }
+                if (frame_count == 0 || frame == nullptr) {
                     src_file_eos = true;
                     EbBufferHeaderType headerPtrLast;
                     headerPtrLast.n_alloc_len = 0;
@@ -323,11 +338,15 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                     headerPtrLast.p_app_private = nullptr;
                     headerPtrLast.flags = EB_BUFFERFLAG_EOS;
                     headerPtrLast.p_buffer = nullptr;
+                    headerPtrLast.pic_type = EB_AV1_INVALID_PICTURE;
                     ctxt_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
                     EXPECT_EQ(EB_ErrorNone,
                               return_error = eb_svt_enc_send_picture(
                                   ctxt_.enc_handle, &headerPtrLast))
                         << "eb_svt_enc_send_picture EOS error";
+                    // mark the input eos flag
+                    if (headerPtrLast.flags & EB_BUFFERFLAG_EOS)
+                        input_eos_from_enc = 1;
                 }
             }
         }
@@ -335,8 +354,9 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         // recon
         if (recon_sink_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
-            get_recon_frame();
             rec_file_eos = recon_sink_->is_compelete();
+            if (!rec_file_eos)
+                get_recon_frame();
         }
 
         if (!enc_file_eos) {
@@ -345,8 +365,10 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                 EbBufferHeaderType *enc_out = nullptr;
                 {
                     TimeAutoCount counter(ENCODING, collect_);
+                    int pic_send_done =
+                        (input_eos_from_enc && recon_eos_from_enc) ? 1 : 0;
                     return_error = eb_svt_get_packet(
-                        ctxt_.enc_handle, &enc_out, (frame == nullptr ? 1 : 0));
+                        ctxt_.enc_handle, &enc_out, pic_send_done);
                     ASSERT_NE(return_error, EB_ErrorMax)
                         << "Error while encoding, code:" << enc_out->flags;
                 }
@@ -355,14 +377,18 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                 if (return_error != EB_NoErrorEmptyQueue && enc_out) {
                     TimeAutoCount counter(CONFORMANCE, collect_);
                     process_compress_data(enc_out);
-
                     if (enc_out->flags & EB_BUFFERFLAG_EOS) {
                         enc_file_eos = true;
                         printf("Encoder EOS\n");
                         break;
                     }
-                } else
+                } else {
+                    if (return_error != EB_NoErrorEmptyQueue) {
+                        enc_file_eos = true;
+                        GTEST_FAIL() << "decoder return: " << return_error;
+                    }
                     break;
+                }
 
                 // Release the output buffer
                 if (enc_out != nullptr) {
@@ -374,13 +400,14 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 
-    if (collect_ && frame_count) {
+    if (collect_) {
+        frame_count = video_src_->get_frame_count();
         uint64_t total_enc_time = collect_->read_count(ENCODING);
         if (total_enc_time) {
             printf("Enc Performance: %.2fsec/frame (%.4fFPS)\n",
                    (double)total_enc_time / frame_count / 1000,
                    (double)frame_count * 1000 / total_enc_time);
-		}
+        }
     }
 }
 
@@ -614,52 +641,69 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
 #endif
 
                 // Do compare image
-                ASSERT_EQ(compare_image(mug, &ref_frame), true)
+                ASSERT_EQ(compare_image(
+                              mug, &ref_frame, video_src_->get_image_format()),
+                          true)
                     << "image compare failed on " << ref_frame.timestamp;
 
-                // Calculate psnr with input frame and
-                // recon frame
-                uint32_t index = video_src_->get_frame_index();
-                EbSvtIOFormat *frame = video_src_->get_frame_by_index(
-                    (const uint32_t)ref_frame.timestamp);
-                if (frame) {
-                    double luma_psnr = 0.0;
-                    double cb_psnr = 0.0;
-                    double cr_psnr = 0.0;
-
-                    if (video_src_->get_bit_depth() == 8) {
-                        luma_psnr =
-                            psnr_8bit(frame->luma, mug->mug_buf, luma_len);
-                        cb_psnr = psnr_8bit(
-                            frame->cb, mug->mug_buf + luma_len, luma_len >> 2);
-                        cr_psnr = psnr_8bit(frame->cr,
-                                            mug->mug_buf + luma_len * 5 / 4,
-                                            luma_len >> 2);
-                    }
-                    if (video_src_->get_bit_depth() == 10) {
-                        luma_psnr = psnr_10bit((const uint16_t *)frame->luma,
-                                               (const uint16_t *)mug->mug_buf,
-                                               luma_len / 2);
-                        cb_psnr = psnr_10bit(
-                            (const uint16_t *)frame->cb,
-                            (const uint16_t *)mug->mug_buf + luma_len,
-                            luma_len >> 3);
-                        cr_psnr = psnr_10bit(
-                            (const uint16_t *)frame->cr,
-                            (const uint16_t *)mug->mug_buf + luma_len * 5 / 4,
-                            luma_len >> 3);
-                    }
-                    printf(
-                        "Do psnr %0.4f, %0.4f, "
-                        "%0.f4\r\n",
-                        luma_psnr,
-                        cb_psnr,
-                        cr_psnr);
-                }
-                video_src_->get_frame_by_index(index);
+                check_psnr(ref_frame);
             }
         }
     };
+}
+
+void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
+    const VideoFrame &frame) {
+    // Calculate psnr with input frame and
+    EbSvtIOFormat *src_frame =
+        psnr_src_->get_frame_by_index((const uint32_t)frame.timestamp);
+    if (src_frame) {
+        double luma_psnr = 0.0;
+        double cb_psnr = 0.0;
+        double cr_psnr = 0.0;
+
+        if (video_src_->get_bit_depth() == 8) {
+            luma_psnr = psnr_8bit(src_frame->luma,
+                                  src_frame->y_stride,
+                                  frame.planes[0],
+                                  frame.stride[0],
+                                  frame.width,
+                                  frame.height);
+            cb_psnr = psnr_8bit(src_frame->cb,
+                                src_frame->cb_stride,
+                                frame.planes[1],
+                                frame.stride[1],
+                                frame.width >> 1,
+                                frame.height >> 1);
+            cr_psnr = psnr_8bit(src_frame->cr,
+                                src_frame->cr_stride,
+                                frame.planes[2],
+                                frame.stride[2],
+                                frame.width >> 1,
+                                frame.height >> 1);
+        }
+        if (video_src_->get_bit_depth() == 10) {
+            luma_psnr = psnr_10bit((const uint16_t *)src_frame->luma,
+                                   src_frame->y_stride,
+                                   (const uint16_t *)frame.planes[0],
+                                   frame.stride[0] / 2,
+                                   frame.width,
+                                   frame.height);
+            cb_psnr = psnr_10bit((const uint16_t *)src_frame->cb,
+                                 src_frame->cb_stride,
+                                 (const uint16_t *)frame.planes[1],
+                                 frame.stride[1] / 2,
+                                 frame.width >> 1,
+                                 frame.height >> 1);
+            cr_psnr = psnr_10bit((const uint16_t *)src_frame->cr,
+                                 src_frame->cr_stride,
+                                 (const uint16_t *)frame.planes[2],
+                                 frame.stride[2] / 2,
+                                 frame.width >> 1,
+                                 frame.height >> 1);
+        }
+        printf("Do psnr %0.4f, %0.4f, %0.4f\r\n", luma_psnr, cb_psnr, cr_psnr);
+    }
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {
@@ -685,6 +729,9 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {
         } else {
             ASSERT_EQ(recon_frame.n_filled_len, new_mug->mug_size)
                 << "recon frame size incorrect@" << recon_frame.pts;
+            // mark the recon eos flag
+            if (recon_frame.flags & EB_BUFFERFLAG_EOS)
+                recon_eos_from_enc = 1;
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;

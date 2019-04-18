@@ -297,8 +297,10 @@ uint32_t Y4MVideoSource::read_input_frame() {
         return 0;
     }
 
-    if (6 != fread(frame_header, 1, 6, file_handle_))
+    if (6 != fread(frame_header, 1, 6, file_handle_)) {
+        printf("can not found frame header\r\n");
         return 0;
+    }
 
     // Check frame header
     if (!((strncmp("FRAME", frame_header, 5) == 0) && frame_header[5] == 0xA)) {

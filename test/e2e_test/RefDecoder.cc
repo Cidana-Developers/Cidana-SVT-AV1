@@ -89,5 +89,5 @@ void RefDecoder::trans_video_frame(const aom_image_t *image,
     memcpy(frame.stride, image->stride, sizeof(frame.stride));
     memcpy(frame.planes, image->planes, sizeof(frame.planes));
     frame.bits_per_sample = image->bit_depth;
-    frame.timestamp = ref_frame_cnt_;
+    frame.timestamp = ref_frame_cnt_++;
 }
