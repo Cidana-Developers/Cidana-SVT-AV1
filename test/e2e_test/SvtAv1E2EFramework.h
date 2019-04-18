@@ -131,6 +131,8 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect *collect_;   /**< performance and time collection*/
     VideoSource *psnr_src_;         /**< video source context for psnr */
+    int recon_eos_from_enc;         /**< notify no recon in encoder. */
+    int input_eos_from_enc;         /**< notify no input to encoder. */
 #ifdef ENABLE_DEBUG_MONITOR
     VideoMonitor *recon_monitor_;
     VideoMonitor *ref_monitor_;
