@@ -122,13 +122,35 @@ static inline double psnr_8bit(const uint8_t *p1, const uint8_t *p2,
     return psnr;
 }
 
+static inline double psnr_8bit(const uint8_t *p1, const uint32_t stride1,
+                               const uint8_t *p2, const uint32_t stride2,
+                               const uint32_t width, const uint32_t height) {
+    double mse = 0.0;
+    for (size_t y = 0; y < height; y++) {
+        const uint8_t *s = p1 + (y * stride1);
+        /** walk-around for decoder output is in 16bit */
+        const uint16_t *d = (uint16_t *)p2 + (y * stride2 / 2);
+        for (size_t x = 0; x < width; x++) {
+            const int32_t diff = s[x] - (d[x] & 0xFF);
+            mse += diff * diff;
+        }
+    }
+    mse /= width * height;
+
+    double psnr = INFINITY;
+    if (DBL_EPSILON < mse) {
+        psnr = 10 * log10((255 * 255) / mse);
+    }
+    return psnr;
+}
+
 static inline double psnr_10bit(const uint16_t *p1, const uint16_t *p2,
                                 const uint32_t size) {
     // Assert that, p1 p2 hase same size and no stirde issue.
     double mse = 0.0;
     for (uint32_t i = 0; i < size; i++) {
-        const uint16_t I = p1[i] & 0x2F;
-        const uint16_t K = p2[i] & 0x2F;
+        const uint16_t I = p1[i] & 0x3FF;
+        const uint16_t K = p2[i] & 0x3FF;
         const int32_t diff = I - K;
         mse += diff * diff;
     }
@@ -141,5 +163,27 @@ static inline double psnr_10bit(const uint16_t *p1, const uint16_t *p2,
     }
     return psnr;
 }
+
+static inline double psnr_10bit(const uint16_t *p1, const uint32_t stride1,
+                                const uint16_t *p2, const uint32_t stride2,
+                                const uint32_t width, const uint32_t height) {
+    double mse = 0.0;
+    for (size_t y = 0; y < height; y++) {
+        const uint16_t *s = p1 + (y * stride1);
+        const uint16_t *d = p2 + (y * stride2);
+        for (size_t x = 0; x < width; x++) {
+            const int32_t diff = (s[x] & 0x3FF) - (d[x] & 0x3FF);
+            mse += diff * diff;
+        }
+    }
+    mse /= width * height * 2;
+
+    double psnr = INFINITY;
+    if (DBL_EPSILON < mse) {
+        psnr = 10 * log10((1023 * 1023) / mse);
+    }
+    return psnr;
+}
+
 }  // namespace svt_av1_e2e_tools
 #endif  // !_COMPARE_TOOLS_H_

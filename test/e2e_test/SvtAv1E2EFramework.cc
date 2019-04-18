@@ -244,6 +244,11 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
         delete collect_;
         collect_ = nullptr;
     }
+    if (psnr_src_) {
+        psnr_src_->close_source();
+        delete psnr_src_;
+        psnr_src_ = nullptr;
+    }
 #ifdef ENABLE_DEBUG_MONITOR
     if (recon_monitor_) {
         delete recon_monitor_;
@@ -267,6 +272,10 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::init_test() {
 #endif
     obu_frame_header_size_ =
         has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
+
+    ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
+    EbErrorType err = psnr_src_->open_source();
+    ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
@@ -630,46 +639,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
                           true)
                     << "image compare failed on " << ref_frame.timestamp;
 
-                // Calculate psnr with input frame and
-                // recon frame
-                uint32_t index = video_src_->get_frame_index();
-                EbSvtIOFormat *frame = video_src_->get_frame_by_index(
-                    (const uint32_t)ref_frame.timestamp);
-                if (frame) {
-                    double luma_psnr = 0.0;
-                    double cb_psnr = 0.0;
-                    double cr_psnr = 0.0;
-
-                    if (video_src_->get_bit_depth() == 8) {
-                        luma_psnr =
-                            psnr_8bit(frame->luma, mug->mug_buf, luma_len);
-                        cb_psnr = psnr_8bit(
-                            frame->cb, mug->mug_buf + luma_len, luma_len >> 2);
-                        cr_psnr = psnr_8bit(frame->cr,
-                                            mug->mug_buf + luma_len * 5 / 4,
-                                            luma_len >> 2);
-                    }
-                    if (video_src_->get_bit_depth() == 10) {
-                        luma_psnr = psnr_10bit((const uint16_t *)frame->luma,
-                                               (const uint16_t *)mug->mug_buf,
-                                               luma_len / 2);
-                        cb_psnr = psnr_10bit(
-                            (const uint16_t *)frame->cb,
-                            (const uint16_t *)(mug->mug_buf + luma_len),
-                            luma_len >> 3);
-                        cr_psnr = psnr_10bit(
-                            (const uint16_t *)frame->cr,
-                            (const uint16_t *)(mug->mug_buf + luma_len * 5 / 4),
-                            luma_len >> 3);
-                    }
-                    printf(
-                        "Do psnr %0.4f, %0.4f, "
-                        "%0.4f\r\n",
-                        luma_psnr,
-                        cb_psnr,
-                        cr_psnr);
-                }
-                video_src_->get_frame_by_index(index);
+                check_psnr(ref_frame);
             }
         }
     };
@@ -677,6 +647,56 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
     const VideoFrame &frame) {
+    // Calculate psnr with input frame and
+    EbSvtIOFormat *src_frame =
+        psnr_src_->get_frame_by_index((const uint32_t)frame.timestamp);
+    if (src_frame) {
+        double luma_psnr = 0.0;
+        double cb_psnr = 0.0;
+        double cr_psnr = 0.0;
+
+        if (video_src_->get_bit_depth() == 8) {
+            luma_psnr = psnr_8bit(src_frame->luma,
+                                  src_frame->y_stride,
+                                  frame.planes[0],
+                                  frame.stride[0],
+                                  frame.width,
+                                  frame.height);
+            cb_psnr = psnr_8bit(src_frame->cb,
+                                src_frame->cb_stride,
+                                frame.planes[1],
+                                frame.stride[1],
+                                frame.width >> 1,
+                                frame.height >> 1);
+            cr_psnr = psnr_8bit(src_frame->cr,
+                                src_frame->cr_stride,
+                                frame.planes[2],
+                                frame.stride[2],
+                                frame.width >> 1,
+                                frame.height >> 1);
+        }
+        if (video_src_->get_bit_depth() == 10) {
+            luma_psnr = psnr_10bit((const uint16_t *)src_frame->luma,
+                                   src_frame->y_stride,
+                                   (const uint16_t *)frame.planes[0],
+                                   frame.stride[0] / 2,
+                                   frame.width,
+                                   frame.height);
+            cb_psnr = psnr_10bit((const uint16_t *)src_frame->cb,
+                                 src_frame->cb_stride,
+                                 (const uint16_t *)frame.planes[1],
+                                 frame.stride[1] / 2,
+                                 frame.width >> 1,
+                                 frame.height >> 1);
+            cr_psnr = psnr_10bit((const uint16_t *)src_frame->cr,
+                                 src_frame->cr_stride,
+                                 (const uint16_t *)frame.planes[2],
+                                 frame.stride[2] / 2,
+                                 frame.width >> 1,
+                                 frame.height >> 1);
+        }
+        printf("Do psnr %0.4f, %0.4f, %0.4f\r\n", luma_psnr, cb_psnr, cr_psnr);
+    }
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {
