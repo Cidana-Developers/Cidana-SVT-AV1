@@ -225,6 +225,8 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
 #endif
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
+    recon_eos_from_enc = 0;
+    input_eos_from_enc = 0;
 }
 
 svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
@@ -302,16 +304,14 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
     bool rec_file_eos = recon_sink_ ? false : true;
     do {
         if (!src_file_eos) {
-            if (frame_count) {
+            {
                 TimeAutoCount counter(READ_SRC, collect_);
                 frame = (uint8_t *)video_src_->get_next_frame();
             }
             {
                 TimeAutoCount counter(ENCODING, collect_);
                 if (frame != nullptr && frame_count) {
-                    frame_count--;  // TODO: only walk-around for recon hangup
-                                    // issue, count frame in framework to avoid
-                                    // call last get_next_frame
+                    frame_count--;
                     // Fill in Buffers Header control data
                     ctxt_.input_picture_buffer->p_buffer = frame;
                     ctxt_.input_picture_buffer->n_filled_len =
@@ -328,7 +328,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                                   ctxt_.enc_handle, ctxt_.input_picture_buffer))
                         << "eb_svt_enc_send_picture error at: "
                         << ctxt_.input_picture_buffer->pts;
-                } else if (!src_file_eos) {
+                }
+                if (frame_count == 0 || frame == nullptr) {
                     src_file_eos = true;
                     EbBufferHeaderType headerPtrLast;
                     headerPtrLast.n_alloc_len = 0;
@@ -337,11 +338,15 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                     headerPtrLast.p_app_private = nullptr;
                     headerPtrLast.flags = EB_BUFFERFLAG_EOS;
                     headerPtrLast.p_buffer = nullptr;
+                    headerPtrLast.pic_type = EB_AV1_INVALID_PICTURE;
                     ctxt_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
                     EXPECT_EQ(EB_ErrorNone,
                               return_error = eb_svt_enc_send_picture(
                                   ctxt_.enc_handle, &headerPtrLast))
                         << "eb_svt_enc_send_picture EOS error";
+                    // mark the input eos flag
+                    if (headerPtrLast.flags & EB_BUFFERFLAG_EOS)
+                        input_eos_from_enc = 1;
                 }
             }
         }
@@ -360,8 +365,10 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                 EbBufferHeaderType *enc_out = nullptr;
                 {
                     TimeAutoCount counter(ENCODING, collect_);
+                    int pic_send_done =
+                        (input_eos_from_enc && recon_eos_from_enc) ? 1 : 0;
                     return_error = eb_svt_get_packet(
-                        ctxt_.enc_handle, &enc_out, (frame == nullptr ? 1 : 0));
+                        ctxt_.enc_handle, &enc_out, pic_send_done);
                     ASSERT_NE(return_error, EB_ErrorMax)
                         << "Error while encoding, code:" << enc_out->flags;
                 }
@@ -722,6 +729,9 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {
         } else {
             ASSERT_EQ(recon_frame.n_filled_len, new_mug->mug_size)
                 << "recon frame size incorrect@" << recon_frame.pts;
+            // mark the recon eos flag
+            if (recon_frame.flags & EB_BUFFERFLAG_EOS)
+                recon_eos_from_enc = 1;
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;
