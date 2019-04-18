@@ -297,6 +297,11 @@ static INLINE int32_t get_txb_high(TxSize tx_size) {
     return tx_size_high[tx_size];
 }
 
+static INLINE int32_t get_txb_bwl(TxSize tx_size) {
+    tx_size = av1_get_adjusted_tx_size(tx_size);
+    return tx_size_wide_log2[tx_size];
+}
+
 using IsTxTypeImpFunc = bool (*)(const TxType tx_type);
 static INLINE bool all_txtype_imp(const TxType tx_type) {
     return true;
