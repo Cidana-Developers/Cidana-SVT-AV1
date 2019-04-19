@@ -94,18 +94,18 @@ static const TestVideoVector video_src_vectors[] = {
 };
 
 static const TestVideoVector comformance_test_vectors[] = {
-	TestVideoVector{"../../test/vectors/jellyfish-420-180p.y4m",
-					Y4M_VIDEO_FILE,
-					IMG_FMT_420,
-					320,
-					180,
-					8},
-	TestVideoVector{"../../test/vectors/jellyfish-420p10-180p.y4m",
-					Y4M_VIDEO_FILE,
-					IMG_FMT_420,
-					320,
-					180,
-					10},
+    TestVideoVector{"../../test/vectors/jellyfish-420-180p.y4m",
+                    Y4M_VIDEO_FILE,
+                    IMG_FMT_420,
+                    320,
+                    180,
+                    8},
+    TestVideoVector{"../../test/vectors/jellyfish-420p10-180p.y4m",
+                    Y4M_VIDEO_FILE,
+                    IMG_FMT_420,
+                    320,
+                    180,
+                    10},
 };
 
 static const TestVideoVector smoking_vectors[] = {

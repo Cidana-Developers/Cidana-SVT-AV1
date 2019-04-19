@@ -119,9 +119,7 @@ class VideoSource {
         case IMG_FMT_444: {
             chroma_size = luma_size;
         } break;
-        default: {
-            chroma_size = luma_size >> 2;
-        } break;
+        default: { chroma_size = luma_size >> 2; } break;
         }
 
         // Determine

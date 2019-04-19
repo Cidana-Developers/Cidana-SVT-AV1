@@ -50,9 +50,8 @@ class PerformanceCollect {
             uint64_t total_ticks = get_time_tick() - init_tick;
             std::string print =
                 "[" + name + "] cost: " + std::to_string(count_ticks) + "ms, ";
-            print +=
-                "usage: " + std::to_string(count_ticks * 100 / total_ticks) +
-                "%\n";
+            print += "usage: " +
+                     std::to_string(count_ticks * 100 / total_ticks) + "%\n";
             return print;
         }
     } * CollectHandle;

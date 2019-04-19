@@ -398,9 +398,12 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 
+    /** complete the reference buffers in list comparison with recon */
     if (ref_compare_) {
         TimeAutoCount counter(CONFORMANCE, collect_);
         ASSERT_TRUE(ref_compare_->flush_video());
+        delete ref_compare_;
+        ref_compare_ = nullptr;
     }
 
     int count = 0;
