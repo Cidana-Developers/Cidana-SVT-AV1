@@ -148,7 +148,9 @@ const int deterministic_seed = 0xa42b;
  *
  * Test strategy:
  * Verify this assembly code by comparing with reference c implementation.
- * Feed the same data and check test output and reference output.
+ * Feed the same data and check test output and reference output. Four tests
+ * are required since there are three different function signatures and one
+ * set of function for lowbd functions.
  *
  * Expect result:
  * Output from assemble function should be exactly same as output from c.
@@ -217,6 +219,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         const int width = get_txb_wide(tx_size);
         const int height = get_txb_high(tx_size);
         const int max_eob = av1_get_max_eob(tx_size);
+
         const InvRectTxfm2dType1Func test_func = av1_highbd_inv_txfm_add_avx2;
         const InvRectTxfm2dType1Func ref_func = rect_type1_ref_funcs[tx_size];
         if (ref_func == nullptr)
@@ -242,10 +245,17 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             for (int k = 0; k < loops; k++) {
                 populate_with_random(width, height, type, tx_size);
 
-                ref_func(
-                    input_, output_ref_, stride_, type, tx_size, max_eob, bd_);
-                test_func(
-                    input_, output_test_, stride_, type, tx_size, max_eob, bd_);
+                // Since input_ is fixed, we can not iterator the eob
+                // from 1 to max_eob, otherwise all the coeffs are cleared
+                // when eob is equal to 1;
+                for (int eob = max_eob; eob > 0; --eob) {
+                    clear_high_freq_coeffs(tx_size, type, eob, max_eob);
+
+                    ref_func(
+                        input_, output_ref_, stride_, type, tx_size, eob, bd_);
+                    test_func(
+                        input_, output_test_, stride_, type, tx_size, eob, bd_);
+                }
 
                 ASSERT_EQ(0,
                           memcmp(output_ref_,
@@ -362,24 +372,26 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                             static_cast<uint8_t>(output_test_[i * stride_ + j]);
                 }
 
-                av1_lowbd_inv_txfm2d_add_ssse3(input_,
-                                               lowbd_output_test_,
-                                               stride_,
-                                               type,
-                                               tx_size,
-                                               max_eob);
-                if (tx_size >= TX_SIZES)
-                    lowbd_rect_ref_funcs[tx_size](input_,
-                                                  output_ref_,
-                                                  stride_,
-                                                  type,
-                                                  tx_size,
-                                                  max_eob,
-                                                  bd_);
-                else
-                    lowbd_sqr_ref_funcs[tx_size](
-                        input_, output_ref_, stride_, type, bd_);
-
+                for (int eob = max_eob; eob > 0; --eob) {
+                    clear_high_freq_coeffs(tx_size, type, eob, max_eob);
+                    av1_lowbd_inv_txfm2d_add_ssse3(input_,
+                                                   lowbd_output_test_,
+                                                   stride_,
+                                                   type,
+                                                   tx_size,
+                                                   eob);
+                    if (tx_size >= TX_SIZES)
+                        lowbd_rect_ref_funcs[tx_size](input_,
+                                                      output_ref_,
+                                                      stride_,
+                                                      type,
+                                                      tx_size,
+                                                      eob,
+                                                      bd_);
+                    else
+                        lowbd_sqr_ref_funcs[tx_size](
+                            input_, output_ref_, stride_, type, bd_);
+                }
                 for (int i = 0; i < height; i++) {
                     for (int j = 0; j < width; j++) {
                         uint8_t ref =
@@ -419,6 +431,23 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         auto it =
             std::find(invalid_types.begin(), invalid_types.end(), tx_type);
         return it == invalid_types.end() ? false : true;
+    }
+
+    void clear_high_freq_coeffs(const TxSize tx_size, const TxType tx_type,
+                                const int eob, const int max_eob) {
+        const SCAN_ORDER *scan_order = &av1_scan_orders[tx_size][tx_type];
+        const int16_t *scan = scan_order->scan;
+
+        // clear the coeffs between eob and max_eob, note the input stride has
+        // to be respected.
+        for (int i = eob; i < max_eob; ++i) {
+            const int pos = scan[i];
+            // handle large transform;
+            const int32_t bwl = get_txb_bwl(tx_size);
+            const int32_t row = pos >> bwl;
+            const int32_t col = pos - (row << bwl);
+            input_[row * stride_ + col] = 0;
+        }
     }
 
     void populate_with_random(const int width, const int height,
