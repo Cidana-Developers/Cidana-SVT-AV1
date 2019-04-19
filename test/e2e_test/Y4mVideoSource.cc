@@ -18,7 +18,8 @@
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
                                const VideoImageFormat format,
                                const uint32_t width, const uint32_t height,
-                               const uint8_t bit_depth)
+                               const uint8_t bit_depth,
+                               const bool use_compressed_2bit_plan_output)
     : file_name_(file_name), file_handle_(nullptr) {
     width_ = width;
     width_with_padding_ = width_;
@@ -34,7 +35,10 @@ Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
     frame_size_ = 0;
     frame_buffer_ = nullptr;
     image_format_ = format;
-    packed_ten_bit_mode = true;
+    if (bit_depth_ > 8 && use_compressed_2bit_plan_output)
+        svt_compressed_2bit_plane = true;
+    else
+        svt_compressed_2bit_plane = false;
 
 #ifdef ENABLE_DEBUG_MONITOR
     monitor = nullptr;
@@ -78,13 +82,13 @@ EbErrorType Y4MVideoSource::open_source() {
 
     current_frame_index_ = -1;
 #ifdef ENABLE_DEBUG_MONITOR
-    monitor = new VideoMonitor(
-        width_with_padding_,
-        height_with_padding_,
-        (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
-        bit_depth_,
-        packed_ten_bit_mode,
-        "Y4M Source");
+    // monitor = new VideoMonitor(
+    //     width_with_padding_,
+    //     height_with_padding_,
+    //     (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
+    //     bit_depth_,
+    //     svt_compressed_2bit_plane,
+    //     "Y4M Source");
 #endif
 
     return EB_ErrorNone;
@@ -120,14 +124,17 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
 }
 
 EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
+    printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
     ++current_frame_index_;
 
 #ifdef ENABLE_DEBUG_MONITOR
-    monitor->draw_frame(
-        frame_buffer_->luma, frame_buffer_->cb, frame_buffer_->cr);
+    if (monitor != nullptr) {
+        monitor->draw_frame(
+            frame_buffer_->luma, frame_buffer_->cb, frame_buffer_->cr);
+    }
 #endif
     return frame_buffer_;
 }
@@ -284,7 +291,6 @@ EbErrorType Y4MVideoSource::parse_file_info() {
 }
 
 uint32_t Y4MVideoSource::read_input_frame() {
-    uint8_t* eb_input_ptr = nullptr;
     uint32_t filled_len = 0;
     char frame_header[6] = {0};
     if (file_handle_ == nullptr) {
@@ -365,76 +371,179 @@ uint32_t Y4MVideoSource::read_input_frame() {
     frame_buffer_->cr_stride = (width_with_padding_ >> width_downsize);
 
     // Read raw data from file
-    const unsigned int bottom_padding = height_with_padding_ - height_;
-    const unsigned int righ_padding = width_with_padding_ - width_;
-    unsigned int read_len = 0;
-    unsigned int i;
-    // Y
-    eb_input_ptr = frame_buffer_->luma;
-    for (i = 0; i < height_; ++i) {
-        read_len = (uint32_t)fread(
-            eb_input_ptr, 1, width_ * pixel_byte_size, file_handle_);
-        if (read_len != width_ * pixel_byte_size)
-            return 0;  // read file error.
+    const uint32_t bottom_padding = height_with_padding_ - height_;
+    const uint32_t righ_padding = width_with_padding_ - width_;
+    size_t read_len = 0;
+    uint32_t i;
+    if (bit_depth_ <= 8 || (bit_depth_ >= 8 && !svt_compressed_2bit_plane)) {
+        uint8_t* eb_input_ptr = nullptr;
+        // Y
+        eb_input_ptr = frame_buffer_->luma;
+        for (i = 0; i < height_; ++i) {
+            read_len =
+                fread(eb_input_ptr, 1, width_ * pixel_byte_size, file_handle_);
+            if (read_len != width_ * pixel_byte_size)
+                return 0;  // read file error.
 
-        memset(eb_input_ptr + width_ * pixel_byte_size,
-               0x14,
-               righ_padding * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->y_stride * pixel_byte_size;
-        filled_len += frame_buffer_->y_stride * pixel_byte_size;
-    }
-    for (i = 0; i < bottom_padding; ++i) {
-        memset(eb_input_ptr, 0x14, width_with_padding_ * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->y_stride * pixel_byte_size;
-        filled_len += frame_buffer_->y_stride * pixel_byte_size;
-    }
-    // Cb
-    eb_input_ptr = frame_buffer_->cb;
-    for (i = 0; i < (height_ >> height_downsize); ++i) {
-        read_len = (uint32_t)fread(eb_input_ptr,
-                                   1,
-                                   (width_ >> width_downsize) * pixel_byte_size,
-                                   file_handle_);
-        if (read_len != (width_ >> width_downsize) * pixel_byte_size)
-            return 0;  // read file error.
+            memset(eb_input_ptr + width_ * pixel_byte_size,
+                   0,
+                   righ_padding * pixel_byte_size);
+            eb_input_ptr += frame_buffer_->y_stride * pixel_byte_size;
+            filled_len += frame_buffer_->y_stride * pixel_byte_size;
+        }
+        for (i = 0; i < bottom_padding; ++i) {
+            memset(eb_input_ptr, 0, width_with_padding_ * pixel_byte_size);
+            eb_input_ptr += frame_buffer_->y_stride * pixel_byte_size;
+            filled_len += frame_buffer_->y_stride * pixel_byte_size;
+        }
+        // Cb
+        eb_input_ptr = frame_buffer_->cb;
+        for (i = 0; i < (height_ >> height_downsize); ++i) {
+            read_len = fread(eb_input_ptr,
+                             1,
+                             (width_ >> width_downsize) * pixel_byte_size,
+                             file_handle_);
+            if (read_len != (width_ >> width_downsize) * pixel_byte_size)
+                return 0;  // read file error.
 
-        memset(eb_input_ptr + (width_ >> width_downsize) * pixel_byte_size,
-               0x14,
-               (righ_padding >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->cb_stride * pixel_byte_size;
-        filled_len += frame_buffer_->cb_stride * pixel_byte_size;
-    }
-    for (i = 0; i < (bottom_padding >> height_downsize); ++i) {
-        memset(eb_input_ptr,
-               0x14,
-               (width_with_padding_ >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->cb_stride * pixel_byte_size;
-        filled_len += frame_buffer_->cb_stride * pixel_byte_size;
-    }
+            memset(eb_input_ptr + (width_ >> width_downsize) * pixel_byte_size,
+                   0,
+                   (righ_padding >> width_downsize) * pixel_byte_size);
+            eb_input_ptr += frame_buffer_->cb_stride * pixel_byte_size;
+            filled_len += frame_buffer_->cb_stride * pixel_byte_size;
+        }
+        for (i = 0; i < (bottom_padding >> height_downsize); ++i) {
+            memset(eb_input_ptr,
+                   0,
+                   (width_with_padding_ >> width_downsize) * pixel_byte_size);
+            eb_input_ptr += frame_buffer_->cb_stride * pixel_byte_size;
+            filled_len += frame_buffer_->cb_stride * pixel_byte_size;
+        }
 
-    // Cr
-    eb_input_ptr = frame_buffer_->cr;
+        // Cr
+        eb_input_ptr = frame_buffer_->cr;
 
-    for (i = 0; i < (height_ >> height_downsize); ++i) {
-        read_len = (uint32_t)fread(eb_input_ptr,
-                                   1,
-                                   (width_ >> width_downsize) * pixel_byte_size,
-                                   file_handle_);
-        if (read_len != (width_ >> width_downsize) * pixel_byte_size)
-            return 0;  // read file error.
+        for (i = 0; i < (height_ >> height_downsize); ++i) {
+            read_len = fread(eb_input_ptr,
+                             1,
+                             (width_ >> width_downsize) * pixel_byte_size,
+                             file_handle_);
+            if (read_len != (width_ >> width_downsize) * pixel_byte_size)
+                return 0;  // read file error.
 
-        memset(eb_input_ptr + (width_ >> width_downsize) * pixel_byte_size,
-               0x14,
-               (righ_padding >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
-        filled_len += frame_buffer_->cr_stride * pixel_byte_size;
-    }
-    for (i = 0; i < (bottom_padding >> height_downsize); ++i) {
-        memset(eb_input_ptr,
-               0x14,
-               (width_with_padding_ >> width_downsize) * pixel_byte_size);
-        eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
-        filled_len += frame_buffer_->cr_stride * pixel_byte_size;
+            memset(eb_input_ptr + (width_ >> width_downsize) * pixel_byte_size,
+                   0,
+                   (righ_padding >> width_downsize) * pixel_byte_size);
+            eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
+            filled_len += frame_buffer_->cr_stride * pixel_byte_size;
+        }
+        for (i = 0; i < (bottom_padding >> height_downsize); ++i) {
+            memset(eb_input_ptr,
+                   0,
+                   (width_with_padding_ >> width_downsize) * pixel_byte_size);
+            eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
+            filled_len += frame_buffer_->cr_stride * pixel_byte_size;
+        }
+    } else if (bit_depth_ >= 8 && svt_compressed_2bit_plane) {
+        uint8_t* eb_input_ptr = nullptr;
+        uint8_t* eb_ext_input_ptr = nullptr;
+        // Y
+        uint32_t j = 0;
+        uint16_t pix = 0;
+        eb_input_ptr = frame_buffer_->luma;
+        eb_ext_input_ptr = frame_buffer_->luma_ext;
+        for (i = 0; i < height_; ++i) {
+            int j = 0;
+            for (j = 0; j < width_; ++j) {
+                // Get one pixel
+                if (2 != fread(&pix, 1, 2, file_handle_)) {
+                    printf("1\r\n");
+                    return 0;
+                }
+                eb_input_ptr[j] = (uint8_t)(pix >> 2);
+                eb_ext_input_ptr[j / 4] &= (pix & 0x3) << (j % 4);
+            }
+
+            for (; j < width_ + righ_padding; ++j) {
+                eb_input_ptr[j] = 0;
+                eb_ext_input_ptr[j / 4] = 0;
+            }
+            eb_input_ptr += frame_buffer_->y_stride;
+            eb_ext_input_ptr += frame_buffer_->y_stride / 4;
+            filled_len += frame_buffer_->y_stride * 5 / 4;
+        }
+        for (i = 0; i < bottom_padding; ++i) {
+            memset(eb_input_ptr, 0, width_with_padding_);
+            memset(eb_ext_input_ptr, 0, width_with_padding_ / 4);
+            eb_input_ptr += frame_buffer_->y_stride;
+            eb_ext_input_ptr += frame_buffer_->y_stride / 4;
+            filled_len += frame_buffer_->y_stride * 5 / 4;
+        }
+        // Cb
+        eb_input_ptr = frame_buffer_->cb;
+        eb_ext_input_ptr = frame_buffer_->cb_ext;
+        for (i = 0; i < (height_ >> height_downsize); ++i) {
+            int j = 0;
+            for (j = 0; j < (width_ >> width_downsize); ++j) {
+                // Get one pixel
+                if (2 != fread(&pix, 1, 2, file_handle_)) {
+                    printf("2\r\n");
+                    return 0;
+                }
+                eb_input_ptr[j] = (uint8_t)(pix >> 2);
+                eb_ext_input_ptr[j / 4] &= (pix & 0x3) << (j % 4);
+            }
+
+            for (; j < ((width_ + righ_padding) >> width_downsize); ++j) {
+                eb_input_ptr[j] = 0;
+                eb_ext_input_ptr[j / 4] = 0;
+            }
+            eb_input_ptr += frame_buffer_->cb_stride;
+            eb_ext_input_ptr += frame_buffer_->cb_stride / 4;
+            filled_len += frame_buffer_->cb_stride * 5 / 4;
+        }
+        for (i = 0; i<bottom_padding>> height_downsize; ++i) {
+            memset(eb_input_ptr, 0, (width_with_padding_ >> width_downsize));
+            memset(eb_ext_input_ptr,
+                   0,
+                   (width_with_padding_ >> width_downsize) / 4);
+            eb_input_ptr += frame_buffer_->cb_stride;
+            eb_ext_input_ptr += frame_buffer_->cb_stride / 4;
+            filled_len += frame_buffer_->cb_stride * 5 / 4;
+        }
+
+        // Cr
+        eb_input_ptr = frame_buffer_->cr;
+        eb_ext_input_ptr = frame_buffer_->cr_ext;
+        for (i = 0; i < (height_ >> height_downsize); ++i) {
+            int j = 0;
+            for (j = 0; j < (width_ >> width_downsize); ++j) {
+                // Get one pixel
+                if (2 != fread(&pix, 1, 2, file_handle_)) {
+                    printf("3\r\n");
+                    return 0;
+                }
+                eb_input_ptr[j] = (uint8_t)(pix >> 2);
+                eb_ext_input_ptr[j / 4] &= (pix & 0x3) << (j % 4);
+            }
+
+            for (; j < ((width_ + righ_padding) >> width_downsize); ++j) {
+                eb_input_ptr[j] = 0;
+                eb_ext_input_ptr[j / 4] = 0;
+            }
+            eb_input_ptr += frame_buffer_->cr_stride;
+            eb_ext_input_ptr += frame_buffer_->cr_stride / 4;
+            filled_len += frame_buffer_->cr_stride * 5 / 4;
+        }
+        for (i = 0; i<bottom_padding>> height_downsize; ++i) {
+            memset(eb_input_ptr, 0, (width_with_padding_ >> width_downsize));
+            memset(eb_ext_input_ptr,
+                   0,
+                   (width_with_padding_ >> width_downsize) / 4);
+            eb_input_ptr += frame_buffer_->cr_stride;
+            eb_ext_input_ptr += frame_buffer_->cr_stride / 4;
+            filled_len += frame_buffer_->cr_stride * 5 / 4;
+        }
     }
 
     //     printf("Target:[%dx%d:%d],Read[%d]\r\n",

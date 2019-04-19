@@ -59,6 +59,11 @@ class VideoSource {
     virtual uint32_t get_frame_count() {
         return frame_count_;
     }
+    /*!\brief If the return value is true, video source will use svt compressed
+     * 10bit mode for output . */
+    virtual bool get_compressed_10bit_mode() {
+        return svt_compressed_2bit_plane;
+    }
 
   protected:
     bool is_ten_bit_mode() {
@@ -140,7 +145,7 @@ class VideoSource {
         frame_buffer_->cb_stride = chroma_size;
         frame_buffer_->cr_stride = chroma_size;
 
-        if (is_ten_bit_mode() && packed_ten_bit_mode) {
+        if (is_ten_bit_mode() && !svt_compressed_2bit_plane) {
             luma_size *= 2;
             chroma_size *= 2;
         }
@@ -163,20 +168,20 @@ class VideoSource {
             return EB_ErrorInsufficientResources;
         }
 
-        if (is_ten_bit_mode() && !packed_ten_bit_mode) {
-            frame_buffer_->luma_ext = (uint8_t *)malloc(luma_size);
+        if (is_ten_bit_mode() && svt_compressed_2bit_plane) {
+            frame_buffer_->luma_ext = (uint8_t *)malloc(luma_size / 4);
             if (!frame_buffer_->luma_ext) {
                 deinit_frame_buffer();
                 return EB_ErrorInsufficientResources;
             }
 
-            frame_buffer_->cb_ext = (uint8_t *)malloc(chroma_size);
+            frame_buffer_->cb_ext = (uint8_t *)malloc(chroma_size / 4);
             if (!frame_buffer_->cb_ext) {
                 deinit_frame_buffer();
                 return EB_ErrorInsufficientResources;
             }
 
-            frame_buffer_->cr_ext = (uint8_t *)malloc(chroma_size);
+            frame_buffer_->cr_ext = (uint8_t *)malloc(chroma_size / 4);
             if (!frame_buffer_->cr_ext) {
                 deinit_frame_buffer();
                 return EB_ErrorInsufficientResources;
@@ -199,7 +204,7 @@ class VideoSource {
     uint32_t frame_size_;
     EbSvtIOFormat *frame_buffer_;
     VideoImageFormat image_format_;
-    bool packed_ten_bit_mode;
+    bool svt_compressed_2bit_plane;
 };
 
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

@@ -106,7 +106,7 @@ void SvtAv1E2ETestBase::SetUp() {
     ctxt_.enc_params.source_width = width;
     ctxt_.enc_params.source_height = height;
     ctxt_.enc_params.encoder_bit_depth = bit_depth;
-    ctxt_.enc_params.ten_bit_format = 1;
+    ctxt_.enc_params.compressed_ten_bit_format = video_src_->get_compressed_10bit_mode();
     ctxt_.enc_params.recon_enabled = 0;
 
     //
@@ -207,7 +207,8 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
                                        std::get<2>(vector),
                                        std::get<3>(vector),
                                        std::get<4>(vector),
-                                       std::get<5>(vector));
+                                       std::get<5>(vector),
+                                       std::get<6>(vector));
         break;
     default: assert(0); break;
     }
@@ -219,10 +220,6 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     recon_sink_ = nullptr;
     refer_dec_ = nullptr;
     output_file_ = nullptr;
-#ifdef ENABLE_DEBUG_MONITOR
-    recon_monitor_ = nullptr;
-    ref_monitor_ = nullptr;
-#endif
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
     ref_compare_ = nullptr;
@@ -254,16 +251,6 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
         delete ref_compare_;
         ref_compare_ = nullptr;
     }
-#ifdef ENABLE_DEBUG_MONITOR
-    if (recon_monitor_) {
-        delete recon_monitor_;
-        recon_monitor_ = nullptr;
-    }
-    if (ref_monitor_) {
-        delete ref_monitor_;
-        ref_monitor_ = nullptr;
-    }
-#endif
 }
 
 /** initialization for test */
@@ -614,20 +601,6 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
     VideoFrame ref_frame;
     memset(&ref_frame, 0, sizeof(ref_frame));
     while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
-#ifdef ENABLE_DEBUG_MONITOR
-        if (ref_monitor_ == nullptr) {
-            ref_monitor_ = new VideoMonitor(ref_frame.width,
-                                            ref_frame.height,
-                                            ref_frame.stride[0],
-                                            ref_frame.bits_per_sample,
-                                            true,
-                                            "Ref decode");
-        }
-        if (ref_monitor_) {
-            ref_monitor_->draw_frame(
-                ref_frame.planes[0], ref_frame.planes[1], ref_frame.planes[2]);
-        }
-#endif
         if (recon_sink_) {
             // compare tools
             if (ref_compare_ == nullptr) {
@@ -640,26 +613,6 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
 
             // PSNR tool
             check_psnr(ref_frame);
-
-#ifdef ENABLE_DEBUG_MONITOR
-            // Output to monitor for debug
-            if (recon_monitor_ == nullptr) {
-                recon_monitor_ = new VideoMonitor(
-                    video_src_->get_width_with_padding(),
-                    video_src_->get_height_with_padding(),
-                    (video_src_->get_bit_depth() > 8)
-                        ? video_src_->get_width_with_padding() * 2
-                        : video_src_->get_width_with_padding(),
-                    video_src_->get_bit_depth(),
-                    true,
-                    "Recon");
-            }
-            if (recon_monitor_) {
-                recon_monitor_->draw_frame(mug->mug_buf,
-                                           mug->mug_buf + luma_len,
-                                           mug->mug_buf + luma_len * 5 / 4);
-            }
-#endif
         }
     }
 }

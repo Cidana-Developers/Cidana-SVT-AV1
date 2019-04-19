@@ -16,6 +16,9 @@
 #include <algorithm>
 #include "ReconSink.h"
 #include "CompareTools.h"
+#ifdef ENABLE_DEBUG_MONITOR
+#include "VideoMonitor.h"
+#endif
 
 #if _WIN32
 #define fseeko64 _fseeki64
@@ -202,6 +205,10 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
     RefSink(VideoFrameParam fmt, ReconSink *my_friend) : ReconSinkBuffer(fmt) {
         friend_ = my_friend;
         frame_vec_.clear();
+#ifdef ENABLE_DEBUG_MONITOR
+        recon_monitor_ = nullptr;
+        ref_monitor_ = nullptr;
+#endif
     }
     virtual ~RefSink() {
         while (frame_vec_.size()) {
@@ -214,12 +221,23 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
             }
         }
         friend_ = nullptr;
+#ifdef ENABLE_DEBUG_MONITOR
+        if (recon_monitor_) {
+            delete recon_monitor_;
+            recon_monitor_ = nullptr;
+        }
+        if (ref_monitor_) {
+            delete ref_monitor_;
+            ref_monitor_ = nullptr;
+        }
+#endif
     }
 
   public:
     bool compare_video(const VideoFrame &frame) override {
         const ReconMug *mug = friend_->take_mug(frame.timestamp);
         if (mug) {
+            draw_frames(&frame, mug);
             bool is_same =
                 svt_av1_e2e_tools::compare_image(mug, &frame, frame.format);
             if (!is_same) {
@@ -237,6 +255,7 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
         for (const VideoFrame *frame : frame_vec_) {
             const ReconMug *mug = friend_->take_mug(frame->timestamp);
             if (mug) {
+                draw_frames(frame, mug);
                 if (!svt_av1_e2e_tools::compare_image(
                         mug, frame, frame->format)) {
                     printf("ref_frame(%u) compare failed!!\n",
@@ -256,10 +275,47 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
         else
             printf("out of memory for clone video frame!!\n");
     }
+    void draw_frames(const VideoFrame *frame, const ReconMug *mug) {
+#ifdef ENABLE_DEBUG_MONITOR
+        if (ref_monitor_ == nullptr) {
+            ref_monitor_ = new VideoMonitor(frame->width,
+                                            frame->height,
+                                            frame->stride[0],
+                                            frame->bits_per_sample,
+                                            false,
+                                            "Ref decode");
+        }
+        if (ref_monitor_) {
+            ref_monitor_->draw_frame(
+                frame->planes[0], frame->planes[1], frame->planes[2]);
+        }
+        // Output to monitor for debug
+        if (recon_monitor_ == nullptr) {
+            recon_monitor_ = new VideoMonitor(
+                frame->width,
+                frame->height,
+                frame->width * (frame->bits_per_sample > 8 ? 2 : 1),
+                frame->bits_per_sample,
+                false,
+                "Recon");
+        }
+        if (recon_monitor_) {
+            int luma_len = frame->width * frame->height *
+                           (frame->bits_per_sample > 8 ? 2 : 1);
+            recon_monitor_->draw_frame(mug->mug_buf,
+                                       mug->mug_buf + luma_len,
+                                       mug->mug_buf + luma_len * 5 / 4);
+        }
+#endif
+    }
 
   private:
     ReconSink *friend_;
     std::vector<const VideoFrame *> frame_vec_;
+#ifdef ENABLE_DEBUG_MONITOR
+    VideoMonitor *recon_monitor_;
+    VideoMonitor *ref_monitor_;
+#endif
 };
 
 ReconSink *create_recon_sink(const VideoFrameParam &param,
