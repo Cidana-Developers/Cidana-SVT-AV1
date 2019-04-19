@@ -124,7 +124,7 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
 }
 
 EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
-    printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
+    //printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;

@@ -190,11 +190,7 @@ static inline double psnr_10bit(const uint16_t *p1, const uint32_t stride1,
 class PsnrStatistics {
   public:
     PsnrStatistics() {
-        psnr_total_ = 0;
-        psnr_luma_ = 0;
-        psnr_cb_ = 0;
-        psnr_cr_ = 0;
-        count_ = 0;
+        reset();
     }
     ~PsnrStatistics() {
     }
@@ -221,6 +217,14 @@ class PsnrStatistics {
             cb = 0;
             cr = 0;
         }
+    }
+
+    void reset() {
+        psnr_total_ = 0;
+        psnr_luma_ = 0;
+        psnr_cb_ = 0;
+        psnr_cr_ = 0;
+        count_ = 0;
     }
 
   private:

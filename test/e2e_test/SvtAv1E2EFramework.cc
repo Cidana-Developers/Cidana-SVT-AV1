@@ -106,7 +106,8 @@ void SvtAv1E2ETestBase::SetUp() {
     ctxt_.enc_params.source_width = width;
     ctxt_.enc_params.source_height = height;
     ctxt_.enc_params.encoder_bit_depth = bit_depth;
-    ctxt_.enc_params.compressed_ten_bit_format = video_src_->get_compressed_10bit_mode();
+    ctxt_.enc_params.compressed_ten_bit_format =
+        video_src_->get_compressed_10bit_mode();
     ctxt_.enc_params.recon_enabled = 0;
 
     //
@@ -393,6 +394,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         ref_compare_ = nullptr;
     }
 
+    /** PSNR report */
     int count = 0;
     double psnr[4];
     pnsr_statistics_.get_statistics(count, psnr[0], psnr[1], psnr[2], psnr[3]);
@@ -406,6 +408,9 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
             psnr[2],
             psnr[3]);
     }
+    pnsr_statistics_.reset();
+
+    /** performance report */
     if (collect_) {
         frame_count = video_src_->get_frame_count();
         uint64_t total_enc_time = collect_->read_count(ENCODING);

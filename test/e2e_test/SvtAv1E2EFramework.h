@@ -113,8 +113,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
      */
     void decode_compress_data(const uint8_t *data, const uint32_t size);
     /** check video frame psnr with source
-     * @param data  compressed data from encoder, single OBU
-     * @param size  size of compressed data
+     * @param frame  video frame from reference decoder
      */
     void check_psnr(const VideoFrame &frame);
 
