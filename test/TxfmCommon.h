@@ -277,14 +277,15 @@ static INLINE int get_txfm1d_size(TxfmType txfm_type) {
     }
 }
 
-static INLINE bool is_txfm_allowed(TxType tx_type, int w, int h) {
-    const TX_TYPE_1D vert_type = vtx_tab[tx_type];
-    const TX_TYPE_1D horz_type = htx_tab[tx_type];
-    const int max_size[TX_TYPES_1D] = {64, 16, 16, 32};
-    if (w <= max_size[horz_type] && h <= max_size[vert_type])
-        return true;
-    else
+static INLINE bool is_txfm_allowed(TxType tx_type, TxSize tx_size) {
+    /* According to 5.11 */
+    const TxSize sqr_up = txsize_sqr_up_map[tx_size];
+    if (sqr_up > TX_32X32 && tx_type != DCT_DCT)
         return false;
+    else if (sqr_up == TX_32X32 && (tx_type != DCT_DCT && tx_type != IDTX))
+        return false;
+    else /* <=TX_16X16, all type are supported */
+        return true;
 }
 
 static INLINE int32_t get_txb_wide(TxSize tx_size) {

@@ -191,7 +191,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             // tx_type and tx_size are not compatible in the av1-spec.
             // like the max size of adst transform is 16, and max size of
             // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
             // Some tx_type is not implemented yet, so we will skip this;
@@ -231,15 +231,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             // tx_type and tx_size are not compatible in the av1-spec.
             // like the max size of adst transform is 16, and max size of
             // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
-
-            // Some tx_type is implemented but will crash the unit test.
-            // Skip this kind of test and fail it instead.
-            if (is_rect_type1_crash_case(tx_size, type)) {
-                FAIL();
-                continue;
-            }
 
             const int loops = 100;
             for (int k = 0; k < loops; k++) {
@@ -281,7 +274,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             // tx_type and tx_size are not compatible in the av1-spec.
             // like the max size of adst transform is 16, and max size of
             // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
             const int loops = 100;
@@ -357,7 +350,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             // tx_type and tx_size are not compatible in the av1-spec.
             // like the max size of adst transform is 16, and max size of
             // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
             const int loops = 100;
@@ -406,33 +399,6 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
   private:
-    // TODO(wenyao): update these cases as these issues are fixed.
-    bool is_rect_type1_crash_case(const TxSize tx_size, const TxType tx_type) {
-        std::vector<TxType> invalid_types;
-        switch (tx_size) {
-        case TX_16X32:
-            invalid_types = std::vector<TxType>{H_DCT, H_ADST, H_FLIPADST};
-            break;
-        case TX_32X64:
-        case TX_64X32:
-            invalid_types = std::vector<TxType>{IDTX, V_DCT, H_DCT};
-            break;
-        case TX_16X64:
-            invalid_types =
-                std::vector<TxType>{IDTX, V_DCT, H_DCT, H_ADST, H_FLIPADST};
-            break;
-        case TX_64X16:
-            invalid_types =
-                std::vector<TxType>{IDTX, V_DCT, H_DCT, V_ADST, V_FLIPADST};
-            break;
-        default: break;
-        }
-
-        auto it =
-            std::find(invalid_types.begin(), invalid_types.end(), tx_type);
-        return it == invalid_types.end() ? false : true;
-    }
-
     void clear_high_freq_coeffs(const TxSize tx_size, const TxType tx_type,
                                 const int eob, const int max_eob) {
         const SCAN_ORDER *scan_order = &av1_scan_orders[tx_size][tx_type];
