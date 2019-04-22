@@ -109,8 +109,8 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
           gen_(deterministic_seed) {
         decltype(dist_nbit_)::param_type param{-(1 << bd_) + 1, (1 << bd_) - 1};
         dist_nbit_.param(param);
-        width_ = get_txb_wide(tx_size_);
-        height_ = get_txb_high(tx_size_);
+        width_ = tx_size_wide[tx_size_];
+        height_ = tx_size_high[tx_size_];
         memset(output_test_, 0, sizeof(output_test_));
         memset(output_ref_, 255, sizeof(output_ref_));  // -1
     }

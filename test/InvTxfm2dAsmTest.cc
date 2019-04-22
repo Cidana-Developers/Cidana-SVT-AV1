@@ -177,8 +177,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
     void run_sqr_txfm_match_test(const TxSize tx_size, int asm_type) {
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         InvSqrTxfmFuncPair pair = (asm_type == 0)
                                       ? inv_txfm_c_avx2_func_pairs[tx_size]
                                       : inv_txfm_c_sse4_1_func_pairs[tx_size];
@@ -216,8 +216,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
     void run_rect_type1_txfm_match_test(const TxSize tx_size) {
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         const int max_eob = av1_get_max_eob(tx_size);
 
         const InvRectTxfm2dType1Func test_func = av1_highbd_inv_txfm_add_avx2;
@@ -268,8 +268,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
     void run_rect_type2_txfm_match_test(const TxSize tx_size) {
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         const InvRectType2TxfmFuncPair *test_pair =
             get_rect_type2_func_pair(tx_size);
         if (test_pair == nullptr)
@@ -306,8 +306,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     void run_lowbd_txfm_match_test(const TxSize tx_size) {
         if (bd_ > 8)
             return;
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         const int max_eob = av1_get_max_eob(tx_size);
         using LowbdInvRectTxfmRefFunc = void (*)(const int32_t *input,
                                                  uint16_t *output,
