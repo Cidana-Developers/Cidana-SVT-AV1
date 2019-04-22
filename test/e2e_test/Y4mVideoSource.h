@@ -23,7 +23,8 @@ class Y4MVideoSource : public VideoSource {
   public:
     Y4MVideoSource(const std::string &file_name, const VideoImageFormat format,
                    const uint32_t width, const uint32_t height,
-                   const uint8_t bit_depth);
+                   const uint8_t bit_depth,
+                   const bool use_compressed_2bit_plan_output);
     ~Y4MVideoSource();
     /*!\brief Prepare stream. */
     EbErrorType open_source() override;
