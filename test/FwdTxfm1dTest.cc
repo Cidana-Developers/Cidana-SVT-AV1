@@ -117,7 +117,7 @@ TEST_P(AV1FwdTxfm1dTest, run_fwd_accuracy_check) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    C, AV1FwdTxfm1dTest,
+    TX, AV1FwdTxfm1dTest,
     ::testing::Values(
         FwdTxfm1dParam(TXFM_TYPE_DCT4, 7), FwdTxfm1dParam(TXFM_TYPE_DCT8, 7),
         FwdTxfm1dParam(TXFM_TYPE_DCT16, 7), FwdTxfm1dParam(TXFM_TYPE_DCT32, 7),

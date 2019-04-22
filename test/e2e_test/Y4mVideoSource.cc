@@ -12,6 +12,7 @@
  ******************************************************************************/
 #include <memory.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "Y4mVideoSource.h"
 
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
@@ -171,7 +172,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         switch (first_char) {
         case 'W':  // Width
         {
-            fscanf(file_handle_, "%d ", &width_);
+            assert(fscanf(file_handle_, "%d ", &width_) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
             width_with_padding_ = width_;
             if (width_ % 8 != 0)
@@ -179,7 +180,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         } break;
         case 'H':  // Height
         {
-            fscanf(file_handle_, "%d ", &height_);
+            assert(fscanf(file_handle_, "%d ", &height_) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
             height_with_padding_ = height_;
             if (height_ % 8 != 0)
@@ -188,19 +189,19 @@ EbErrorType Y4MVideoSource::parse_file_info() {
         case 'F':  // Frame rate
         {
             uint32_t tmp1, tmp2;
-            fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2);
+            assert(fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'I':  // Interlacing
         {
             char tmp;
-            fscanf(file_handle_, "%c ", &tmp);
+            assert(fscanf(file_handle_, "%c ", &tmp) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'A':  // Pixel aspect ratio.
         {
             uint32_t tmp1, tmp2;
-            fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2);
+            assert(fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2) > 0);
             fseek(file_handle_, -1, SEEK_CUR);
         } break;
         case 'C':  // Color space
@@ -296,8 +297,10 @@ uint32_t Y4MVideoSource::read_input_frame() {
         return 0;
     }
 
-    if (6 != fread(frame_header, 1, 6, file_handle_))
+    if (6 != fread(frame_header, 1, 6, file_handle_)) {
+        printf("can not found frame header\r\n");
         return 0;
+    }
 
     // Check frame header
     if (!((strncmp("FRAME", frame_header, 5) == 0) && frame_header[5] == 0xA)) {

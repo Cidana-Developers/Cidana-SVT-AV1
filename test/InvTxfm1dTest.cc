@@ -115,7 +115,7 @@ TEST_P(AV1InvTxfm1dTest, run_inv_accuracy_check) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    C, AV1InvTxfm1dTest,
+    TX, AV1InvTxfm1dTest,
     ::testing::Values(
         InvTxfm1dParam(TXFM_TYPE_DCT4, 2), InvTxfm1dParam(TXFM_TYPE_DCT8, 2),
         InvTxfm1dParam(TXFM_TYPE_DCT16, 2), InvTxfm1dParam(TXFM_TYPE_DCT32, 2),

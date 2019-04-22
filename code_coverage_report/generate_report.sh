@@ -37,21 +37,22 @@ lcov --capture --initial --base-directory $SOURCE_DIR  --directory . --output-fi
 
 # run the unit tests
 cp "$SOURCE_DIR"Bin/Debug/* .
+cp "$SOURCE_DIR"third_party/aom/lib/linux/libaom.so ./libaom.so.0
 ./SvtAv1UnitTests
 ./SvtAv1ApiTests --gtest_filter=EncApi*.*-EncApiTest.repeat_normal_setup
 ./SvtAv1ApiTests --gtest_filter=EncParam*.*
-./SvtAv1ApiTests --gtest_filter=EncApiTest.repeat_normal_setup
+#./SvtAv1ApiTests --gtest_filter=EncApiTest.repeat_normal_setup
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2ESimpleTest.*
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EReconBufferTest.*
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EConformance*.*
-./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EParam*.*
+#./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EParam*.*
 
 
 # capture
 lcov --capture --base-directory $SOURCE_DIR --directory . --output-file svt_av1_test.info
 
 # merge the status
-lcov --add-tracefile svt_av1_base.info --add-tracefile svt_av1_test.info --output-file svt_av1_total.info
+lcov --add-tracefile svt_av1_base.info --add-tracefile svt_av1_test.info --output-file $BUILD_DIR/svt_av1_total.info
 
 # remove unwanted
 lcov -r svt_av1_total.info "*third_party*" "*test*" "*/usr/*" -o svt_av1_final.info

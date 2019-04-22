@@ -509,7 +509,7 @@ TEST_P(InvTxfm2dAsmTest, lowbd_txfm_match_test) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(ASM, InvTxfm2dAsmTest,
+INSTANTIATE_TEST_CASE_P(TX, InvTxfm2dAsmTest,
                         ::testing::Values(static_cast<int>(AOM_BITS_8),
                                           static_cast<int>(AOM_BITS_10)));
 }  // namespace

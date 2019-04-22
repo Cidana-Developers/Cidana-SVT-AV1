@@ -205,4 +205,4 @@ TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
-                        ::testing::ValuesIn(smoking_vectors));
+                        ::testing::ValuesIn(comformance_test_vectors));

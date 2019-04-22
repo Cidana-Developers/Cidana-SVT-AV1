@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "../util.h"
 
-#if defined(__GNUC__) && (__GNUC__ <= 5)  // chrono in gcc<6 is in mess
+#if defined(__GNUC__)  // chrono in gcc is in mess
 #define NOT_USE_CHRONO
 #endif  // defined(__GNUC__) && (__GNUC__ <= 5)
 
@@ -27,10 +27,10 @@
 
 uint64_t PerformanceCollect::get_time_tick() {
 #ifdef NOT_USE_CHRONO
-	struct timeval my_timeval;
-	if (gettimeofday(&my_timeval, NULL))
-		return 0;
-	return (uint64_t)(my_timeval.tv_sec * 1000) + (my_timeval.tv_usec / 1000);
+    struct timeval my_timeval;
+    if (gettimeofday(&my_timeval, NULL))
+        return 0;
+    return (uint64_t)(my_timeval.tv_sec * 1000) + (my_timeval.tv_usec / 1000);
 #else
     using namespace std::chrono;
     steady_clock::time_point tp = steady_clock::now();
@@ -41,7 +41,7 @@ uint64_t PerformanceCollect::get_time_tick() {
 
 static void sleep_ms(uint64_t time_ms) {
 #ifdef NOT_USE_CHRONO
-    usleep(time_ms*1000);
+    usleep(time_ms * 1000);
 #else
     std::chrono::milliseconds dura(time_ms);
     std::this_thread::sleep_for(dura);
