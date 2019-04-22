@@ -241,21 +241,22 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                 // Since input_ is fixed, we can not iterator the eob
                 // from 1 to max_eob, otherwise all the coeffs are cleared
                 // when eob is equal to 1;
-                for (int eob = max_eob; eob > 0; --eob) {
+                for (int eob = max_eob - 1; eob > 0; --eob) {
                     clear_high_freq_coeffs(tx_size, type, eob, max_eob);
 
                     ref_func(
                         input_, output_ref_, stride_, type, tx_size, eob, bd_);
                     test_func(
                         input_, output_test_, stride_, type, tx_size, eob, bd_);
-                }
 
-                ASSERT_EQ(0,
-                          memcmp(output_ref_,
-                                 output_test_,
-                                 height * stride_ * sizeof(output_test_[0])))
-                    << "loop: " << k << " tx_type: " << tx_type
-                    << " tx_size: " << tx_size;
+                    ASSERT_EQ(
+                        0,
+                        memcmp(output_ref_,
+                               output_test_,
+                               height * stride_ * sizeof(output_test_[0])))
+                        << "loop: " << k << " tx_type: " << tx_type
+                        << " tx_size: " << tx_size << " eob: " << eob;
+                }
             }
         }
     }
@@ -365,7 +366,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                             static_cast<uint8_t>(output_test_[i * stride_ + j]);
                 }
 
-                for (int eob = max_eob; eob > 0; --eob) {
+                for (int eob = max_eob - 1; eob > 0; --eob) {
                     clear_high_freq_coeffs(tx_size, type, eob, max_eob);
                     av1_lowbd_inv_txfm2d_add_ssse3(input_,
                                                    lowbd_output_test_,
@@ -384,14 +385,14 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                     else
                         lowbd_sqr_ref_funcs[tx_size](
                             input_, output_ref_, stride_, type, bd_);
-                }
-                for (int i = 0; i < height; i++) {
-                    for (int j = 0; j < width; j++) {
-                        uint8_t ref =
-                            static_cast<uint8_t>(output_ref_[i * stride_ + j]);
-                        ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
-                            << "loop: " << k << " tx_type: " << tx_type
-                            << " tx_size: " << tx_size;
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++) {
+                            uint8_t ref = static_cast<uint8_t>(
+                                output_ref_[i * stride_ + j]);
+                            ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
+                                << "loop: " << k << " tx_type: " << tx_type
+                                << " tx_size: " << tx_size << " eob: " << eob;
+                        }
                     }
                 }
             }
@@ -456,7 +457,6 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
                 input_[i * stride_ + j] = tmp_input_[i * width + j];
             }
         }
-
         return;
     }
 
