@@ -37,7 +37,12 @@ lcov --capture --initial --base-directory $SOURCE_DIR  --directory . --output-fi
 
 # run the unit tests
 cp "$SOURCE_DIR"Bin/Debug/* .
-cp "$SOURCE_DIR"third_party/aom/lib/linux/libaom.so ./libaom.so.0
+# copy conformance tools
+if [ "$(uname -s)" = "Darwin" ]; then
+    cp "$SOURCE_DIR"third_party/aom/lib/mac/*.dylib ./
+else
+    cp "$SOURCE_DIR"third_party/aom/lib/linux/libaom.so ./libaom.so.0
+fi
 ./SvtAv1UnitTests
 ./SvtAv1ApiTests --gtest_filter=EncApi*.*-EncApiTest.repeat_normal_setup
 ./SvtAv1ApiTests --gtest_filter=EncParam*.*
