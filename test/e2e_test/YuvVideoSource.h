@@ -15,7 +15,7 @@
 #include <cstdio>
 #include <string>
 #include "VideoSource.h"
-
+namespace svt_av1_video_source {
 class YuvVideoSource : public VideoSource {
   public:
     YuvVideoSource(const std::string &file_name, const VideoImageFormat format,
@@ -38,5 +38,5 @@ class YuvVideoSource : public VideoSource {
     std::string file_name_;
     FILE *file_handle_;
 };
-
+}  // namespace svt_av1_video_source
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

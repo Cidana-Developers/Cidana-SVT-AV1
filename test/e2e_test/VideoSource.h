@@ -16,6 +16,15 @@
 #include "EbSvtAv1Enc.h"
 #include "VideoFrame.h"
 
+namespace svt_av1_video_source {
+static std::string get_vector_path() {
+    const char *const path = getenv("SVT_AV1_TEST_VECTOR_PATH");
+    if (path == nullptr) {
+        return ".";
+    }
+    return path;
+}
+
 class VideoSource {
   public:
     virtual ~VideoSource() {
@@ -124,7 +133,9 @@ class VideoSource {
         case IMG_FMT_444: {
             chroma_size = luma_size;
         } break;
-        default: { chroma_size = luma_size >> 2; } break;
+        default: {
+            chroma_size = luma_size >> 2;
+        } break;
         }
 
         // Determine
@@ -206,5 +217,7 @@ class VideoSource {
     VideoImageFormat image_format_;
     bool svt_compressed_2bit_plane;
 };
+
+}  // namespace svt_av1_video_source
 
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

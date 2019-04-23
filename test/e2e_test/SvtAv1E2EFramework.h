@@ -20,6 +20,7 @@
 #include "CompareTools.h"
 
 using namespace svt_av1_e2e_tools;
+using namespace svt_av1_video_source;
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
 

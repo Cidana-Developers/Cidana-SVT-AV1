@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "Y4mVideoSource.h"
+using namespace svt_av1_video_source;
 
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
                                const VideoImageFormat format,
@@ -59,8 +60,9 @@ EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
     if (file_handle_ != nullptr)
         return EB_ErrorNone;
+    std::string full_patn = get_vector_path() + "/" + file_name_.c_str();
 
-    file_handle_ = fopen(file_name_.c_str(), "rb");
+    file_handle_ = fopen(full_patn.c_str(), "rb");
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
 
@@ -82,13 +84,13 @@ EbErrorType Y4MVideoSource::open_source() {
 
     current_frame_index_ = -1;
 #ifdef ENABLE_DEBUG_MONITOR
-    // monitor = new VideoMonitor(
-    //     width_with_padding_,
-    //     height_with_padding_,
-    //     (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
-    //     bit_depth_,
-    //     svt_compressed_2bit_plane,
-    //     "Y4M Source");
+    monitor = new VideoMonitor(
+        width_with_padding_,
+        height_with_padding_,
+        (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
+        bit_depth_,
+        svt_compressed_2bit_plane,
+        "Y4M Source");
 #endif
 
     return EB_ErrorNone;
@@ -124,7 +126,7 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
 }
 
 EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
-    //printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
+    // printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
