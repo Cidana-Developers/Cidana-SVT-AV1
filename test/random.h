@@ -44,14 +44,7 @@ class SVTRandom {
     /** contructor with given limit bits and signed symbol*/
     SVTRandom(const int nbits, const bool is_signed)
         : gen_(deterministic_seed_) {
-        int set_bits = is_signed ? nbits - 1 : nbits;
-        assert(set_bits < 32);
-        int min_bound = 0, max_bound = 0;
-        for (int i = 0; i < set_bits; i++)
-            max_bound |= (1 << i);
-        if (is_signed)
-            min_bound = 0 - (1 << set_bits);
-        setup(min_bound, max_bound);
+        calculate_bounds(nbits, is_signed);
         return;
     }
 
@@ -67,14 +60,7 @@ class SVTRandom {
     explicit SVTRandom(const int nbits, const bool is_signed,
                        const uint32_t seed)
         : gen_(seed) {
-        assert(is_signed ? nbits < 31 : nbits <= 31);
-        int set_bits = is_signed ? nbits - 1 : nbits;
-        int min_bound = 0, max_bound = 0;
-        for (int i = 0; i < set_bits; i++)
-            max_bound |= (1 << i);
-        if (is_signed)
-            min_bound = 0 - max_bound;
-        setup(min_bound, max_bound);
+        calculate_bounds(nbits, is_signed);
     }
 
     /** reset generator with new seed
@@ -93,10 +79,22 @@ class SVTRandom {
     }
 
   private:
+    /** setup bounds of generator */
     void setup(const int min_bound, const int max_bound) {
         assert(min_bound <= max_bound);
         decltype(dist_nbit_)::param_type param{min_bound, max_bound};
         dist_nbit_.param(param);
+    }
+    /** calculate and setup bounds of generator */
+    void calculate_bounds(const int nbits, const bool is_signed) {
+        assert(is_signed ? nbits < 31 : nbits <= 31);
+        int set_bits = is_signed ? nbits - 1 : nbits;
+        int min_bound = 0, max_bound = 0;
+        for (int i = 0; i < set_bits; i++)
+            max_bound |= (1 << i);
+        if (is_signed)
+            min_bound = 0 - (1 << set_bits);
+        setup(min_bound, max_bound);
     }
 
   private:
