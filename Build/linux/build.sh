@@ -26,6 +26,12 @@ function build {
     # Compile the Library
     make -j $(if [ "$(uname -s)" = "Darwin" ]; then sysctl -n hw.ncpu; else nproc; fi) SvtAv1EncApp SvtAv1DecApp SvtAv1UnitTests SvtAv1ApiTests SvtAv1E2ETests
     cd ..
+    # Copy test conformance dependency
+    if [ "$(uname -s)" = "Darwin" ]; then
+        cp ../../third_party/aom/lib/mac/*.dylib ../../Bin/$build_type/
+    else
+        cp ../../third_party/aom/lib/linux/libaom.so ../../Bin/$build_type/libaom.so.0
+    fi
 }
 
 # Defines
