@@ -17,10 +17,17 @@
 #include "VideoFrame.h"
 
 namespace svt_av1_video_source {
+
+/**
+ * @brief      Use this funcion to get vector path defined by envrionment
+ * variable SVT_AV1_TEST_VECTOR_PATH, or it will return a default path.
+ *
+ * @return     The vectors path.
+ */
 static std::string get_vector_path() {
     const char *const path = getenv("SVT_AV1_TEST_VECTOR_PATH");
     if (path == nullptr) {
-        return ".";
+        return "../../test/vectors";
     }
     return path;
 }

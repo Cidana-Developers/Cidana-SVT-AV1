@@ -60,9 +60,9 @@ EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
     if (file_handle_ != nullptr)
         return EB_ErrorNone;
-    std::string full_patn = get_vector_path() + "/" + file_name_.c_str();
+    std::string full_path = get_vector_path() + "/" + file_name_.c_str();
 
-    file_handle_ = fopen(full_patn.c_str(), "rb");
+    file_handle_ = fopen(full_path.c_str(), "rb");
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
 
