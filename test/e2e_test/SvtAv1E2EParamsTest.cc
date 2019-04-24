@@ -90,7 +90,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
             SvtAv1E2EParamBase::init_test();                              \
         }                                                                 \
         /** close for test */                                             \
-        void close_test() {                                               \
+        void close_test() override {                                      \
             SvtAv1E2EParamBase::close_test();                             \
             if (collect_) {                                               \
                 delete collect_;                                          \

@@ -39,6 +39,7 @@ static void delete_mug(ReconSink::ReconMug *mug) {
     }
 }
 
+using svt_av1_e2e_tools::compare_image;
 class ReconSinkFile : public ReconSink {
   public:
     ReconSinkFile(const VideoFrameParam &param, const char *file_path)
@@ -238,8 +239,7 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
         const ReconMug *mug = friend_->take_mug(frame.timestamp);
         if (mug) {
             draw_frames(&frame, mug);
-            bool is_same =
-                svt_av1_e2e_tools::compare_image(mug, &frame, frame.format);
+            bool is_same = compare_image(mug, &frame, frame.format);
             if (!is_same) {
                 printf("ref_frame(%u) compare failed!!\n",
                        (uint32_t)frame.timestamp);
@@ -256,8 +256,7 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
             const ReconMug *mug = friend_->take_mug(frame->timestamp);
             if (mug) {
                 draw_frames(frame, mug);
-                if (!svt_av1_e2e_tools::compare_image(
-                        mug, frame, frame->format)) {
+                if (!compare_image(mug, frame, frame->format)) {
                     printf("ref_frame(%u) compare failed!!\n",
                            (uint32_t)frame->timestamp);
                     is_all_same = false;

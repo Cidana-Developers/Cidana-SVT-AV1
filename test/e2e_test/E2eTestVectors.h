@@ -22,80 +22,37 @@
  * file-path
  *  @{
  */
-
 namespace svt_av1_e2e_test_vector {
 
-/** TestVideoVectorFormatType is enumerate type of input video file format */
-typedef enum TestVideoVectorFormatType {
-    YUM_VIDEO_FILE,
+/** TestVectorFormat is enumerate type of input video file format */
+typedef enum TestVectorFormat {
+    YUV_VIDEO_FILE,
     Y4M_VIDEO_FILE
-} TestVideoVectorFormatType;
+} TestVectorFormat;
 
 /** TestVideoVector is tuple of test params in a test case */
-typedef std::tuple<std::string, TestVideoVectorFormatType, VideoImageFormat,
-                   uint32_t, uint32_t, uint8_t, bool>
+typedef std::tuple<std::string, TestVectorFormat, VideoColorFormat, uint32_t,
+                   uint32_t, uint8_t, bool>
     TestVideoVector;
 
 static const TestVideoVector video_src_vectors[] = {
-    TestVideoVector{"../../test/vectors/park_joy_90p_8_420.y4m",
+    TestVideoVector{"park_joy_90p_8_420.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420,
                     160,
                     90,
                     8,
                     false},
-    TestVideoVector{"../../test/vectors/park_joy_90p_8_422.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420,
-                    160,
-                    90,
-                    8,
-                    false},
-    TestVideoVector{"../../test/vectors/park_joy_90p_8_444.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420,
-                    160,
-                    90,
-                    8,
-                    false},
-    TestVideoVector{"../../test/vectors/park_joy_90p_10_420.y4m",
+    TestVideoVector{"park_joy_90p_10_420.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420P10_PACKED,
                     160,
                     90,
                     10,
                     false},
-    TestVideoVector{"../../test/vectors/park_joy_90p_10_422.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420P10_PACKED,
-                    160,
-                    90,
-                    10,
-                    false},
-    TestVideoVector{"../../test/vectors/park_joy_90p_10_444.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420P10_PACKED,
-                    160,
-                    90,
-                    10,
-                    false},
-    TestVideoVector{"../../test/vectors/park_joy_420_720p50.y4m",
+    TestVideoVector{"park_joy_420_720p50.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420,
-                    1280,
-                    720,
-                    8,
-                    false},
-    TestVideoVector{"../../test/vectors/park_joy_422_720p50.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_422,
-                    1280,
-                    720,
-                    8,
-                    false},
-    TestVideoVector{"../../test/vectors/park_joy_444_720p50.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_444,
                     1280,
                     720,
                     8,
@@ -103,14 +60,14 @@ static const TestVideoVector video_src_vectors[] = {
 };
 
 static const TestVideoVector comformance_test_vectors[] = {
-    TestVideoVector{"../../test/vectors/jellyfish-420-180p.y4m",
+    TestVideoVector{"jellyfish-420-180p.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420,
                     320,
                     180,
                     8,
                     false},
-    TestVideoVector{"../../test/vectors/jellyfish-420p10-180p.y4m",
+    TestVideoVector{"jellyfish-420p10-180p.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420P10_PACKED,
                     320,
@@ -120,7 +77,7 @@ static const TestVideoVector comformance_test_vectors[] = {
 };
 
 static const TestVideoVector smoking_vectors[] = {
-    TestVideoVector{"../../test/vectors/jellyfish-420-180p.y4m",
+    TestVideoVector{"jellyfish-420-180p.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420,
                     320,

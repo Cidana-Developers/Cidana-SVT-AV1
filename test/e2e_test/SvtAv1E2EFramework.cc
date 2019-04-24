@@ -196,7 +196,7 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     const TestVideoVector &vector) {
     VideoSource *video_src = nullptr;
     switch (std::get<1>(vector)) {
-    case YUM_VIDEO_FILE:
+    case YUV_VIDEO_FILE:
         video_src = new YuvVideoSource(std::get<0>(vector),
                                        std::get<2>(vector),
                                        std::get<3>(vector),
@@ -703,7 +703,6 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
             // mark the recon eos flag
             if (recon_frame.flags & EB_BUFFERFLAG_EOS)
                 is_eos = true;
-            ;
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;

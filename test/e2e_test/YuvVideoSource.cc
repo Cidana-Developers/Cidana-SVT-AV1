@@ -11,11 +11,11 @@
  *
  ******************************************************************************/
 #include "YuvVideoSource.h"
-
+using namespace svt_av1_video_source;
 #define SIZE_OF_ONE_FRAME_IN_BYTES(width, height) (((width) * (height)*3) >> 1)
 
 YuvVideoSource::YuvVideoSource(const std::string &file_name,
-                               const VideoImageFormat format,
+                               const VideoColorFormat format,
                                const uint32_t width, const uint32_t height,
                                const uint8_t bit_depth)
     : file_name_(file_name), file_handle_(nullptr) {
@@ -37,9 +37,10 @@ YuvVideoSource::~YuvVideoSource() {
 
 // Prepare stream, and get first frame.
 EbErrorType YuvVideoSource::open_source() {
+    std::string full_path = get_vector_path() + "/" + file_name_.c_str();
     // Reopen file as necessary
     if (file_handle_ == nullptr) {
-        file_handle_ = fopen(file_name_.c_str(), "rb");
+        file_handle_ = fopen(full_path.c_str(), "rb");
     }
 
     if (file_handle_ == nullptr)

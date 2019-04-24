@@ -16,6 +16,22 @@
 #include "EbSvtAv1Enc.h"
 #include "VideoFrame.h"
 
+namespace svt_av1_video_source {
+
+/**
+ * @brief      Use this funcion to get vector path defined by envrionment
+ * variable SVT_AV1_TEST_VECTOR_PATH, or it will return a default path.
+ *
+ * @return     The vectors path.
+ */
+static std::string get_vector_path() {
+    const char *const path = getenv("SVT_AV1_TEST_VECTOR_PATH");
+    if (path == nullptr) {
+        return "../../test/vectors";
+    }
+    return path;
+}
+
 class VideoSource {
   public:
     virtual ~VideoSource() {
@@ -52,7 +68,7 @@ class VideoSource {
         return bit_depth_;
     };
     /*!\brief Get video image format. */
-    virtual VideoImageFormat get_image_format() {
+    virtual VideoColorFormat get_image_format() {
         return image_format_;
     }
     /*!\brief Get total frame count. */
@@ -66,7 +82,7 @@ class VideoSource {
     }
 
   protected:
-    bool is_ten_bit_mode() {
+    bool is_10bit_mode() {
         if (image_format_ == IMG_FMT_420P10_PACKED ||
             image_format_ == IMG_FMT_422P10_PACKED ||
             image_format_ == IMG_FMT_444P10_PACKED) {
@@ -145,7 +161,7 @@ class VideoSource {
         frame_buffer_->cb_stride = chroma_size;
         frame_buffer_->cr_stride = chroma_size;
 
-        if (is_ten_bit_mode() && !svt_compressed_2bit_plane) {
+        if (is_10bit_mode() && !svt_compressed_2bit_plane) {
             luma_size *= 2;
             chroma_size *= 2;
         }
@@ -168,7 +184,7 @@ class VideoSource {
             return EB_ErrorInsufficientResources;
         }
 
-        if (is_ten_bit_mode() && svt_compressed_2bit_plane) {
+        if (is_10bit_mode() && svt_compressed_2bit_plane) {
             frame_buffer_->luma_ext = (uint8_t *)malloc(luma_size / 4);
             if (!frame_buffer_->luma_ext) {
                 deinit_frame_buffer();
@@ -203,8 +219,10 @@ class VideoSource {
     int32_t current_frame_index_;
     uint32_t frame_size_;
     EbSvtIOFormat *frame_buffer_;
-    VideoImageFormat image_format_;
+    VideoColorFormat image_format_;
     bool svt_compressed_2bit_plane;
 };
+
+}  // namespace svt_av1_video_source
 
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

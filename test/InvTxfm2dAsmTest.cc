@@ -148,7 +148,9 @@ const int deterministic_seed = 0xa42b;
  *
  * Test strategy:
  * Verify this assembly code by comparing with reference c implementation.
- * Feed the same data and check test output and reference output.
+ * Feed the same data and check test output and reference output. Four tests
+ * are required since there are three different function signatures and one
+ * set of function for lowbd functions.
  *
  * Expect result:
  * Output from assemble function should be exactly same as output from c.
@@ -175,8 +177,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
     void run_sqr_txfm_match_test(const TxSize tx_size, int asm_type) {
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         InvSqrTxfmFuncPair pair = (asm_type == 0)
                                       ? inv_txfm_c_avx2_func_pairs[tx_size]
                                       : inv_txfm_c_sse4_1_func_pairs[tx_size];
@@ -186,10 +188,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             TxType type = static_cast<TxType>(tx_type);
             const IsTxTypeImpFunc is_tx_type_imp = pair.check_imp_func;
 
-            // tx_type and tx_size are not compatible in the av1-spec.
-            // like the max size of adst transform is 16, and max size of
-            // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
             // Some tx_type is not implemented yet, so we will skip this;
@@ -214,9 +213,10 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
     void run_rect_type1_txfm_match_test(const TxSize tx_size) {
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         const int max_eob = av1_get_max_eob(tx_size);
+
         const InvRectTxfm2dType1Func test_func = av1_highbd_inv_txfm_add_avx2;
         const InvRectTxfm2dType1Func ref_func = rect_type1_ref_funcs[tx_size];
         if (ref_func == nullptr)
@@ -225,41 +225,37 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
 
-            // tx_type and tx_size are not compatible in the av1-spec.
-            // like the max size of adst transform is 16, and max size of
-            // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
-
-            // Some tx_type is implemented but will crash the unit test.
-            // Skip this kind of test and fail it instead.
-            if (is_rect_type1_crash_case(tx_size, type)) {
-                FAIL();
-                continue;
-            }
 
             const int loops = 100;
             for (int k = 0; k < loops; k++) {
-                populate_with_random(width, height, type, tx_size);
+                for (int eob = max_eob - 1; eob > 0; --eob) {
+                    // prepare data by forward transform and then
+                    // clear the values between eob and max_eob
+                    populate_with_random(width, height, type, tx_size);
+                    clear_high_freq_coeffs(tx_size, type, eob, max_eob);
 
-                ref_func(
-                    input_, output_ref_, stride_, type, tx_size, max_eob, bd_);
-                test_func(
-                    input_, output_test_, stride_, type, tx_size, max_eob, bd_);
+                    ref_func(
+                        input_, output_ref_, stride_, type, tx_size, eob, bd_);
+                    test_func(
+                        input_, output_test_, stride_, type, tx_size, eob, bd_);
 
-                ASSERT_EQ(0,
-                          memcmp(output_ref_,
-                                 output_test_,
-                                 height * stride_ * sizeof(output_test_[0])))
-                    << "loop: " << k << " tx_type: " << tx_type
-                    << " tx_size: " << tx_size;
+                    ASSERT_EQ(
+                        0,
+                        memcmp(output_ref_,
+                               output_test_,
+                               height * stride_ * sizeof(output_test_[0])))
+                        << "loop: " << k << " tx_type: " << tx_type
+                        << " tx_size: " << tx_size << " eob: " << eob;
+                }
             }
         }
     }
 
     void run_rect_type2_txfm_match_test(const TxSize tx_size) {
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         const InvRectType2TxfmFuncPair *test_pair =
             get_rect_type2_func_pair(tx_size);
         if (test_pair == nullptr)
@@ -268,10 +264,7 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
 
-            // tx_type and tx_size are not compatible in the av1-spec.
-            // like the max size of adst transform is 16, and max size of
-            // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
             const int loops = 100;
@@ -296,8 +289,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     void run_lowbd_txfm_match_test(const TxSize tx_size) {
         if (bd_ > 8)
             return;
-        const int width = get_txb_wide(tx_size);
-        const int height = get_txb_high(tx_size);
+        const int width = tx_size_wide[tx_size];
+        const int height = tx_size_high[tx_size];
         const int max_eob = av1_get_max_eob(tx_size);
         using LowbdInvRectTxfmRefFunc = void (*)(const int32_t *input,
                                                  uint16_t *output,
@@ -344,49 +337,52 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         for (int tx_type = DCT_DCT; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
 
-            // tx_type and tx_size are not compatible in the av1-spec.
-            // like the max size of adst transform is 16, and max size of
-            // identity transform is 32.
-            if (is_txfm_allowed(type, width, height) == false)
+            if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
             const int loops = 100;
             for (int k = 0; k < loops; k++) {
-                populate_with_random(width, height, type, tx_size);
+                for (int eob = max_eob - 1; eob > 0; --eob) {
+                    // prepare data by forward transform and then
+                    // clear the values between eob and max_eob
+                    populate_with_random(width, height, type, tx_size);
+                    clear_high_freq_coeffs(tx_size, type, eob, max_eob);
+                    // copy to lowbd output buffer from short buffer
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++)
+                            lowbd_output_test_[i * stride_ + j] =
+                                static_cast<uint8_t>(
+                                    output_test_[i * stride_ + j]);
+                    }
 
-                // copy to lowbd output buffer from short buffer
-                DECLARE_ALIGNED(32, uint8_t, lowbd_output_test_[MAX_TX_SQUARE]);
-                for (int i = 0; i < height; i++) {
-                    for (int j = 0; j < width; j++)
-                        lowbd_output_test_[i * stride_ + j] =
-                            static_cast<uint8_t>(output_test_[i * stride_ + j]);
-                }
+                    av1_lowbd_inv_txfm2d_add_ssse3(input_,
+                                                   lowbd_output_test_,
+                                                   stride_,
+                                                   type,
+                                                   tx_size,
+                                                   eob);
+                    if (tx_size >= TX_SIZES)
+                        lowbd_rect_ref_funcs[tx_size](input_,
+                                                      output_ref_,
+                                                      stride_,
+                                                      type,
+                                                      tx_size,
+                                                      eob,
+                                                      bd_);
+                    else
+                        lowbd_sqr_ref_funcs[tx_size](
+                            input_, output_ref_, stride_, type, bd_);
 
-                av1_lowbd_inv_txfm2d_add_ssse3(input_,
-                                               lowbd_output_test_,
-                                               stride_,
-                                               type,
-                                               tx_size,
-                                               max_eob);
-                if (tx_size >= TX_SIZES)
-                    lowbd_rect_ref_funcs[tx_size](input_,
-                                                  output_ref_,
-                                                  stride_,
-                                                  type,
-                                                  tx_size,
-                                                  max_eob,
-                                                  bd_);
-                else
-                    lowbd_sqr_ref_funcs[tx_size](
-                        input_, output_ref_, stride_, type, bd_);
-
-                for (int i = 0; i < height; i++) {
-                    for (int j = 0; j < width; j++) {
-                        uint8_t ref =
-                            static_cast<uint8_t>(output_ref_[i * stride_ + j]);
-                        ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
-                            << "loop: " << k << " tx_type: " << tx_type
-                            << " tx_size: " << tx_size;
+                    // compare, note the output buffer has stride.
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++) {
+                            uint8_t ref = static_cast<uint8_t>(
+                                output_ref_[i * stride_ + j]);
+                            ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
+                                << "loop: " << k << " tx_type: " << tx_type
+                                << " tx_size: " << tx_size << " eob: " << eob
+                                << " " << j << " x " << i;
+                        }
                     }
                 }
             }
@@ -394,33 +390,22 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
   private:
-    // TODO(wenyao): update these cases as these issues are fixed.
-    bool is_rect_type1_crash_case(const TxSize tx_size, const TxType tx_type) {
-        std::vector<TxType> invalid_types;
-        switch (tx_size) {
-        case TX_16X32:
-            invalid_types = std::vector<TxType>{H_DCT, H_ADST, H_FLIPADST};
-            break;
-        case TX_32X64:
-        case TX_64X32:
-            invalid_types = std::vector<TxType>{IDTX, V_DCT, H_DCT};
-            break;
-        case TX_16X64:
-            invalid_types =
-                std::vector<TxType>{IDTX, V_DCT, H_DCT, H_ADST, H_FLIPADST};
-            break;
-        case TX_64X16:
-            invalid_types =
-                std::vector<TxType>{IDTX, V_DCT, H_DCT, V_ADST, V_FLIPADST};
-            break;
-        default: break;
-        }
+    // clear the coeffs according to eob position, note the coeffs are
+    // linear.
+    void clear_high_freq_coeffs(const TxSize tx_size, const TxType tx_type,
+                                const int eob, const int max_eob) {
+        const SCAN_ORDER *scan_order = &av1_scan_orders[tx_size][tx_type];
+        const int16_t *scan = scan_order->scan;
 
-        auto it =
-            std::find(invalid_types.begin(), invalid_types.end(), tx_type);
-        return it == invalid_types.end() ? false : true;
+        for (int i = eob; i < max_eob; ++i) {
+            input_[scan[i]] = 0;
+        }
     }
 
+    // fill the pixel_input with random data and do forward transform,
+    // Note that the forward transform do not re-pack the coefficients,
+    // so we have to re-pack the coefficients after transform for
+    // some tx_size;
     void populate_with_random(const int width, const int height,
                               const TxType tx_type, const TxSize tx_size) {
         using FwdTxfm2dFunc = void (*)(int16_t * input,
@@ -445,8 +430,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         memset(output_ref_, 0, sizeof(output_ref_));
         memset(output_test_, 0, sizeof(output_test_));
         memset(input_, 0, sizeof(input_));
-        memset(tmp_input_, 0, sizeof(tmp_input_));
         memset(pixel_input_, 0, sizeof(pixel_input_));
+        memset(lowbd_output_test_, 0, sizeof(lowbd_output_test_));
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 pixel_input_[i * stride_ + j] = s_nbit_(gen_);
@@ -455,13 +440,36 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             }
         }
 
-        fwd_txfm_func[tx_size](pixel_input_, tmp_input_, stride_, tx_type, bd_);
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                input_[i * stride_ + j] = tmp_input_[i * width + j];
+        fwd_txfm_func[tx_size](pixel_input_, input_, stride_, tx_type, bd_);
+        // post-process, re-pack the coeffcients
+        uint64_t energy = 0;
+        switch (tx_size) {
+        case TX_64X64:
+            energy = HandleTransform64x64_c(input_, stride_);
+            for (int32_t row = 1; row < 32; ++row) {
+                memcpy(
+                    input_ + row * 32, input_ + row * 64, 32 * sizeof(int32_t));
             }
+            break;
+        case TX_64X32:
+            energy = HandleTransform64x32_c(input_, stride_);
+            for (int32_t row = 1; row < 32; ++row) {
+                memcpy(
+                    input_ + row * 32, input_ + row * 64, 32 * sizeof(int32_t));
+            }
+            break;
+        case TX_32X64: energy = HandleTransform32x64_c(input_, stride_); break;
+        case TX_64X16:
+            energy = HandleTransform64x16_c(input_, stride_);
+            // Re-pack non-zero coeffs in the first 32x16 indices.
+            for (int32_t row = 1; row < 16; ++row) {
+                memcpy(
+                    input_ + row * 32, input_ + row * 64, 32 * sizeof(int32_t));
+            }
+            break;
+        case TX_16X64: energy = HandleTransform16x64_c(input_, stride_); break;
+        default: break;
         }
-
         return;
     }
 
@@ -474,9 +482,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     static const int stride_ = MAX_TX_SIZE;
     DECLARE_ALIGNED(32, int16_t, pixel_input_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, int32_t, input_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, int32_t, tmp_input_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, uint16_t, output_test_[MAX_TX_SQUARE]);
     DECLARE_ALIGNED(32, uint16_t, output_ref_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, uint8_t, lowbd_output_test_[MAX_TX_SQUARE]);
 };
 
 TEST_P(InvTxfm2dAsmTest, sqr_txfm_match_test) {

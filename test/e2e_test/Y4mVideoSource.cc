@@ -14,12 +14,13 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "Y4mVideoSource.h"
+using namespace svt_av1_video_source;
 
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
-                               const VideoImageFormat format,
+                               const VideoColorFormat format,
                                const uint32_t width, const uint32_t height,
                                const uint8_t bit_depth,
-                               const bool use_compressed_2bit_plan_output)
+                               const bool use_compressed_2bit_plane_output)
     : file_name_(file_name), file_handle_(nullptr) {
     width_ = width;
     width_with_padding_ = width_;
@@ -35,7 +36,7 @@ Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
     frame_size_ = 0;
     frame_buffer_ = nullptr;
     image_format_ = format;
-    if (bit_depth_ > 8 && use_compressed_2bit_plan_output)
+    if (bit_depth_ > 8 && use_compressed_2bit_plane_output)
         svt_compressed_2bit_plane = true;
     else
         svt_compressed_2bit_plane = false;
@@ -59,8 +60,9 @@ EbErrorType Y4MVideoSource::open_source() {
     EbErrorType return_error = EB_ErrorNone;
     if (file_handle_ != nullptr)
         return EB_ErrorNone;
+    std::string full_path = get_vector_path() + "/" + file_name_.c_str();
 
-    file_handle_ = fopen(file_name_.c_str(), "rb");
+    file_handle_ = fopen(full_path.c_str(), "rb");
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
 
@@ -82,13 +84,13 @@ EbErrorType Y4MVideoSource::open_source() {
 
     current_frame_index_ = -1;
 #ifdef ENABLE_DEBUG_MONITOR
-    // monitor = new VideoMonitor(
-    //     width_with_padding_,
-    //     height_with_padding_,
-    //     (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
-    //     bit_depth_,
-    //     svt_compressed_2bit_plane,
-    //     "Y4M Source");
+    monitor = new VideoMonitor(
+        width_with_padding_,
+        height_with_padding_,
+        (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
+        bit_depth_,
+        svt_compressed_2bit_plane,
+        "Y4M Source");
 #endif
 
     return EB_ErrorNone;
@@ -124,7 +126,7 @@ EbSvtIOFormat* Y4MVideoSource::get_frame_by_index(const uint32_t index) {
 }
 
 EbSvtIOFormat* Y4MVideoSource::get_next_frame() {
-    //printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
+    // printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
@@ -375,7 +377,7 @@ uint32_t Y4MVideoSource::read_input_frame() {
     const uint32_t righ_padding = width_with_padding_ - width_;
     size_t read_len = 0;
     uint32_t i;
-    if (bit_depth_ <= 8 || (bit_depth_ >= 8 && !svt_compressed_2bit_plane)) {
+    if (bit_depth_ <= 8 || (bit_depth_ > 8 && !svt_compressed_2bit_plane)) {
         uint8_t* eb_input_ptr = nullptr;
         // Y
         eb_input_ptr = frame_buffer_->luma;
@@ -444,7 +446,7 @@ uint32_t Y4MVideoSource::read_input_frame() {
             eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
             filled_len += frame_buffer_->cr_stride * pixel_byte_size;
         }
-    } else if (bit_depth_ >= 8 && svt_compressed_2bit_plane) {
+    } else if (bit_depth_ > 8 && svt_compressed_2bit_plane) {
         uint8_t* eb_input_ptr = nullptr;
         uint8_t* eb_ext_input_ptr = nullptr;
         // Y

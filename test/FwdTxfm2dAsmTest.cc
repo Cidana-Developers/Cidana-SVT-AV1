@@ -109,8 +109,8 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
           gen_(deterministic_seed) {
         decltype(dist_nbit_)::param_type param{-(1 << bd_) + 1, (1 << bd_) - 1};
         dist_nbit_.param(param);
-        width_ = get_txb_wide(tx_size_);
-        height_ = get_txb_high(tx_size_);
+        width_ = tx_size_wide[tx_size_];
+        height_ = tx_size_high[tx_size_];
         memset(output_test_, 0, sizeof(output_test_));
         memset(output_ref_, 255, sizeof(output_ref_));  // -1
     }
@@ -128,19 +128,8 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             // tx_type and tx_size are not compatible in the av1-spec.
             // like the max size of adst transform is 16, and max size of
             // identity transform is 32.
-            if (is_txfm_allowed(type, width_, height_) == false)
+            if (is_txfm_allowed(type, tx_size_) == false)
                 continue;
-
-            // Some tx_type is not implemented yet, so we will skip this;
-            if (is_tx_type_imp(type) == false)
-                continue;
-
-            // Some tx_type is implemented but will crash the unit test.
-            // Skip this kind of test and fail it instead.
-            if (is_crash_case(tx_size_, type)) {
-                FAIL();
-                continue;
-            }
 
             const int loops = 100;
             for (int k = 0; k < loops; k++) {
@@ -161,26 +150,6 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     }
 
   private:
-    // TODO(wenyao): update these cases as these issues are fixed.
-    bool is_crash_case(const TxSize tx_size, TxType tx_type) {
-        std::vector<TxSize> crashed_tx_sizes = {TX_16X16,
-                                                TX_32X32,
-                                                TX_64X64,
-                                                TX_8X4,
-                                                TX_16X32,
-                                                TX_32X16,
-                                                TX_32X64,
-                                                TX_64X32,
-                                                TX_16X4,
-                                                TX_8X32,
-                                                TX_32X8,
-                                                TX_16X64,
-                                                TX_64X16};
-        auto pos = std::find(
-            crashed_tx_sizes.begin(), crashed_tx_sizes.end(), tx_size_);
-        return pos == crashed_tx_sizes.end() ? false : true;
-    }
-
     void populate_with_random() {
         for (int i = 0; i < height_; i++) {
             for (int j = 0; j < width_; j++) {
@@ -189,35 +158,6 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
         }
 
         return;
-    }
-
-    bool is_tx_type_imp(TxType type) {
-        switch (tx_size_) {
-        case TX_64X64:
-        case TX_16X32:
-        case TX_32X8:
-        case TX_8X32:
-            if (type == IDTX || type == DCT_DCT)
-                return true;
-            else
-                return false;
-        case TX_32X16: return type == IDTX ? true : false;
-        case TX_16X8:
-        case TX_8X16:
-        case TX_32X64:
-        case TX_64X32:
-        case TX_16X64:
-        case TX_64X16:
-        case TX_4X8:
-        case TX_8X4:
-        case TX_4X16:
-        case TX_16X4:
-        case TX_32X32:
-        case TX_16X16:
-        case TX_8X8:
-        case TX_4X4: return true;
-        default: return false;
-        }
     }
 
   private:
