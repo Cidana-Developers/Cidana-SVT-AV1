@@ -18,12 +18,13 @@
 #ifdef ENABLE_DEBUG_MONITOR
 #include "VideoMonitor.h"
 #endif
-
+namespace svt_av1_video_source {
 class Y4MVideoSource : public VideoSource {
   public:
-    Y4MVideoSource(const std::string &file_name, const VideoImageFormat format,
+    Y4MVideoSource(const std::string &file_name, const VideoColorFormat format,
                    const uint32_t width, const uint32_t height,
-                   const uint8_t bit_depth);
+                   const uint8_t bit_depth,
+                   const bool use_compressed_2bit_plan_output);
     ~Y4MVideoSource();
     /*!\brief Prepare stream. */
     EbErrorType open_source() override;
@@ -46,4 +47,5 @@ class Y4MVideoSource : public VideoSource {
     VideoMonitor *monitor;
 #endif
 };
+}  // namespace svt_av1_video_source
 #endif  //_SVT_TEST_Y4M_VIDEO_SOURCE_H_

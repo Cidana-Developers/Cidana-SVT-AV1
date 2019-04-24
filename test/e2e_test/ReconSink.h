@@ -152,6 +152,7 @@ class ReconSink {
             lumaSize = lumaSize << 1;
             chromaSize = lumaSize;
             break;
+        default: break;
         }
         return lumaSize + (2 * chromaSize);
     }
@@ -161,6 +162,12 @@ class ReconSink {
     VideoFrameParam video_param_; /**< video frame parameters*/
     uint32_t frame_size_;         /**< size of video frame*/
     uint32_t frame_count_;        /**< maximun number of video frames*/
+};
+
+class ICompareSink {
+  public:
+    virtual bool compare_video(const VideoFrame& frame) = 0;
+    virtual bool flush_video() = 0;
 };
 
 /** Interface of create a sink of reconstruction video frame with video
@@ -182,5 +189,16 @@ ReconSink* create_recon_sink(const VideoFrameParam& param,
  * nullptr -- creation failed
  */
 ReconSink* create_recon_sink(const VideoFrameParam& param);
+
+/** Interface of create a sink of reference frames to compare with recon
+ * parameters
+ * @param param  the parameter of video frame
+ * @param recon  the sink of recon video frame
+ * @return
+ * ReconSink -- the sink created
+ * nullptr -- creation failed
+ */
+ICompareSink* create_ref_compare_sink(const VideoFrameParam& param,
+                                      ReconSink* recon);
 
 #endif  // !_RECON_SINK_H_
