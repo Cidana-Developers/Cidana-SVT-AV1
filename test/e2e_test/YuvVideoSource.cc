@@ -18,7 +18,10 @@ YuvVideoSource::YuvVideoSource(const std::string &file_name,
                                const VideoColorFormat format,
                                const uint32_t width, const uint32_t height,
                                const uint8_t bit_depth)
-    : file_name_(file_name), file_handle_(nullptr) {
+    : file_name_(file_name),
+      file_handle_(nullptr),
+      file_length_(0),
+      frame_length_(0) {
     width_with_padding_ = width_ = width;
     height_with_padding_ = height_ = height;
     bit_depth_ = bit_depth;
@@ -53,8 +56,36 @@ EbErrorType YuvVideoSource::open_source() {
         return EB_ErrorInsufficientResources;
     }
 
-    // Seek to begin, and get first frame.
+    // Get file length
+    fseek(file_handle_, 0, SEEK_END);
+    file_length_ = ftell(file_handle_);
+
+    // Seek to begin
     fseek(file_handle_, 0, SEEK_SET);
+
+    frame_length_ = width_ * height_;
+
+    // Calculate frame length
+    switch (image_format_) {
+    case IMG_FMT_420P10_PACKED: {
+        frame_length_ *= 2;
+    }
+    case IMG_FMT_420: {
+        frame_length_ = frame_length_ * 3 / 2;
+    } break;
+    case IMG_FMT_422P10_PACKED: frame_length_ *= 2;
+    case IMG_FMT_422: {
+        frame_length_ = frame_length_ * 2;
+    } break;
+    case IMG_FMT_444P10_PACKED: frame_length_ *= 2;
+    case IMG_FMT_444: {
+        frame_length_ = frame_length_ * 3;
+    } break;
+    default: break;
+    }
+
+    // Calculate frame count
+    frame_count_ = file_length_ / frame_length_;
 
     current_frame_index_ = -1;
 

@@ -37,6 +37,8 @@ class YuvVideoSource : public VideoSource {
     uint32_t read_input_frame();
     std::string file_name_;
     FILE *file_handle_;
+    uint32_t frame_length_;
+    uint32_t file_length_;
 };
 }  // namespace svt_av1_video_source
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_
