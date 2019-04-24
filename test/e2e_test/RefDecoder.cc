@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Netflix Corporation
+ * Copyright(c) 2019 Netflix, Inc. 
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
 /******************************************************************************
