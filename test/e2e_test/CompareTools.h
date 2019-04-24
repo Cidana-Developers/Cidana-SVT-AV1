@@ -6,7 +6,7 @@
 /******************************************************************************
  * @file CompareTools.h
  *
- * @brief Defines a tool set for comparism
+ * @brief Defines a tool set for compare recon frame and decoded frame.
  *
  * @author Cidana-Ryan Cidana-Edmond
  *
@@ -17,15 +17,17 @@
 
 #include <stdint.h>
 #include <math.h>
+#include <float.h>
 #include "ReconSink.h"
 
 namespace svt_av1_e2e_tools {
 static inline bool compare_image(const ReconSink::ReconMug *recon,
-                                 VideoFrame *ref_frame, VideoImageFormat fmt) {
+                                 const VideoFrame *ref_frame,
+                                 VideoColorFormat fmt) {
     const uint32_t width = ref_frame->disp_width;
     const uint32_t height = ref_frame->disp_height;
     unsigned int i = 0;
-    // Support 420 only, need add more code for 422 & 444.
+    // TODO(Ryan): Support 420 only, need add more code for 422 & 444.
     if (fmt != IMG_FMT_420 && fmt != IMG_FMT_420P10_PACKED)
         return true;
     if (ref_frame->bits_per_sample == 8) {
@@ -106,7 +108,7 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
 static inline double psnr_8bit(const uint8_t *p1, const uint8_t *p2,
                                const uint32_t size) {
     // Assert that, p1 p2 hase same size and no stirde issue.
-    double mse = 0.0;
+    double mse = 0.1; /* avoid NaN issue */
     for (uint32_t i = 0; i < size; i++) {
         const uint8_t I = p1[i];
         const uint8_t K = p2[i];
@@ -126,7 +128,7 @@ static inline double psnr_8bit(const uint8_t *p1, const uint8_t *p2,
 static inline double psnr_8bit(const uint8_t *p1, const uint32_t stride1,
                                const uint8_t *p2, const uint32_t stride2,
                                const uint32_t width, const uint32_t height) {
-    double mse = 0.0;
+    double mse = 0.1; /* avoid NaN issue */
     for (size_t y = 0; y < height; y++) {
         const uint8_t *s = p1 + (y * stride1);
         /** walk-around for decoder output is in 16bit */
@@ -148,7 +150,7 @@ static inline double psnr_8bit(const uint8_t *p1, const uint32_t stride1,
 static inline double psnr_10bit(const uint16_t *p1, const uint16_t *p2,
                                 const uint32_t size) {
     // Assert that, p1 p2 hase same size and no stirde issue.
-    double mse = 0.0;
+    double mse = 0.1; /* vaoid NaN issue */
     for (uint32_t i = 0; i < size; i++) {
         const uint16_t I = p1[i] & 0x3FF;
         const uint16_t K = p2[i] & 0x3FF;
@@ -168,7 +170,7 @@ static inline double psnr_10bit(const uint16_t *p1, const uint16_t *p2,
 static inline double psnr_10bit(const uint16_t *p1, const uint32_t stride1,
                                 const uint16_t *p2, const uint32_t stride2,
                                 const uint32_t width, const uint32_t height) {
-    double mse = 0.0;
+    double mse = 0.1;
     for (size_t y = 0; y < height; y++) {
         const uint16_t *s = p1 + (y * stride1);
         const uint16_t *d = p2 + (y * stride2);
@@ -185,6 +187,54 @@ static inline double psnr_10bit(const uint16_t *p1, const uint32_t stride1,
     }
     return psnr;
 }
+
+class PsnrStatistics {
+  public:
+    PsnrStatistics() {
+        reset();
+    }
+    ~PsnrStatistics() {
+    }
+    void add(const double psnr_luma, const double psnr_cb,
+             const double psnr_cr) {
+        psnr_luma_ += psnr_luma;
+        psnr_cb_ += psnr_cb;
+        psnr_cr_ += psnr_cr;
+        psnr_total_ += (psnr_luma + psnr_cb + psnr_cr) / 3;
+        ++count_;
+    }
+
+    void get_statistics(int &count, double &total, double &luma, double &cb,
+                        double &cr) {
+        count = count_;
+        if (count != 0) {
+            total = psnr_total_ / count_;
+            luma = psnr_luma_ / count_;
+            cb = psnr_cb_ / count_;
+            cr = psnr_cr_ / count_;
+        } else {
+            total = 0;
+            luma = 0;
+            cb = 0;
+            cr = 0;
+        }
+    }
+
+    void reset() {
+        psnr_total_ = 0;
+        psnr_luma_ = 0;
+        psnr_cb_ = 0;
+        psnr_cr_ = 0;
+        count_ = 0;
+    }
+
+  private:
+    double psnr_total_;
+    double psnr_luma_;
+    double psnr_cb_;
+    double psnr_cr_;
+    int count_;
+};
 
 }  // namespace svt_av1_e2e_tools
 #endif  // !_COMPARE_TOOLS_H_

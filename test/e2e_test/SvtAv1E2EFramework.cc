@@ -107,7 +107,8 @@ void SvtAv1E2ETestBase::SetUp() {
     ctxt_.enc_params.source_width = width;
     ctxt_.enc_params.source_height = height;
     ctxt_.enc_params.encoder_bit_depth = bit_depth;
-    ctxt_.enc_params.ten_bit_format = 1;
+    ctxt_.enc_params.compressed_ten_bit_format =
+        video_src_->get_compressed_10bit_mode();
     ctxt_.enc_params.recon_enabled = 0;
 
     //
@@ -196,7 +197,7 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     const TestVideoVector &vector) {
     VideoSource *video_src = nullptr;
     switch (std::get<1>(vector)) {
-    case YUM_VIDEO_FILE:
+    case YUV_VIDEO_FILE:
         video_src = new YuvVideoSource(std::get<0>(vector),
                                        std::get<2>(vector),
                                        std::get<3>(vector),
@@ -208,7 +209,8 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
                                        std::get<2>(vector),
                                        std::get<3>(vector),
                                        std::get<4>(vector),
-                                       std::get<5>(vector));
+                                       std::get<5>(vector),
+                                       std::get<6>(vector));
         break;
     default: assert(0); break;
     }
@@ -220,14 +222,9 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     recon_sink_ = nullptr;
     refer_dec_ = nullptr;
     output_file_ = nullptr;
-#ifdef ENABLE_DEBUG_MONITOR
-    recon_monitor_ = nullptr;
-    ref_monitor_ = nullptr;
-#endif
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
-    recon_eos_from_enc = 0;
-    input_eos_from_enc = 0;
+    ref_compare_ = nullptr;
 }
 
 svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
@@ -252,16 +249,10 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
         delete psnr_src_;
         psnr_src_ = nullptr;
     }
-#ifdef ENABLE_DEBUG_MONITOR
-    if (recon_monitor_) {
-        delete recon_monitor_;
-        recon_monitor_ = nullptr;
+    if (ref_compare_) {
+        delete ref_compare_;
+        ref_compare_ = nullptr;
     }
-    if (ref_monitor_) {
-        delete ref_monitor_;
-        ref_monitor_ = nullptr;
-    }
-#endif
 }
 
 /** initialization for test */
@@ -345,9 +336,6 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                               return_error = eb_svt_enc_send_picture(
                                   ctxt_.enc_handle, &headerPtrLast))
                         << "eb_svt_enc_send_picture EOS error";
-                    // mark the input eos flag
-                    if (headerPtrLast.flags & EB_BUFFERFLAG_EOS)
-                        input_eos_from_enc = 1;
                 }
             }
         }
@@ -355,9 +343,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         // recon
         if (recon_sink_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
-            rec_file_eos = recon_sink_->is_compelete();
             if (!rec_file_eos)
-                get_recon_frame();
+                get_recon_frame(rec_file_eos);
         }
 
         if (!enc_file_eos) {
@@ -366,8 +353,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                 EbBufferHeaderType *enc_out = nullptr;
                 {
                     TimeAutoCount counter(ENCODING, collect_);
-                    int pic_send_done =
-                        (input_eos_from_enc && recon_eos_from_enc) ? 1 : 0;
+                    int pic_send_done = (src_file_eos && rec_file_eos) ? 1 : 0;
                     return_error = eb_svt_get_packet(
                         ctxt_.enc_handle, &enc_out, pic_send_done);
                     ASSERT_NE(return_error, EB_ErrorMax)
@@ -401,6 +387,31 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
         }
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 
+    /** complete the reference buffers in list comparison with recon */
+    if (ref_compare_) {
+        TimeAutoCount counter(CONFORMANCE, collect_);
+        ASSERT_TRUE(ref_compare_->flush_video());
+        delete ref_compare_;
+        ref_compare_ = nullptr;
+    }
+
+    /** PSNR report */
+    int count = 0;
+    double psnr[4];
+    pnsr_statistics_.get_statistics(count, psnr[0], psnr[1], psnr[2], psnr[3]);
+    if (count > 0) {
+        printf(
+            "PSNR: %d frames, total: %0.4f, luma: %0.4f, cb: %0.4f, cr: "
+            "%0.4f\r\n",
+            count,
+            psnr[0],
+            psnr[1],
+            psnr[2],
+            psnr[3]);
+    }
+    pnsr_statistics_.reset();
+
+    /** performance report */
     if (collect_) {
         frame_count = video_src_->get_frame_count();
         uint64_t total_enc_time = collect_->read_count(ENCODING);
@@ -488,8 +499,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
 
     case (EB_BUFFERFLAG_HAS_TD | EB_BUFFERFLAG_SHOW_EXT):
 
-        // terminate previous ivf packet, update the combined size of packets
-        // sent
+        // terminate previous ivf packet, update the combined size of
+        // packets sent
         update_prev_ivf_header(output_file_);
 
         // Write a new IVF frame header to file as a TD is in the packet
@@ -501,8 +512,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
                output->n_filled_len - (obu_frame_header_size_ + TD_SIZE),
                output_file_->file);
 
-        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
-        // packet to show another frame, a new IVF is needed
+        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to
+        // the packet to show another frame, a new IVF is needed
         write_ivf_frame_header(output_file_,
                                (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer + output->n_filled_len -
@@ -515,8 +526,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
 
     case (EB_BUFFERFLAG_HAS_TD):
 
-        // terminate previous ivf packet, update the combined size of packets
-        // sent
+        // terminate previous ivf packet, update the combined size of
+        // packets sent
         update_prev_ivf_header(output_file_);
 
         // Write a new IVF frame header to file as a TD is in the packet
@@ -537,12 +548,12 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
         output_file_->byte_count_since_ivf +=
             (output->n_filled_len - (obu_frame_header_size_ + TD_SIZE));
 
-        // terminate previous ivf packet, update the combined size of packets
-        // sent
+        // terminate previous ivf packet, update the combined size of
+        // packets sent
         update_prev_ivf_header(output_file_);
 
-        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to the
-        // packet to show another frame, a new IVF is needed
+        // An EB_BUFFERFLAG_SHOW_EXT means that another TD has been added to
+        // the packet to show another frame, a new IVF is needed
         write_ivf_frame_header(output_file_,
                                (obu_frame_header_size_ + TD_SIZE));
         fwrite(output->p_buffer + output->n_filled_len -
@@ -596,61 +607,20 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
     VideoFrame ref_frame;
     memset(&ref_frame, 0, sizeof(ref_frame));
     while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
-#ifdef ENABLE_DEBUG_MONITOR
-        if (ref_monitor_ == nullptr) {
-            ref_monitor_ = new VideoMonitor(ref_frame.width,
-                                            ref_frame.height,
-                                            ref_frame.stride[0],
-                                            ref_frame.bits_per_sample,
-                                            true,
-                                            "Ref decode");
-        }
-        if (ref_monitor_) {
-            ref_monitor_->draw_frame(
-                ref_frame.planes[0], ref_frame.planes[1], ref_frame.planes[2]);
-        }
-#endif
-        // compare tools
         if (recon_sink_) {
-            // Compare ref decode output with recon
-            // output.
-            const ReconSink::ReconMug *mug =
-                recon_sink_->take_mug(ref_frame.timestamp);
-            if (mug) {
-                uint32_t luma_len = video_src_->get_width_with_padding() *
-                                    video_src_->get_height_with_padding() *
-                                    (video_src_->get_bit_depth() > 8 ? 2 : 1);
-
-#ifdef ENABLE_DEBUG_MONITOR
-                // Output to monitor for debug
-                if (recon_monitor_ == nullptr) {
-                    recon_monitor_ = new VideoMonitor(
-                        video_src_->get_width_with_padding(),
-                        video_src_->get_height_with_padding(),
-                        (video_src_->get_bit_depth() > 8)
-                            ? video_src_->get_width_with_padding() * 2
-                            : video_src_->get_width_with_padding(),
-                        video_src_->get_bit_depth(),
-                        true,
-                        "Recon");
-                }
-                if (recon_monitor_) {
-                    recon_monitor_->draw_frame(mug->mug_buf,
-                                               mug->mug_buf + luma_len,
-                                               mug->mug_buf + luma_len * 5 / 4);
-                }
-#endif
-
-                // Do compare image
-                ASSERT_EQ(compare_image(
-                              mug, &ref_frame, video_src_->get_image_format()),
-                          true)
-                    << "image compare failed on " << ref_frame.timestamp;
-
-                check_psnr(ref_frame);
+            // compare tools
+            if (ref_compare_ == nullptr) {
+                ref_compare_ = create_ref_compare_sink(ref_frame, recon_sink_);
+                ASSERT_NE(ref_compare_, nullptr);
             }
+            // Compare ref decode output with recon output.
+            ASSERT_TRUE(ref_compare_->compare_video(ref_frame))
+                << "image compare failed on " << ref_frame.timestamp;
+
+            // PSNR tool
+            check_psnr(ref_frame);
         }
-    };
+    }
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
@@ -703,11 +673,12 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
                                  frame.width >> 1,
                                  frame.height >> 1);
         }
-        printf("Do psnr %0.4f, %0.4f, %0.4f\r\n", luma_psnr, cb_psnr, cr_psnr);
+        pnsr_statistics_.add(luma_psnr, cb_psnr, cr_psnr);
+        // TODO: Check PSNR value reasonable here?
     }
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {
+void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
     do {
         ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
         ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
@@ -732,7 +703,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame() {
                 << "recon frame size incorrect@" << recon_frame.pts;
             // mark the recon eos flag
             if (recon_frame.flags & EB_BUFFERFLAG_EOS)
-                recon_eos_from_enc = 1;
+                is_eos = true;
             new_mug->filled_size = recon_frame.n_filled_len;
             new_mug->time_stamp = recon_frame.pts;
             new_mug->tag = recon_frame.flags;

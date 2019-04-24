@@ -1,8 +1,7 @@
 /*
-* Copyright(c) 2019 Netflix, Inc.
-* SPDX - License - Identifier: BSD - 2 - Clause - Patent
-*/
-
+ * Copyright(c) 2019 Netflix Corporation
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
+ */
 /******************************************************************************
  * @file RefDecoder.cc
  *
@@ -25,7 +24,7 @@ RefDecoder *create_reference_decoder() {
     return decoder;
 }
 
-static VideoImageFormat trans_video_format(aom_img_fmt_t fmt) {
+static VideoColorFormat trans_video_format(aom_img_fmt_t fmt) {
     switch (fmt) {
     case AOM_IMG_FMT_YV12: return IMG_FMT_YV12;
     case AOM_IMG_FMT_I420: return IMG_FMT_NV12;
@@ -92,3 +91,4 @@ void RefDecoder::trans_video_frame(const aom_image_t *image,
     frame.bits_per_sample = image->bit_depth;
     frame.timestamp = ref_frame_cnt_++;
 }
+

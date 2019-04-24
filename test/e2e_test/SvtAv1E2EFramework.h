@@ -18,10 +18,10 @@
 #include "E2eTestVectors.h"
 #include "ReconSink.h"
 #include "PerformanceCollect.h"
-#ifdef ENABLE_DEBUG_MONITOR
-#include "VideoMonitor.h"
-#endif
+#include "CompareTools.h"
 
+using namespace svt_av1_e2e_tools;
+using namespace svt_av1_video_source;
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
 
@@ -115,15 +115,15 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
      */
     void decode_compress_data(const uint8_t *data, const uint32_t size);
     /** check video frame psnr with source
-     * @param data  compressed data from encoder, single OBU
-     * @param size  size of compressed data
+     * @param frame  video frame from reference decoder
      */
     void check_psnr(const VideoFrame &frame);
 
   protected:
     /** get reconstruction frame from encoder, it should call after send data
+     * @param is_eos  flag of recon frames is eos
      * into decoder */
-    virtual void get_recon_frame();
+    virtual void get_recon_frame(bool &is_eos);
 
   protected:
     ReconSink *recon_sink_; /**< reconstruction frame collection */
@@ -132,12 +132,9 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect *collect_;   /**< performance and time collection*/
     VideoSource *psnr_src_;         /**< video source context for psnr */
-    int recon_eos_from_enc;         /**< notify no recon in encoder. */
-    int input_eos_from_enc;         /**< notify no input to encoder. */
-#ifdef ENABLE_DEBUG_MONITOR
-    VideoMonitor *recon_monitor_;
-    VideoMonitor *ref_monitor_;
-#endif
+    ICompareSink *ref_compare_; /**< sink of reference to compare with recon*/
+    svt_av1_e2e_tools::PsnrStatistics
+        pnsr_statistics_; /**< psnr statistics recorder.*/
 };
 
 }  // namespace svt_av1_e2e_test
