@@ -75,14 +75,14 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
 
   protected:
     void run_fwd_accuracy_check() {
-        SVTRandom rnd;
+        SVTRandom rnd(10, false);
         const int count_test_block = 1000;
         const int block_size =
             tx_size_wide[cfg_.tx_size] * tx_size_high[cfg_.tx_size];
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < block_size; ++ni) {
-                input_test_[ni] = rnd.random_10();
+                input_test_[ni] = rnd.random();
                 input_ref_[ni] = static_cast<double>(input_test_[ni]);
                 output_ref_[ni] = 0;
                 output_test_[ni] = 255;

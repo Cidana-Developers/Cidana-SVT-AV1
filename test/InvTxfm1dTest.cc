@@ -71,12 +71,12 @@ class AV1InvTxfm1dTest : public ::testing::TestWithParam<InvTxfm1dParam> {
     }
 
     void run_inv_accuracy_check() {
-        SVTRandom rnd;
+        SVTRandom rnd(10, true);
         const int count_test_block = 5000;
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
             for (int ni = 0; ni < txfm_size_; ++ni) {
-                input_[ni] = rnd.random_10s();
+                input_[ni] = rnd.random();
                 output_[ni] = 0;
                 inv_output_[ni] = 255;  // setup different output
             }
