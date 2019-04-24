@@ -15,6 +15,9 @@
 #include "SvtAv1E2EFramework.h"
 #include "../api_test/params.h"
 
+#define HIGH_LEVEL_TOOL 0
+#define LOW_LEVEL_TOOL 0
+
 /**
  * @brief SVT-AV1 encoder parameter coverage E2E test
  *
@@ -62,18 +65,52 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         SvtAv1E2ETestFramework::init_test();
     }
 
+    /** setup some of the params with related params modified before set to
+     * encoder */
+    void pre_process_param() {
+        if (!strcmp(param_name_str_.c_str(), "film_grain_denoise_strength")) {
+            ctxt_.enc_params.enable_denoise_flag = 1;
+        }
+        if (!strcmp(param_name_str_.c_str(), "target_bit_rate")) {
+            ctxt_.enc_params.rate_control_mode = 1;
+        }
+        if (!strcmp(param_name_str_.c_str(), "injector_frame_rate")) {
+            ctxt_.enc_params.speed_control_flag = 1;
+        }
+        if (!strcmp(param_name_str_.c_str(), "profile")) {
+            if (ctxt_.enc_params.profile == 1) {
+                /** profile(1) requires 8-bit YUV444 */
+                ASSERT_EQ(ctxt_.enc_params.encoder_bit_depth, 8);
+                ASSERT_EQ(ctxt_.enc_params.encoder_color_format, EB_YUV444);
+            }
+            if (ctxt_.enc_params.profile == 2) {
+                /** profile(2) requires 8-bit/10-bit YUV422 */
+                ASSERT_GE(ctxt_.enc_params.encoder_bit_depth, 8);
+                ASSERT_LE(ctxt_.enc_params.encoder_bit_depth, 10);
+                ASSERT_EQ(ctxt_.enc_params.encoder_color_format, EB_YUV422);
+            }
+        }
+    }
+
+    /** additional process after parameter test finish */
+    void post_process_param() {
+        // TODO: add process after test by params
+    }
+
   protected:
     std::string param_name_str_; /**< name of parameter for test */
 };
 
 /** Marcro defininition of batch processing check for default, valid, invalid
  * and special parameter check*/
-#define PARAM_TEST(param_test)                          \
+#define PARAM_TEST_WITH_VECTOR(param_test, vectors)     \
     TEST_P(param_test, run_paramter_conformance_test) { \
         run_conformance_test();                         \
     }                                                   \
-    INSTANTIATE_TEST_CASE_P(                            \
-        SVT_AV1, param_test, ::testing::ValuesIn(smoking_vectors));
+    INSTANTIATE_TEST_CASE_P(SVT_AV1, param_test, ::testing::ValuesIn(vectors));
+
+#define PARAM_TEST(param_test) \
+    PARAM_TEST_WITH_VECTOR(param_test, smoking_vectors)
 
 /** @breif This class is a template based on EncParamTestBase to test each
  * parameter
@@ -84,13 +121,15 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         test_name() : SvtAv1E2EParamBase(#param_name) {                   \
         }                                                                 \
         /** initialization for test */                                    \
-        void init_test(const size_t i) {                                  \
+        void init_test_index(const size_t i) {                            \
             collect_ = new PerformanceCollect(typeid(this).name());       \
             ctxt_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
+            pre_process_param();                                          \
             SvtAv1E2EParamBase::init_test();                              \
         }                                                                 \
         /** close for test */                                             \
         void close_test() override {                                      \
+            post_process_param();                                         \
             SvtAv1E2EParamBase::close_test();                             \
             if (collect_) {                                               \
                 delete collect_;                                          \
@@ -101,7 +140,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         void run_conformance_test() {                                     \
             for (size_t i = 0; i < SIZE_VALID_PARAM(param_name); ++i) {   \
                 SvtAv1E2EParamBase::SetUp();                              \
-                init_test(i);                                             \
+                init_test_index(i);                                       \
                 run_encode_process();                                     \
                 close_test();                                             \
                 SvtAv1E2EParamBase::TearDown();                           \
@@ -121,6 +160,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEncModeTest, enc_mode);
 PARAM_TEST(SvtAv1E2EParamEncModeTest);
 
+#if HIGH_LEVEL_TOOL
 /** Test case for intra_period_length*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamIntraPeridLenTest, intra_period_length);
 PARAM_TEST(SvtAv1E2EParamIntraPeridLenTest);
@@ -136,27 +176,19 @@ PARAM_TEST(SvtAv1E2EParamHierarchicalLvlTest);
 /** Test case for pred_structure*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamPredStructTest, pred_structure);
 PARAM_TEST(SvtAv1E2EParamPredStructTest);
+#endif  // HIGH_LEVEL_TOOL
 
-/** Test case for source_width*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSrcWidthTest, source_width);
-PARAM_TEST(SvtAv1E2EParamSrcWidthTest);
-
-/** Test case for source_height*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSrcHeightTest, source_height);
-PARAM_TEST(SvtAv1E2EParamSrcHeightTest);
+/** Test case for
+ * source_width <br>
+ * source_height <br>
+ * encoder_bit_depth <br>
+ * compressed_ten_bit_format <br>
+ * recon_enabled <br>
+ * are covered by conformance test*/
 
 /** Test case for frame_rate*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamFrameRateTest, frame_rate);
 PARAM_TEST(SvtAv1E2EParamFrameRateTest);
-
-/** Test case for encoder_bit_depth*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEncBitDepthTest, encoder_bit_depth);
-PARAM_TEST(SvtAv1E2EParamEncBitDepthTest);
-
-/** Test case for compressed_ten_bit_format*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamCompr10BitFmtTest,
-                        compressed_ten_bit_format);
-PARAM_TEST(SvtAv1E2EParamCompr10BitFmtTest);
 
 /** Test case for frames_to_be_encoded*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamFrame2EncTest, frames_to_be_encoded);
@@ -166,22 +198,31 @@ PARAM_TEST(SvtAv1E2EParamFrame2EncTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamImproveSharpTest, improve_sharpness);
 PARAM_TEST(SvtAv1E2EParamImproveSharpTest);
 
+#if LOW_LEVEL_TOOL
 /** Test case for sb_sz*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSbSizeTest, sb_sz);
 PARAM_TEST(SvtAv1E2EParamSbSizeTest);
+#endif  // LOW_LEVEL_TOOL
 
+#if HIGH_LEVEL_TOOL
 /** Test case for super_block_size*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSuperBlockSizeTest, super_block_size);
 PARAM_TEST(SvtAv1E2EParamSuperBlockSizeTest);
+#endif  // HIGH_LEVEL_TOOL
 
+#if LOW_LEVEL_TOOL
 /** Test case for partition_depth*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamPartitionDepthTest, partition_depth);
 PARAM_TEST(SvtAv1E2EParamPartitionDepthTest);
+#endif  // LOW_LEVEL_TOOL
 
+#if HIGH_LEVEL_TOOL
 /** Test case for qp*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamQPTest, qp);
 PARAM_TEST(SvtAv1E2EParamQPTest);
+#endif  // HIGH_LEVEL_TOOL
 
+#if LOW_LEVEL_TOOL
 /** Test case for use_qp_file*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamUseQPFileTest, use_qp_file);
 PARAM_TEST(SvtAv1E2EParamUseQPFileTest);
@@ -190,24 +231,31 @@ PARAM_TEST(SvtAv1E2EParamUseQPFileTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEnableQPScaleTest,
                         enable_qp_scaling_flag);
 PARAM_TEST(SvtAv1E2EParamEnableQPScaleTest);
+#endif  // LOW_LEVEL_TOOL
 
+#if HIGH_LEVEL_TOOL
 /** Test case for disable_dlf_flag*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamDisableDlfTest, disable_dlf_flag);
 PARAM_TEST(SvtAv1E2EParamDisableDlfTest);
+#endif  // HIGH_LEVEL_TOOL
 
 /** Test case for enable_denoise_flag*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEnableDenoiseTest, enable_denoise_flag);
 PARAM_TEST(SvtAv1E2EParamEnableDenoiseTest);
 
 /** Test case for film_grain_denoise_strength*/
+#if THIS_TEST_IS_DEATH
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamFilmGrainDenoiseStrTest,
                         film_grain_denoise_strength);
 PARAM_TEST(SvtAv1E2EParamFilmGrainDenoiseStrTest);
+#endif  // THIS_TEST_IS_DEATH
 
+#if LOW_LEVEL_TOOL
 /** Test case for enable_warped_motion*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEnableWarpedMotionTest,
                         enable_warped_motion);
 PARAM_TEST(SvtAv1E2EParamEnableWarpedMotionTest);
+#endif  // LOW_LEVEL_TOOL
 
 /** Test case for use_default_me_hme*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamUseDefaultMeHmeTest, use_default_me_hme);
@@ -217,9 +265,11 @@ PARAM_TEST(SvtAv1E2EParamUseDefaultMeHmeTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEnableHmeTest, enable_hme_flag);
 PARAM_TEST(SvtAv1E2EParamEnableHmeTest);
 
+#if LOW_LEVEL_TOOL
 /** Test case for ext_block_flag*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamExtBlockTest, ext_block_flag);
 PARAM_TEST(SvtAv1E2EParamExtBlockTest);
+#endif  // LOW_LEVEL_TOOL
 
 /** Test case for in_loop_me_flag*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamInLoopMeTest, in_loop_me_flag);
@@ -237,10 +287,13 @@ PARAM_TEST(SvtAv1E2EParamSearchAreaHeightTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamConstrainedIntraTest, constrained_intra);
 PARAM_TEST(SvtAv1E2EParamConstrainedIntraTest);
 
+#if LOW_LEVEL_TOOL
 /** Test case for rate_control_mode*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamRateCtrlModeTest, rate_control_mode);
 PARAM_TEST(SvtAv1E2EParamRateCtrlModeTest);
+#endif  // LOW_LEVEL_TOOL
 
+#if HIGH_LEVEL_TOOL
 /** Test case for scene_change_detection*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSceneChangeDectTest,
                         scene_change_detection);
@@ -250,11 +303,13 @@ PARAM_TEST(SvtAv1E2EParamSceneChangeDectTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamLookAheadDistanceTest,
                         look_ahead_distance);
 PARAM_TEST(SvtAv1E2EParamLookAheadDistanceTest);
+#endif  // HIGH_LEVEL_TOOL
 
 /** Test case for target_bit_rate*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamTargetBitRateTest, target_bit_rate);
 PARAM_TEST(SvtAv1E2EParamTargetBitRateTest);
 
+#if LOW_LEVEL_TOOL
 /** Test case for max_qp_allowed*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamMaxQPAllowTest, max_qp_allowed);
 PARAM_TEST(SvtAv1E2EParamMaxQPAllowTest);
@@ -262,15 +317,18 @@ PARAM_TEST(SvtAv1E2EParamMaxQPAllowTest);
 /** Test case for min_qp_allowed*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamMinQPAllowTest, min_qp_allowed);
 PARAM_TEST(SvtAv1E2EParamMinQPAllowTest);
+#endif  // LOW_LEVEL_TOOL
 
 /** Test case for high_dynamic_range_input*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamHighDynamicRangeInputTest,
                         high_dynamic_range_input);
 PARAM_TEST(SvtAv1E2EParamHighDynamicRangeInputTest);
 
+#if HIGH_LEVEL_TOOL
 /** Test case for profile*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamProfileTest, profile);
 PARAM_TEST(SvtAv1E2EParamProfileTest);
+#endif  // HIGH_LEVEL_TOOL
 
 /** Test case for tier*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamTierTest, tier);
@@ -284,13 +342,14 @@ PARAM_TEST(SvtAv1E2EParamLevelTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamAsmTypeTest, asm_type);
 PARAM_TEST(SvtAv1E2EParamAsmTypeTest);
 
+#if MULIT_INSTANCE_TEST_CASE
 /** Test case for channel_id*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamChIdTest, channel_id);
 PARAM_TEST(SvtAv1E2EParamChIdTest);
-
 /** Test case for active_channel_count*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamActiveChCountTest, active_channel_count);
 PARAM_TEST(SvtAv1E2EParamActiveChCountTest);
+#endif  // MULIT_INSTANCE_TEST_CASE
 
 /** Test case for speed_control_flag*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSpeedCtrlTest, speed_control_flag);
@@ -310,11 +369,8 @@ PARAM_TEST(SvtAv1E2EParamLogicalProcessorsTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamTargetSocketTest, target_socket);
 PARAM_TEST(SvtAv1E2EParamTargetSocketTest);
 
-/** Test case for recon_enabled*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamReconEnabledTest, recon_enabled);
-PARAM_TEST(SvtAv1E2EParamReconEnabledTest);
-
 #if TILES
+#if HIGH_LEVEL_TOOL
 /** Test case for tile_columns*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamTileColsTest, tile_columns);
 PARAM_TEST(SvtAv1E2EParamTileColsTest);
@@ -322,4 +378,5 @@ PARAM_TEST(SvtAv1E2EParamTileColsTest);
 /** Test case for tile_rows*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamTileRowsTest, tile_rows);
 PARAM_TEST(SvtAv1E2EParamTileRowsTest);
+#endif  // HIGH_LEVEL_TOOL
 #endif
