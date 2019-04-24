@@ -30,6 +30,39 @@ extern RefDecoder *create_reference_decoder();
  */
 namespace svt_av1_e2e_test {
 
+#define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
+#define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
+#define INPUT_SIZE_1080p_TH 0x1AB3F0  // 1.75 Million
+#define INPUT_SIZE_4K_TH 0x29F630     // 2.75 Million
+#define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(resolution_size) \
+    ((resolution_size) < (INPUT_SIZE_1080i_TH)           \
+         ? 0x1E8480                                      \
+         : (resolution_size) < (INPUT_SIZE_1080p_TH)     \
+               ? 0x2DC6C0                                \
+               : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
+
+#define LONG_ENCODE_FRAME_ENCODE 4000
+#define SPEED_MEASUREMENT_INTERVAL 2000
+#define START_STEADY_STATE 1000
+#define AV1_FOURCC 0x31305641  // used for ivf header
+#define IVF_STREAM_HEADER_SIZE 32
+#define IVF_FRAME_HEADER_SIZE 12
+#define OBU_FRAME_HEADER_SIZE 3
+#define TD_SIZE 2
+static __inline void mem_put_le32(void *vmem, int32_t val) {
+    uint8_t *mem = (uint8_t *)vmem;
+    mem[0] = (uint8_t)((val >> 0) & 0xff);
+    mem[1] = (uint8_t)((val >> 8) & 0xff);
+    mem[2] = (uint8_t)((val >> 16) & 0xff);
+    mem[3] = (uint8_t)((val >> 24) & 0xff);
+}
+#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
+static __inline void mem_put_le16(void *vmem, int32_t val) {
+    uint8_t *mem = (uint8_t *)vmem;
+    mem[0] = (uint8_t)((val >> 0) & 0xff);
+    mem[1] = (uint8_t)((val >> 8) & 0xff);
+}
+
 using namespace svt_av1_e2e_test_vector;
 
 /** SvtAv1Context is a set of test contexts in whole test progress */
@@ -60,8 +93,11 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
     /** test processing body */
     virtual void run_encode_process() = 0;
 
-  protected:
+  public:
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
+
+  protected:
+    void trans_src_param();
 
   protected:
     VideoSource *video_src_; /**< video source context */
@@ -134,6 +170,7 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     ICompareSink *ref_compare_; /**< sink of reference to compare with recon*/
     svt_av1_e2e_tools::PsnrStatistics
         pnsr_statistics_; /**< psnr statistics recorder.*/
+    uint64_t total_enc_out_;
 };
 
 }  // namespace svt_av1_e2e_test

@@ -19,17 +19,6 @@
 #include "SvtAv1E2EFramework.h"
 #include "CompareTools.h"
 
-#define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
-#define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
-#define INPUT_SIZE_1080p_TH 0x1AB3F0  // 1.75 Million
-#define INPUT_SIZE_4K_TH 0x29F630     // 2.75 Million
-#define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(resolution_size) \
-    ((resolution_size) < (INPUT_SIZE_1080i_TH)           \
-         ? 0x1E8480                                      \
-         : (resolution_size) < (INPUT_SIZE_1080p_TH)     \
-               ? 0x2DC6C0                                \
-               : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
-
 #if _WIN32
 #define fseeko64 _fseeki64
 #define ftello64 _ftelli64
@@ -39,28 +28,6 @@
 #define ftello64 ftell
 #define FOPEN(f, s, m) f = fopen(s, m)
 #endif
-
-#define LONG_ENCODE_FRAME_ENCODE 4000
-#define SPEED_MEASUREMENT_INTERVAL 2000
-#define START_STEADY_STATE 1000
-#define AV1_FOURCC 0x31305641  // used for ivf header
-#define IVF_STREAM_HEADER_SIZE 32
-#define IVF_FRAME_HEADER_SIZE 12
-#define OBU_FRAME_HEADER_SIZE 3
-#define TD_SIZE 2
-static __inline void mem_put_le32(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-    mem[2] = (uint8_t)((val >> 16) & 0xff);
-    mem[3] = (uint8_t)((val >> 24) & 0xff);
-}
-#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
-static __inline void mem_put_le16(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-}
 
 using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_tools;
@@ -162,9 +129,7 @@ void SvtAv1E2ETestBase::TearDown() {
 /** initialization for test */
 void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
-    /** TODO: encoder_color_format should be set with input source format*/
-    ctxt_.enc_params.encoder_color_format = EB_YUV420;
-    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
+    trans_src_param();
     return_error =
         eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
@@ -216,6 +181,36 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     return video_src;
 }
 
+void svt_av1_e2e_test::SvtAv1E2ETestBase::trans_src_param() {
+    VideoColorFormat fmt = video_src_->get_image_format();
+    ctxt_.enc_params.encoder_bit_depth = 8;
+    switch (fmt) {
+    case IMG_FMT_420:
+    case IMG_FMT_420P10_PACKED:
+        ctxt_.enc_params.encoder_color_format = EB_YUV420;
+        break;
+    case IMG_FMT_422:
+    case IMG_FMT_422P10_PACKED:
+        ctxt_.enc_params.encoder_color_format = EB_YUV422;
+        break;
+    case IMG_FMT_444:
+    case IMG_FMT_444P10_PACKED:
+        ctxt_.enc_params.encoder_color_format = EB_YUV444;
+        break;
+    default: assert(0); break;
+    }
+    switch (fmt) {
+    case IMG_FMT_420:
+    case IMG_FMT_422:
+    case IMG_FMT_444: ctxt_.enc_params.encoder_bit_depth = 8; break;
+    case IMG_FMT_420P10_PACKED:
+    case IMG_FMT_422P10_PACKED:
+    case IMG_FMT_444P10_PACKED: ctxt_.enc_params.encoder_bit_depth = 10; break;
+    default: assert(0); break;
+    }
+    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
+}
+
 svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     : psnr_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
     recon_sink_ = nullptr;
@@ -224,6 +219,7 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
     ref_compare_ = nullptr;
+    total_enc_out_ = 0;
 }
 
 svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
@@ -269,6 +265,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::init_test() {
     ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
     EbErrorType err = psnr_src_->open_source();
     ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
+    total_enc_out_ = 0;
 }
 
 void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
