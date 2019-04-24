@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Netflix, Inc. 
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
 /******************************************************************************
@@ -91,4 +91,3 @@ void RefDecoder::trans_video_frame(const aom_image_t *image,
     frame.bits_per_sample = image->bit_depth;
     frame.timestamp = ref_frame_cnt_++;
 }
-
