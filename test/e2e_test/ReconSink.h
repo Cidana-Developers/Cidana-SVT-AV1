@@ -152,6 +152,7 @@ class ReconSink {
             lumaSize = lumaSize << 1;
             chromaSize = lumaSize;
             break;
+        default: break;
         }
         return lumaSize + (2 * chromaSize);
     }

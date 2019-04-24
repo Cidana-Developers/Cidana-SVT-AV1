@@ -15,8 +15,8 @@
 
 #include <memory.h>
 
-/** VideoImageFormat defines the format of YUV video */
-typedef enum VideoImageFormat {
+/** VideoColorFormat defines the format of YUV video */
+typedef enum VideoColorFormat {
     IMG_FMT_YV12,
     IMG_FMT_420 = IMG_FMT_YV12,
     IMG_FMT_422,
@@ -28,11 +28,11 @@ typedef enum VideoImageFormat {
     IMG_FMT_YV12_CUSTOM_COLOR_SPACE,
     IMG_FMT_NV12_CUSTOM_COLOR_SPACE,
     IMG_FMT_444A,
-} VideoImageFormat;
+} VideoColorFormat;
 
 /** VideoFrameParam defines the basic parameters of video frame */
 typedef struct VideoFrameParam {
-    VideoImageFormat format;
+    VideoColorFormat format;
     uint32_t width;
     uint32_t height;
 } VideoFrameParam;
@@ -53,42 +53,26 @@ typedef struct VideoFrame : public VideoFrameParam {
     VideoFrame(const VideoFrame &origin) {
         *this = origin;
         is_own_buf = true;
-        uint32_t luma_len = stride[0] * height * (bits_per_sample > 8 ? 2 : 1);
-        planes[0] = new uint8_t[luma_len];
-        if (planes[0])
-            memcpy(planes[0], origin.planes[0], luma_len);
-        planes[1] = new uint8_t[luma_len];
-        if (planes[1]) {  // TODO: only support 420
-            memcpy(planes[1], origin.planes[1], luma_len >> 2);
-        }
-        planes[2] = new uint8_t[luma_len];
-        if (planes[2]) {  // TODO: only support 420
-            memcpy(planes[2], origin.planes[2], luma_len >> 2);
-        }
-        if (origin.planes[3]) {
-            planes[3] = new uint8_t[luma_len];
-            if (planes[3]) {  // aloha channel
-                memcpy(planes[3], origin.planes[3], luma_len);
+        const uint32_t luma_len =
+            stride[0] * height * (bits_per_sample > 8 ? 2 : 1);
+        for (int i = 0; i < 4; ++i) {
+            if (i != 3 || origin.planes[i]) {
+                const int buffer_len =
+                    (i == 1 || i == 2) ? luma_len >> 2 : luma_len;
+                planes[i] = new uint8_t[buffer_len];
+                if (planes[i]) {
+                    memcpy(planes[i], origin.planes[i], buffer_len);
+                }
             }
         }
     }
     ~VideoFrame() {
         if (is_own_buf) {
-            if (planes[0]) {
-                delete[] planes[0];
-                planes[0] = nullptr;
-            }
-            if (planes[1]) {
-                delete[] planes[1];
-                planes[1] = nullptr;
-            }
-            if (planes[2]) {
-                delete[] planes[2];
-                planes[2] = nullptr;
-            }
-            if (planes[3]) {
-                delete[] planes[3];
-                planes[3] = nullptr;
+            for (int i = 0; i < 4; ++i) {
+                if (planes[i]) {
+                    delete[] planes[i];
+                    planes[i] = nullptr;
+                }
             }
         }
     }

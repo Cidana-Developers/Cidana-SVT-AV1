@@ -18,7 +18,7 @@
 namespace svt_av1_video_source {
 class YuvVideoSource : public VideoSource {
   public:
-    YuvVideoSource(const std::string &file_name, const VideoImageFormat format,
+    YuvVideoSource(const std::string &file_name, const VideoColorFormat format,
                    const uint32_t width, const uint32_t height,
                    const uint8_t bit_depth);
     ~YuvVideoSource();

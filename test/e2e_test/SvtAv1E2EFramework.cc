@@ -196,7 +196,7 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     const TestVideoVector &vector) {
     VideoSource *video_src = nullptr;
     switch (std::get<1>(vector)) {
-    case YUM_VIDEO_FILE:
+    case YUV_VIDEO_FILE:
         video_src = new YuvVideoSource(std::get<0>(vector),
                                        std::get<2>(vector),
                                        std::get<3>(vector),

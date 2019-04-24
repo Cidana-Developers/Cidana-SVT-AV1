@@ -24,7 +24,7 @@ RefDecoder *create_reference_decoder() {
     return decoder;
 }
 
-static VideoImageFormat trans_video_format(aom_img_fmt_t fmt) {
+static VideoColorFormat trans_video_format(aom_img_fmt_t fmt) {
     switch (fmt) {
     case AOM_IMG_FMT_YV12: return IMG_FMT_YV12;
     case AOM_IMG_FMT_I420: return IMG_FMT_NV12;

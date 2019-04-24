@@ -22,18 +22,17 @@
  * file-path
  *  @{
  */
-
 namespace svt_av1_e2e_test_vector {
 
-/** TestVideoVectorFormatType is enumerate type of input video file format */
-typedef enum TestVideoVectorFormatType {
-    YUM_VIDEO_FILE,
+/** TestVectorFormat is enumerate type of input video file format */
+typedef enum TestVectorFormat {
+    YUV_VIDEO_FILE,
     Y4M_VIDEO_FILE
-} TestVideoVectorFormatType;
+} TestVectorFormat;
 
 /** TestVideoVector is tuple of test params in a test case */
-typedef std::tuple<std::string, TestVideoVectorFormatType, VideoImageFormat,
-                   uint32_t, uint32_t, uint8_t, bool>
+typedef std::tuple<std::string, TestVectorFormat, VideoColorFormat, uint32_t,
+                   uint32_t, uint8_t, bool>
     TestVideoVector;
 
 static const TestVideoVector video_src_vectors[] = {
