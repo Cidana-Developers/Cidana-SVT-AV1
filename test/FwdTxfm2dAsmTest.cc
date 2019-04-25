@@ -111,8 +111,11 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
         dist_nbit_.param(param);
         width_ = tx_size_wide[tx_size_];
         height_ = tx_size_high[tx_size_];
-        memset(output_test_, 0, sizeof(output_test_));
-        memset(output_ref_, 255, sizeof(output_ref_));  // -1
+        memset(output_test_buf_, 0, sizeof(output_test_buf_));
+        memset(output_ref_buf_, 255, sizeof(output_ref_buf_));  // -1
+        input_ = ALIGNED_ADDR(int16_t, ALIGNMENT, input_buf_);
+        output_test_ = ALIGNED_ADDR(int32_t, ALIGNMENT, output_test_buf_);
+        output_ref_ = ALIGNED_ADDR(int32_t, ALIGNMENT, output_ref_buf_);
     }
 
     ~FwdTxfm2dAsmTest() {
@@ -123,6 +126,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
         TxfmFuncPair pair = txfm_func_pairs[tx_size_];
         if (pair.ref_func == nullptr || pair.test_func == nullptr)
             return;
+
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
             // tx_type and tx_size are not compatible in the av1-spec.
@@ -169,9 +173,12 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     int width_;
     int height_;
     static const int stride_ = MAX_TX_SIZE;
-    DECLARE_ALIGNED(32, int16_t, input_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, int32_t, output_ref_[MAX_TX_SQUARE]);
+    uint8_t input_buf_[MAX_TX_SQUARE * sizeof(int16_t) + ALIGNMENT - 1];
+    uint8_t output_test_buf_[MAX_TX_SQUARE * sizeof(int32_t) + ALIGNMENT - 1];
+    uint8_t output_ref_buf_[MAX_TX_SQUARE * sizeof(int32_t) + ALIGNMENT - 1];
+    int16_t *input_;       /**< aligned address for input */
+    int32_t *output_test_; /**< aligned address for output test */
+    int32_t *output_ref_;  /**< aligned address for output ref */
 };
 
 TEST_P(FwdTxfm2dAsmTest, match_test) {
