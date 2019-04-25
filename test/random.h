@@ -86,6 +86,7 @@ class SVTRandom {
         decltype(dist_nbit_)::param_type param{min_bound, max_bound};
         dist_nbit_.param(param);
     }
+
     /** calculate and setup bounds of generator */
     void calculate_bounds(const int nbits, const bool is_signed) {
         assert(is_signed ? nbits < 31 : nbits <= 31);

@@ -81,7 +81,6 @@ static const TxfmFuncPair txfm_func_pairs[TX_SIZES_ALL] = {
     FUNC_PAIRS(av1_fwd_txfm2d_64x16, avx2),
 };
 
-const int deterministic_seed = 0xa42b;
 /**
  * @brief Unit test for fwd tx 2d avx2 functions:
  * - av1_fwd_txfm2d_{4, 8, 16, 32, 64}x{4, 8, 16, 32, 64}_avx2
@@ -105,20 +104,23 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
   public:
     FwdTxfm2dAsmTest()
         : tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
-          bd_(TEST_GET_PARAM(1)),
-          gen_(deterministic_seed) {
-        decltype(dist_nbit_)::param_type param{-(1 << bd_) + 1, (1 << bd_) - 1};
-        dist_nbit_.param(param);
+          bd_(TEST_GET_PARAM(1)) {
+        // input are signed value with bitdepth + 1 bits
+        rnd_ = new SVTRandom(-(1 << bd_) + 1, (1 << bd_) - 1);
+
         width_ = tx_size_wide[tx_size_];
         height_ = tx_size_high[tx_size_];
+        // set default value to 0
         memset(output_test_buf_, 0, sizeof(output_test_buf_));
-        memset(output_ref_buf_, 255, sizeof(output_ref_buf_));  // -1
+        // set default value to -1
+        memset(output_ref_buf_, 255, sizeof(output_ref_buf_));
         input_ = ALIGNED_ADDR(int16_t, ALIGNMENT, input_buf_);
         output_test_ = ALIGNED_ADDR(int32_t, ALIGNMENT, output_test_buf_);
         output_ref_ = ALIGNED_ADDR(int32_t, ALIGNMENT, output_ref_buf_);
     }
 
     ~FwdTxfm2dAsmTest() {
+        delete rnd_;
         aom_clear_system_state();
     }
 
@@ -127,6 +129,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
         if (pair.ref_func == nullptr || pair.test_func == nullptr)
             return;
 
+        ASSERT_NE(rnd_, nullptr) << "Failed to create random generator";
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
             // tx_type and tx_size are not compatible in the av1-spec.
@@ -157,7 +160,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     void populate_with_random() {
         for (int i = 0; i < height_; i++) {
             for (int j = 0; j < width_; j++) {
-                input_[i * stride_ + j] = dist_nbit_(gen_);
+                input_[i * stride_ + j] = rnd_->random();
             }
         }
 
@@ -165,13 +168,11 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     }
 
   private:
-    std::mt19937 gen_; /**< seed for random */
-    std::uniform_int_distribution<>
-        dist_nbit_;        /**< random int for 8bit and 10bit coeffs */
     const TxSize tx_size_; /**< input param tx_size */
     const int bd_;         /**< input param 8bit or 10bit */
     int width_;
     int height_;
+    SVTRandom *rnd_;
     static const int stride_ = MAX_TX_SIZE;
     uint8_t input_buf_[MAX_TX_SQUARE * sizeof(int16_t) + ALIGNMENT - 1];
     uint8_t output_test_buf_[MAX_TX_SQUARE * sizeof(int32_t) + ALIGNMENT - 1];
