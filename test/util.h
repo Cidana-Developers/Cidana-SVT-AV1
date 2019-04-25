@@ -35,6 +35,11 @@
 #define max(a, b) ((((a) > (b)) ? (a) : (b)))
 #endif
 
+#define ALIGNED_ADDR(T, alignment, buffer) \
+    (T*)(((uintptr_t)buffer + (alignment - 1)) & ~(alignment - 1))
+
+#define ALIGNMENT (32)
+
 namespace svt_av1_test_tool {
 INLINE int32_t round_shift(int64_t value, int32_t bit) {
     assert(bit >= 1);
