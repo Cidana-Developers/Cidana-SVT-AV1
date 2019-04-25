@@ -67,20 +67,12 @@ EbErrorType YuvVideoSource::open_source() {
 
     // Calculate frame length
     switch (image_format_) {
-    case IMG_FMT_420P10_PACKED: {
-        frame_length_ *= 2;
-    }
-    case IMG_FMT_420: {
-        frame_length_ = frame_length_ * 3 / 2;
-    } break;
-    case IMG_FMT_422P10_PACKED: frame_length_ *= 2;
-    case IMG_FMT_422: {
-        frame_length_ = frame_length_ * 2;
-    } break;
-    case IMG_FMT_444P10_PACKED: frame_length_ *= 2;
-    case IMG_FMT_444: {
-        frame_length_ = frame_length_ * 3;
-    } break;
+    case IMG_FMT_420P10_PACKED: frame_length_ *= 2; break;
+    case IMG_FMT_420: frame_length_ = frame_length_ * 3 / 2; break;
+    case IMG_FMT_422P10_PACKED: frame_length_ *= 2; break;
+    case IMG_FMT_422: frame_length_ = frame_length_ * 2; break;
+    case IMG_FMT_444P10_PACKED: frame_length_ *= 2; break;
+    case IMG_FMT_444: frame_length_ = frame_length_ * 3; break;
     default: break;
     }
 
@@ -94,7 +86,7 @@ EbErrorType YuvVideoSource::open_source() {
 
 // Prepare stream, and get first frame.
 void YuvVideoSource::close_source() {
-    if (file_handle_ == nullptr) {
+    if (file_handle_ != nullptr) {
         fclose(file_handle_);
         file_handle_ = nullptr;
     }

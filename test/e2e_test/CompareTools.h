@@ -112,14 +112,13 @@ static inline double psnr_8bit(const uint8_t *p1, const uint8_t *p2,
         const uint8_t I = p1[i];
         const uint8_t K = p2[i];
         const int32_t diff = I - K;
-        mse += diff * diff;
+        mse += (double)diff * diff;
     }
     mse /= size;
 
     double psnr = INFINITY;
-
     if (DBL_EPSILON < mse) {
-        psnr = 10 * log10((255 * 255) / mse);
+        psnr = 10 * log10(((double)255 * 255) / mse);
     }
     return psnr;
 }
@@ -134,14 +133,14 @@ static inline double psnr_8bit(const uint8_t *p1, const uint32_t stride1,
         const uint16_t *d = (uint16_t *)p2 + (y * stride2 / 2);
         for (size_t x = 0; x < width; x++) {
             const int32_t diff = s[x] - (d[x] & 0xFF);
-            mse += diff * diff;
+            mse += (double)diff * diff;
         }
     }
-    mse /= width * height;
+    mse /= (double)width * height;
 
     double psnr = INFINITY;
     if (DBL_EPSILON < mse) {
-        psnr = 10 * log10((255 * 255) / mse);
+        psnr = 10 * log10(((double)255 * 255) / mse);
     }
     return psnr;
 }
@@ -154,14 +153,14 @@ static inline double psnr_10bit(const uint16_t *p1, const uint16_t *p2,
         const uint16_t I = p1[i] & 0x3FF;
         const uint16_t K = p2[i] & 0x3FF;
         const int32_t diff = I - K;
-        mse += diff * diff;
+        mse += (double)diff * diff;
     }
     mse /= size;
 
     double psnr = INFINITY;
 
     if (DBL_EPSILON < mse) {
-        psnr = 10 * log10((1023 * 1023) / mse);
+        psnr = 10 * log10(((double)1023 * 1023) / mse);
     }
     return psnr;
 }
@@ -175,14 +174,14 @@ static inline double psnr_10bit(const uint16_t *p1, const uint32_t stride1,
         const uint16_t *d = p2 + (y * stride2);
         for (size_t x = 0; x < width; x++) {
             const int32_t diff = (s[x] & 0x3FF) - (d[x] & 0x3FF);
-            mse += diff * diff;
+            mse += (double)diff * diff;
         }
     }
-    mse /= width * height * 2;
+    mse /= (double)width * height * 2;
 
     double psnr = INFINITY;
     if (DBL_EPSILON < mse) {
-        psnr = 10 * log10((1023 * 1023) / mse);
+        psnr = 10 * log10(((double)1023 * 1023) / mse);
     }
     return psnr;
 }

@@ -36,10 +36,13 @@ Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
     frame_size_ = 0;
     frame_buffer_ = nullptr;
     image_format_ = format;
+    file_length_ = 0;
+    frame_length_ = 0;
+    header_length_ = 0;
     if (bit_depth_ > 8 && use_compressed_2bit_plane_output)
-        svt_compressed_2bit_plane = true;
+        svt_compressed_2bit_plane_ = true;
     else
-        svt_compressed_2bit_plane = false;
+        svt_compressed_2bit_plane_ = false;
 
 #ifdef ENABLE_DEBUG_MONITOR
     monitor = nullptr;
@@ -89,7 +92,7 @@ EbErrorType Y4MVideoSource::open_source() {
         height_with_padding_,
         (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
         bit_depth_,
-        svt_compressed_2bit_plane,
+        svt_compressed_2bit_plane_,
         "Y4M Source");
 #endif
 
@@ -377,7 +380,7 @@ uint32_t Y4MVideoSource::read_input_frame() {
     const uint32_t righ_padding = width_with_padding_ - width_;
     size_t read_len = 0;
     uint32_t i;
-    if (bit_depth_ <= 8 || (bit_depth_ > 8 && !svt_compressed_2bit_plane)) {
+    if (bit_depth_ <= 8 || (bit_depth_ > 8 && !svt_compressed_2bit_plane_)) {
         uint8_t* eb_input_ptr = nullptr;
         // Y
         eb_input_ptr = frame_buffer_->luma;
@@ -446,7 +449,7 @@ uint32_t Y4MVideoSource::read_input_frame() {
             eb_input_ptr += frame_buffer_->cr_stride * pixel_byte_size;
             filled_len += frame_buffer_->cr_stride * pixel_byte_size;
         }
-    } else if (bit_depth_ > 8 && svt_compressed_2bit_plane) {
+    } else if (bit_depth_ > 8 && svt_compressed_2bit_plane_) {
         uint8_t* eb_input_ptr = nullptr;
         uint8_t* eb_ext_input_ptr = nullptr;
         // Y
@@ -459,7 +462,6 @@ uint32_t Y4MVideoSource::read_input_frame() {
             for (j = 0; j < width_; ++j) {
                 // Get one pixel
                 if (2 != fread(&pix, 1, 2, file_handle_)) {
-                    printf("1\r\n");
                     return 0;
                 }
                 eb_input_ptr[j] = (uint8_t)(pix >> 2);
@@ -489,7 +491,6 @@ uint32_t Y4MVideoSource::read_input_frame() {
             for (j = 0; j < (width_ >> width_downsize); ++j) {
                 // Get one pixel
                 if (2 != fread(&pix, 1, 2, file_handle_)) {
-                    printf("2\r\n");
                     return 0;
                 }
                 eb_input_ptr[j] = (uint8_t)(pix >> 2);
@@ -522,7 +523,6 @@ uint32_t Y4MVideoSource::read_input_frame() {
             for (j = 0; j < (width_ >> width_downsize); ++j) {
                 // Get one pixel
                 if (2 != fread(&pix, 1, 2, file_handle_)) {
-                    printf("3\r\n");
                     return 0;
                 }
                 eb_input_ptr[j] = (uint8_t)(pix >> 2);
