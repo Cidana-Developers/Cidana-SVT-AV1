@@ -27,7 +27,11 @@ namespace svt_av1_video_source {
 static std::string get_vector_path() {
     const char *const path = getenv("SVT_AV1_TEST_VECTOR_PATH");
     if (path == nullptr) {
+#ifdef _WIN32
+        return "../../../../test/vectors";
+#else
         return "../../test/vectors";
+#endif  // _WIN32
     }
     return path;
 }
@@ -78,7 +82,7 @@ class VideoSource {
     /*!\brief If the return value is true, video source will use svt compressed
      * 10bit mode for output . */
     virtual bool get_compressed_10bit_mode() {
-        return svt_compressed_2bit_plane;
+        return svt_compressed_2bit_plane_;
     }
 
   protected:
@@ -140,9 +144,7 @@ class VideoSource {
         case IMG_FMT_444: {
             chroma_size = luma_size;
         } break;
-        default: {
-            chroma_size = luma_size >> 2;
-        } break;
+        default: { chroma_size = luma_size >> 2; } break;
         }
 
         // Determine
@@ -153,17 +155,20 @@ class VideoSource {
             return EB_ErrorInsufficientResources;
         }
 
-        frame_buffer_->width = width_with_padding_;
-        frame_buffer_->height = height_with_padding_;
-        frame_buffer_->origin_x = 0;
-        frame_buffer_->origin_y = 0;
+        if (frame_buffer_) {
+            frame_buffer_->width = width_with_padding_;
+            frame_buffer_->height = height_with_padding_;
+            frame_buffer_->origin_x = 0;
+            frame_buffer_->origin_y = 0;
 
-        // SVT-AV1 use pixel size as stride?
-        frame_buffer_->y_stride = luma_size;
-        frame_buffer_->cb_stride = chroma_size;
-        frame_buffer_->cr_stride = chroma_size;
+            // SVT-AV1 use pixel size as stride?
+            frame_buffer_->y_stride = luma_size;
+            frame_buffer_->cb_stride = chroma_size;
+            frame_buffer_->cr_stride = chroma_size;
+        } else
+            return EB_ErrorUndefined;
 
-        if (is_10bit_mode() && !svt_compressed_2bit_plane) {
+        if (is_10bit_mode() && !svt_compressed_2bit_plane_) {
             luma_size *= 2;
             chroma_size *= 2;
         }
@@ -186,7 +191,7 @@ class VideoSource {
             return EB_ErrorInsufficientResources;
         }
 
-        if (is_10bit_mode() && svt_compressed_2bit_plane) {
+        if (is_10bit_mode() && svt_compressed_2bit_plane_) {
             frame_buffer_->luma_ext = (uint8_t *)malloc(luma_size / 4);
             if (!frame_buffer_->luma_ext) {
                 deinit_frame_buffer();
@@ -222,7 +227,7 @@ class VideoSource {
     uint32_t frame_size_;
     EbSvtIOFormat *frame_buffer_;
     VideoColorFormat image_format_;
-    bool svt_compressed_2bit_plane;
+    bool svt_compressed_2bit_plane_;
 };
 
 }  // namespace svt_av1_video_source

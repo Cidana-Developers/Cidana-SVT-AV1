@@ -94,7 +94,7 @@ EbErrorType YuvVideoSource::open_source() {
 
 // Prepare stream, and get first frame.
 void YuvVideoSource::close_source() {
-    if (file_handle_ == nullptr) {
+    if (file_handle_ != nullptr) {
         fclose(file_handle_);
         file_handle_ = nullptr;
     }
