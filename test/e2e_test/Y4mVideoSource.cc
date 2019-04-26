@@ -72,7 +72,7 @@ EbErrorType Y4MVideoSource::open_source() {
             height_with_padding_,
             (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
             bit_depth_,
-            svt_compressed_2bit_plane,
+            svt_compressed_2bit_plane_,
             "Y4M Source");
     }
 #endif

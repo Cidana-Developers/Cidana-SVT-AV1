@@ -88,8 +88,8 @@ EbErrorType YuvVideoSource::open_source() {
             height_with_padding_,
             (bit_depth_ > 8) ? width_with_padding_ * 2 : width_with_padding_,
             bit_depth_,
-            svt_compressed_2bit_plane,
-            "Y4M Source");
+            svt_compressed_2bit_plane_,
+            "YUV Source");
     }
 #endif
     return EB_ErrorNone;
