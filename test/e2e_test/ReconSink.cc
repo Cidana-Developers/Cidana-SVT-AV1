@@ -107,9 +107,10 @@ class ReconSinkFile : public ReconSink {
                 if (read_size <= 0) {
                     pour_mug(mug);
                     mug = nullptr;
+                } else {
+                    mug->filled_size = (uint32_t)read_size;
+                    mug->time_stamp = time_stamp;
                 }
-                mug->filled_size = (uint32_t)read_size;
-                mug->time_stamp = time_stamp;
             }
         }
 

@@ -16,8 +16,11 @@
 #include <cstdio>
 #include <string>
 #include "VideoSource.h"
+#ifdef ENABLE_DEBUG_MONITOR
+#include "VideoMonitor.h"
+#endif
 namespace svt_av1_video_source {
-class YuvVideoSource : public VideoSource {
+class YuvVideoSource : public VideoFileSource {
   public:
     YuvVideoSource(const std::string &file_name, const VideoColorFormat format,
                    const uint32_t width, const uint32_t height,
@@ -29,15 +32,14 @@ class YuvVideoSource : public VideoSource {
     void close_source() override;
     /*!\brief Get next frame. */
     EbSvtIOFormat *get_next_frame() override;
-    /*!\brief Get frame ny index. */
-    EbSvtIOFormat *get_frame_by_index(const uint32_t index) override {
-        return nullptr;
-    };
+    /*!\brief Get frame by index. */
+    EbSvtIOFormat *get_frame_by_index(const uint32_t index) override;
 
   private:
-    uint32_t read_input_frame();
-    std::string file_name_;
-    FILE *file_handle_;
+    uint32_t frame_length_;
+#ifdef ENABLE_DEBUG_MONITOR
+    VideoMonitor *monitor;
+#endif
 };
 }  // namespace svt_av1_video_source
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_
