@@ -98,6 +98,15 @@ class RefDecoder {
     virtual ~RefDecoder();
 
   public:
+    /** Setup decoder
+     * @param init_ts  initial timestamp of input stream
+     * @param interval  the time interval in two frames
+     * @return
+     * REF_CODEC_OK -- no error found in processing
+     * others -- errors found in setup
+     */
+    RefDecoderErr setup(const uint64_t init_ts, const uint32_t interval);
+
     /** Process compressed data
      * @param data  the memory buffer of a frame of compressed data
      * @param size  the size of data
@@ -122,8 +131,10 @@ class RefDecoder {
     void trans_video_frame(const aom_image_t *image, VideoFrame &frame);
 
   protected:
-    aom_codec_ctx_t codec_;  /**<AOM codec context */
-    uint32_t ref_frame_cnt_; /**<count of refernece frame in processing */
+    aom_codec_ctx_t codec_;   /**< AOM codec context */
+    uint32_t ref_frame_cnt_;  /**< count of refernece frame in processing */
+    uint64_t init_timestamp_; /**< initial timestamp of stream */
+    uint32_t frame_interval_; /**< time interval of two frame in miliseconds */
 };
 
 /** Interface of reference decoder creation

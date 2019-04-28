@@ -50,10 +50,19 @@ RefDecoder::RefDecoder(RefDecoder::RefDecoderErr &ret) {
     }
     ret = (RefDecoderErr)(0 - err);
     ref_frame_cnt_ = 0;
+    init_timestamp_ = 0;
+    frame_interval_ = 1;
 }
 
 RefDecoder::~RefDecoder() {
     aom_codec_destroy(&codec_);
+}
+
+RefDecoder::RefDecoderErr RefDecoder::setup(const uint64_t init_ts,
+                                            const uint32_t interval) {
+    init_timestamp_ = init_ts;
+    frame_interval_ = interval;
+    return REF_CODEC_OK;
 }
 
 RefDecoder::RefDecoderErr RefDecoder::process_data(const uint8_t *data,
@@ -73,6 +82,7 @@ RefDecoder::RefDecoderErr RefDecoder::get_frame(VideoFrame &frame) {
         return REF_CODEC_NEED_MORE_INPUT;
     }
     trans_video_frame(img, frame);
+    ref_frame_cnt_++;
     return REF_CODEC_OK;
 }
 
@@ -89,5 +99,6 @@ void RefDecoder::trans_video_frame(const aom_image_t *image,
     memcpy(frame.stride, image->stride, sizeof(frame.stride));
     memcpy(frame.planes, image->planes, sizeof(frame.planes));
     frame.bits_per_sample = image->bit_depth;
-    frame.timestamp = ref_frame_cnt_++;
+    frame.timestamp =
+        init_timestamp_ + ((uint64_t)ref_frame_cnt_ * frame_interval_);
 }

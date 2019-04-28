@@ -69,6 +69,9 @@ using namespace svt_av1_e2e_tools;
 SvtAv1E2ETestBase::SvtAv1E2ETestBase()
     : video_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
     memset(&ctxt_, 0, sizeof(ctxt_));
+    start_pos_ = std::get<7>(GetParam());
+    frames_to_test_ = std::get<8>(GetParam());
+    printf("start: %d, count: %d\n", start_pos_, frames_to_test_);
 }
 
 SvtAv1E2ETestBase::~SvtAv1E2ETestBase() {
@@ -83,7 +86,7 @@ void SvtAv1E2ETestBase::SetUp() {
 
     // check for video source
     ASSERT_NE(video_src_, nullptr) << "video source create failed!";
-    return_error = video_src_->open_source();
+    return_error = video_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "open_source return error:" << return_error;
     // Check input parameters
@@ -165,7 +168,6 @@ void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
     /** TODO: encoder_color_format should be set with input source format*/
     ctxt_.enc_params.encoder_color_format = EB_YUV420;
-    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
     return_error =
         eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
@@ -268,7 +270,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::init_test() {
         has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
 
     ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
-    EbErrorType err = psnr_src_->open_source();
+    EbErrorType err = psnr_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
 }
 

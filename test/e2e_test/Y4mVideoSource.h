@@ -20,7 +20,7 @@
 #include "VideoMonitor.h"
 #endif
 namespace svt_av1_video_source {
-class Y4MVideoSource : public VideoSource {
+class Y4MVideoSource : public VideoFileSource {
   public:
     Y4MVideoSource(const std::string &file_name, const VideoColorFormat format,
                    const uint32_t width, const uint32_t height,
@@ -28,20 +28,18 @@ class Y4MVideoSource : public VideoSource {
                    const bool use_compressed_2bit_plan_output);
     ~Y4MVideoSource();
     /*!\brief Prepare stream. */
-    EbErrorType open_source() override;
+    EbErrorType open_source(const uint32_t init_pos,
+                            const uint32_t frame_count) override;
     /*!\brief Close stream. */
     void close_source() override;
     /*!\brief Get next frame. */
     EbSvtIOFormat *get_next_frame() override;
-    /*!\brief Get frame ny index. */
+    /*!\brief Get frame by index. */
     EbSvtIOFormat *get_frame_by_index(const uint32_t index) override;
 
   private:
     EbErrorType parse_file_info();
-    uint32_t read_input_frame();
-    std::string file_name_;
-    FILE *file_handle_;
-    uint32_t file_length_;
+    uint32_t read_input_frame() override;
     uint32_t frame_length_;
     uint32_t header_length_;
 #ifdef ENABLE_DEBUG_MONITOR
