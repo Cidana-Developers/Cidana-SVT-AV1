@@ -31,7 +31,7 @@ cd $BUILD_DIR
 # config options
 cmake "$SOURCE_DIR" -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_C_OUTPUT_EXTENSION_REPLACE=1 -DCMAKE_CXX_OUTPUT_EXTENSION_REPLACE=1 -DCMAKE_BUILD_TYPE=Debug -DGENERATE_CODE_COVERAGE=1
 # buil
-make -j8
+make -j8 SvtAv1EncApp SvtAv1DecApp SvtAv1UnitTests SvtAv1ApiTests SvtAv1E2ETests TestVectors
 # Initial
 lcov --capture --initial --base-directory $SOURCE_DIR  --directory . --output-file svt_av1_base.info
 
