@@ -39,7 +39,7 @@ typedef std::tuple<std::string,      /**< file name */
                    uint8_t,          /**< bit depth */
                    bool,             /**< compressed 2-bit in 10-bit frame */
                    uint32_t,         /**< start read position in frame */
-                   uint32_t> /**< frames to test, (-1) means full-frames*/
+                   uint32_t> /**< frames to test, (0) means full-frames*/
     TestVideoVector;
 
 static const TestVideoVector video_src_vectors[] = {
