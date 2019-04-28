@@ -132,7 +132,7 @@ class RefDecoder {
 
   protected:
     aom_codec_ctx_t codec_;   /**< AOM codec context */
-    uint32_t ref_frame_cnt_;  /**< count of refernece frame in processing */
+    uint32_t dec_frame_cnt_;  /**< count of decoded frame in processing */
     uint64_t init_timestamp_; /**< initial timestamp of stream */
     uint32_t frame_interval_; /**< time interval of two frame in miliseconds */
 };

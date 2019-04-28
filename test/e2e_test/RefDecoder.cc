@@ -49,7 +49,7 @@ RefDecoder::RefDecoder(RefDecoder::RefDecoderErr &ret) {
         printf("can not create refernece decoder!!");
     }
     ret = (RefDecoderErr)(0 - err);
-    ref_frame_cnt_ = 0;
+    dec_frame_cnt_ = 0;
     init_timestamp_ = 0;
     frame_interval_ = 1;
 }
@@ -82,7 +82,7 @@ RefDecoder::RefDecoderErr RefDecoder::get_frame(VideoFrame &frame) {
         return REF_CODEC_NEED_MORE_INPUT;
     }
     trans_video_frame(img, frame);
-    ref_frame_cnt_++;
+    dec_frame_cnt_++;
     return REF_CODEC_OK;
 }
 
@@ -100,5 +100,5 @@ void RefDecoder::trans_video_frame(const aom_image_t *image,
     memcpy(frame.planes, image->planes, sizeof(frame.planes));
     frame.bits_per_sample = image->bit_depth;
     frame.timestamp =
-        init_timestamp_ + ((uint64_t)ref_frame_cnt_ * frame_interval_);
+        init_timestamp_ + ((uint64_t)dec_frame_cnt_ * frame_interval_);
 }

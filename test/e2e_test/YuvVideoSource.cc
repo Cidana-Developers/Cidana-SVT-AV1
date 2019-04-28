@@ -39,7 +39,6 @@ YuvVideoSource::~YuvVideoSource() {
 EbErrorType YuvVideoSource::open_source(const uint32_t init_pos,
                                         const uint32_t frame_count) {
     std::string full_path = get_vector_path() + "/" + file_name_.c_str();
-    // Reopen file as necessary
     if (file_handle_ == nullptr) {
         file_handle_ = fopen(full_path.c_str(), "rb");
     }
