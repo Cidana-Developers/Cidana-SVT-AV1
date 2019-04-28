@@ -36,6 +36,7 @@
 #include "EbPictureControlSet.h"
 #include "aom_dsp_rtcd.h"
 #include "util.h"
+#include "random.h"
 
 namespace QuantizeAsmTest {
 const int deterministic_seed = 0xa42b;
@@ -56,8 +57,7 @@ using QuantizeFunc = void (*)(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
 
 using QuantizeParam = std::tuple<int, int>;
 
-const int g_loop_count = 10;
-
+using svt_av1_test_tool::SVTRandom;  // to generate the random
 /**
  * @brief Unit test for quantize avx2 functions:
  * - aom_highbd_quantize_b_avx2
@@ -84,20 +84,19 @@ const int g_loop_count = 10;
 class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
   protected:
     QuantizeTest()
-        : gen_(deterministic_seed),
-          tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
+        : tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
           bd_(static_cast<aom_bit_depth_t>(TEST_GET_PARAM(1))) {
         n_coeffs_ = av1_get_max_eob(tx_size_);
         coeff_min_ = -(1 << (7 + bd_));
         coeff_max_ = (1 << (7 + bd_)) - 1;
-        decltype(dist_nbit_)::param_type param{coeff_min_, coeff_max_};
-        dist_nbit_.param(param);
+        rnd_ = new SVTRandom(coeff_min_, coeff_max_);
 
         av1_build_quantizer(bd_, 0, 0, 0, 0, 0, &qtab_quants_, &qtab_deq_);
         setup_func_ptrs();
     }
 
     virtual ~QuantizeTest() {
+        delete rnd_;
         aom_clear_system_state();
     }
 
@@ -200,13 +199,11 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
 
     void fill_coeff_random(int i_begin, int i_end) {
         for (int i = i_begin; i < i_end; ++i) {
-            coeff_in_[i] = dist_nbit_(gen_);
+            coeff_in_[i] = rnd_->random();
         }
     }
 
-    std::mt19937 gen_; /**< seed for random */
-    std::uniform_int_distribution<>
-        dist_nbit_;            /**< random int for 8bit and 10bit coeffs */
+    SVTRandom *rnd_;           /**< random int for 8bit and 10bit coeffs */
     Quants qtab_quants_;       /**< quant table */
     Dequants qtab_deq_;        /**< dequant table */
     tran_low_t coeff_min_;     /**< min input coeff value */
@@ -284,8 +281,9 @@ TEST_P(QuantizeTest, input_random_dc_only) {
  * q_index: from 0 to QINDEX_RANGE-1
  */
 TEST_P(QuantizeTest, input_random_all_q_all) {
+    const int num_tests = 10;
     for (int q = 0; q < QINDEX_RANGE; ++q) {
-        for (int i = 0; i < g_loop_count; ++i) {
+        for (int i = 0; i < num_tests; ++i) {
             fill_coeff_random(0, n_coeffs_);
             run_quantize(q);
         }

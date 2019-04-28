@@ -36,6 +36,7 @@
 #include "TxfmCommon.h"
 #include "av1_inv_txfm_ssse3.h"
 
+using svt_av1_test_tool::SVTRandom;  // to generate the random
 namespace {
 
 using InvSqrTxfm2dFun = void (*)(const int32_t *input, uint16_t *output,
@@ -141,7 +142,6 @@ static const InvRectType2TxfmFuncPair *get_rect_type2_func_pair(
     }
 }
 
-const int deterministic_seed = 0xa42b;
 /**
  * @brief Unit test for inverse tx 2d avx2/sse4_1 functions:
  * - av1_inv_txfm2d_{4, 8, 16, 32, 64}x{4, 8, 16, 32, 64}_avx2
@@ -165,14 +165,15 @@ const int deterministic_seed = 0xa42b;
  */
 class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
   public:
-    InvTxfm2dAsmTest() : bd_(GetParam()), gen_(deterministic_seed) {
-        decltype(u_nbit_)::param_type u_param{0, (1 << bd_) - 1};
-        u_nbit_.param(u_param);
-        decltype(s_nbit_)::param_type s_param{-(1 << bd_) + 1, (1 << bd_) - 1};
-        s_nbit_.param(s_param);
+    InvTxfm2dAsmTest() : bd_(GetParam()) {
+        // unsigned bd_ bits random
+        u_bd_rnd_ = new SVTRandom(0, (1 << bd_) - 1);
+        s_bd_rnd_ = new SVTRandom(-(1 << bd_) + 1, (1 << bd_) - 1);
     }
 
     ~InvTxfm2dAsmTest() {
+        delete u_bd_rnd_;
+        delete s_bd_rnd_;
         aom_clear_system_state();
     }
 
@@ -228,27 +229,25 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
-            const int loops = 100;
+            const int loops = 10 * max_eob;
+            SVTRandom eob_rnd(1, max_eob - 1);
             for (int k = 0; k < loops; k++) {
-                for (int eob = max_eob - 1; eob > 0; --eob) {
-                    // prepare data by forward transform and then
-                    // clear the values between eob and max_eob
-                    populate_with_random(width, height, type, tx_size);
-                    clear_high_freq_coeffs(tx_size, type, eob, max_eob);
+                int eob = k < max_eob - 1 ? k + 1 : eob_rnd.random();
+                // prepare data by forward transform and then
+                // clear the values between eob and max_eob
+                populate_with_random(width, height, type, tx_size);
+                clear_high_freq_coeffs(tx_size, type, eob, max_eob);
 
-                    ref_func(
-                        input_, output_ref_, stride_, type, tx_size, eob, bd_);
-                    test_func(
-                        input_, output_test_, stride_, type, tx_size, eob, bd_);
+                ref_func(input_, output_ref_, stride_, type, tx_size, eob, bd_);
+                test_func(
+                    input_, output_test_, stride_, type, tx_size, eob, bd_);
 
-                    ASSERT_EQ(
-                        0,
-                        memcmp(output_ref_,
-                               output_test_,
-                               height * stride_ * sizeof(output_test_[0])))
-                        << "loop: " << k << " tx_type: " << tx_type
-                        << " tx_size: " << tx_size << " eob: " << eob;
-                }
+                ASSERT_EQ(0,
+                          memcmp(output_ref_,
+                                 output_test_,
+                                 height * stride_ * sizeof(output_test_[0])))
+                    << "loop: " << k << " tx_type: " << tx_type
+                    << " tx_size: " << tx_size << " eob: " << eob;
             }
         }
     }
@@ -340,49 +339,39 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
             if (is_txfm_allowed(type, tx_size) == false)
                 continue;
 
-            const int loops = 100;
+            const int loops = 10 * max_eob;
+            SVTRandom eob_rnd(1, max_eob - 1);
             for (int k = 0; k < loops; k++) {
-                for (int eob = max_eob - 1; eob > 0; --eob) {
-                    // prepare data by forward transform and then
-                    // clear the values between eob and max_eob
-                    populate_with_random(width, height, type, tx_size);
-                    clear_high_freq_coeffs(tx_size, type, eob, max_eob);
-                    // copy to lowbd output buffer from short buffer
-                    for (int i = 0; i < height; i++) {
-                        for (int j = 0; j < width; j++)
-                            lowbd_output_test_[i * stride_ + j] =
-                                static_cast<uint8_t>(
-                                    output_test_[i * stride_ + j]);
-                    }
+                int eob = k < max_eob - 1 ? k + 1 : eob_rnd.random();
+                // prepare data by forward transform and then
+                // clear the values between eob and max_eob
+                populate_with_random(width, height, type, tx_size);
+                clear_high_freq_coeffs(tx_size, type, eob, max_eob);
+                // copy to lowbd output buffer from short buffer
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++)
+                        lowbd_output_test_[i * stride_ + j] =
+                            static_cast<uint8_t>(output_test_[i * stride_ + j]);
+                }
 
-                    av1_lowbd_inv_txfm2d_add_ssse3(input_,
-                                                   lowbd_output_test_,
-                                                   stride_,
-                                                   type,
-                                                   tx_size,
-                                                   eob);
-                    if (tx_size >= TX_SIZES)
-                        lowbd_rect_ref_funcs[tx_size](input_,
-                                                      output_ref_,
-                                                      stride_,
-                                                      type,
-                                                      tx_size,
-                                                      eob,
-                                                      bd_);
-                    else
-                        lowbd_sqr_ref_funcs[tx_size](
-                            input_, output_ref_, stride_, type, bd_);
+                av1_lowbd_inv_txfm2d_add_ssse3(
+                    input_, lowbd_output_test_, stride_, type, tx_size, eob);
+                if (tx_size >= TX_SIZES)
+                    lowbd_rect_ref_funcs[tx_size](
+                        input_, output_ref_, stride_, type, tx_size, eob, bd_);
+                else
+                    lowbd_sqr_ref_funcs[tx_size](
+                        input_, output_ref_, stride_, type, bd_);
 
-                    // compare, note the output buffer has stride.
-                    for (int i = 0; i < height; i++) {
-                        for (int j = 0; j < width; j++) {
-                            uint8_t ref = static_cast<uint8_t>(
-                                output_ref_[i * stride_ + j]);
-                            ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
-                                << "loop: " << k << " tx_type: " << tx_type
-                                << " tx_size: " << tx_size << " eob: " << eob
-                                << " " << j << " x " << i;
-                        }
+                // compare, note the output buffer has stride.
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++) {
+                        uint8_t ref =
+                            static_cast<uint8_t>(output_ref_[i * stride_ + j]);
+                        ASSERT_EQ(ref, lowbd_output_test_[i * stride_ + j])
+                            << "loop: " << k << " tx_type: " << tx_type
+                            << " tx_size: " << tx_size << " eob: " << eob << " "
+                            << j << " x " << i;
                     }
                 }
             }
@@ -434,9 +423,9 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
         memset(lowbd_output_test_, 0, sizeof(lowbd_output_test_));
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
-                pixel_input_[i * stride_ + j] = s_nbit_(gen_);
+                pixel_input_[i * stride_ + j] = s_bd_rnd_->random();
                 output_ref_[i * stride_ + j] = output_test_[i * stride_ + j] =
-                    u_nbit_(gen_);
+                    u_bd_rnd_->random();
             }
         }
 
@@ -474,9 +463,8 @@ class InvTxfm2dAsmTest : public ::testing::TestWithParam<int> {
     }
 
   private:
-    std::mt19937 gen_; /**< seed for random */
-    std::uniform_int_distribution<> u_nbit_;
-    std::uniform_int_distribution<> s_nbit_;
+    SVTRandom *u_bd_rnd_;
+    SVTRandom *s_bd_rnd_;
 
     const int bd_; /**< input param 8bit or 10bit */
     static const int stride_ = MAX_TX_SIZE;
