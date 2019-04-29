@@ -39,46 +39,17 @@
 using svt_av1_test_tool::SVTRandom;
 namespace {
 using FwdTxfm2dAsmParam = std::tuple<int, int>;
-using FwdTxfm2dFunc = void (*)(int16_t *input, int32_t *output, uint32_t stride,
-                               TxType tx_type, uint8_t bd);
-typedef struct {
-    const char *name;
-    FwdTxfm2dFunc ref_func;
-    FwdTxfm2dFunc test_func;
-} TxfmFuncPair;
-
-#define FUNC_PAIRS(name, type)                                 \
-    {                                                          \
-        #name, reinterpret_cast < FwdTxfm2dFunc > (name##_c),  \
-            reinterpret_cast < FwdTxfm2dFunc > (name##_##type) \
-    }
-
-static const TxfmFuncPair txfm_func_pairs[TX_SIZES_ALL] = {
-    {"av1_fwd_txfm2d_4x4", Av1TransformTwoD_4x4_c, av1_fwd_txfm2d_4x4_sse4_1},
-    {"av1_fwd_txfm2d_8x8", Av1TransformTwoD_8x8_c, av1_fwd_txfm2d_8x8_avx2},
-    {"av1_fwd_txfm2d_16x16",
-     Av1TransformTwoD_16x16_c,
-     av1_fwd_txfm2d_16x16_avx2},
-    {"av1_fwd_txfm2d_32x32",
-     Av1TransformTwoD_32x32_c,
-     av1_fwd_txfm2d_32x32_avx2},
-    {"av1_fwd_txfm2d_64x64",
-     Av1TransformTwoD_64x64_c,
-     av1_fwd_txfm2d_64x64_avx2},
-    FUNC_PAIRS(av1_fwd_txfm2d_4x8, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_8x4, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_8x16, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x8, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x32, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_32x16, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_32x64, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_64x32, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_4x16, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x4, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_8x32, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_32x8, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x64, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_64x16, avx2),
+static const FwdTxfm2dFunc fwd_txfm_2d_asm_func[TX_SIZES_ALL] = {
+    av1_fwd_txfm2d_4x4_sse4_1, av1_fwd_txfm2d_8x8_avx2,
+    av1_fwd_txfm2d_16x16_avx2, av1_fwd_txfm2d_32x32_avx2,
+    av1_fwd_txfm2d_64x64_avx2, av1_fwd_txfm2d_4x8_avx2,
+    av1_fwd_txfm2d_8x4_avx2,   av1_fwd_txfm2d_8x16_avx2,
+    av1_fwd_txfm2d_16x8_avx2,  av1_fwd_txfm2d_16x32_avx2,
+    av1_fwd_txfm2d_32x16_avx2, av1_fwd_txfm2d_32x64_avx2,
+    av1_fwd_txfm2d_64x32_avx2, av1_fwd_txfm2d_4x16_avx2,
+    av1_fwd_txfm2d_16x4_avx2,  av1_fwd_txfm2d_8x32_avx2,
+    av1_fwd_txfm2d_32x8_avx2,  av1_fwd_txfm2d_16x64_avx2,
+    av1_fwd_txfm2d_64x16_avx2,
 };
 
 /**
@@ -125,8 +96,9 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     }
 
     void run_match_test() {
-        TxfmFuncPair pair = txfm_func_pairs[tx_size_];
-        if (pair.ref_func == nullptr || pair.test_func == nullptr)
+        FwdTxfm2dFunc test_func = fwd_txfm_2d_asm_func[tx_size_];
+        FwdTxfm2dFunc ref_func = fwd_txfm_2d_c_func[tx_size_];
+        if (ref_func == nullptr || test_func == nullptr)
             return;
 
         ASSERT_NE(rnd_, nullptr) << "Failed to create random generator";
@@ -142,8 +114,8 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             for (int k = 0; k < loops; k++) {
                 populate_with_random();
 
-                pair.ref_func(input_, output_ref_, stride_, type, bd_);
-                pair.test_func(input_, output_test_, stride_, type, bd_);
+                ref_func(input_, output_ref_, stride_, type, bd_);
+                test_func(input_, output_test_, stride_, type, bd_);
 
                 for (int i = 0; i < height_; i++)
                     for (int j = 0; j < width_; j++)

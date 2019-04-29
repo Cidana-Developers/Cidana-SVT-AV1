@@ -72,7 +72,10 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
     }
 
     void run_fwd_accuracy_check() {
-        SVTRandom rnd(10, true);
+        const int bd = 10;
+        // The input is residual, and it should be signed bd+1 bits
+        SVTRandom rnd(bd + 1, true);
+        const int cos_bit = 14;
         const int count_test_block = 5000;
         for (int ti = 0; ti < count_test_block; ++ti) {
             // prepare random test data
@@ -85,7 +88,7 @@ class AV1FwdTxfm1dTest : public ::testing::TestWithParam<FwdTxfm1dParam> {
 
             // calculate in forward transform functions
             fwd_txfm_type_to_func(txfm_type_)(
-                input_test_, output_test_, 14, test_txfm_range);
+                input_test_, output_test_, cos_bit, test_txfm_range);
             // calculate in reference forward transform functions
             reference_txfm_1d(get_txfm1d_types(txfm_type_),
                               input_ref_,
