@@ -204,17 +204,30 @@ TEST(Entropy_BitstreamWriter, write_symbol_no_update) {
     FRAME_CONTEXT fc = {0};
     av1_default_coef_probs(&fc, base_qindex);
 
-    // write 0, 1 in order
+    // write random bit sequences and expect read out
+    // the same random sequences.
+    std::bernoulli_distribution rnd(0.5);
+    std::mt19937 gen(deterministic_seeds);
+
     aom_start_encode(&bw, stream_buffer);
-    aom_write_symbol(&bw, 0, fc.txb_skip_cdf[0][0], 2);
-    aom_write_symbol(&bw, 1, fc.txb_skip_cdf[0][0], 2);
+    for (int i = 0; i < 500; ++i) {
+        aom_write_symbol(&bw, rnd(gen), fc.txb_skip_cdf[0][0], 2);
+        aom_write_symbol(&bw, rnd(gen), fc.txb_skip_cdf[0][0], 2);
+    }
     aom_stop_encode(&bw);
 
     // expect read out 0, 1 in order
+    rnd.reset();
+    gen.seed(deterministic_seeds);
+
     aom_reader br;
     aom_reader_init(&br, stream_buffer, bw.pos);
-    EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 0);
-    EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 1);
+    for (int i = 0; i < 500; ++i) {
+        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+                  rnd(gen));
+        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+                  rnd(gen));
+    }
 }
 
 TEST(Entropy_BitstreamWriter, write_symbol_with_update) {
@@ -228,19 +241,31 @@ TEST(Entropy_BitstreamWriter, write_symbol_with_update) {
     FRAME_CONTEXT fc = {0};
     av1_default_coef_probs(&fc, base_qindex);
 
-    // write 0, 1 in order
-    // TODO(wenyao): encode much more coefficients
+    // write random bit sequences and expect read out
+    // the same random sequences.
+    std::bernoulli_distribution rnd(0.5);
+    std::mt19937 gen(deterministic_seeds);
+
     aom_start_encode(&bw, stream_buffer);
-    aom_write_symbol(&bw, 0, fc.txb_skip_cdf[0][0], 2);
-    aom_write_symbol(&bw, 1, fc.txb_skip_cdf[0][0], 2);
+    for (int i = 0; i < 500; ++i) {
+        aom_write_symbol(&bw, rnd(gen), fc.txb_skip_cdf[0][0], 2);
+        aom_write_symbol(&bw, rnd(gen), fc.txb_skip_cdf[0][0], 2);
+    }
     aom_stop_encode(&bw);
 
-    // expect read out 0, 1 in order
+    // reset random generator
+    rnd.reset();
+    gen.seed(deterministic_seeds);
+
     aom_reader br;
     aom_reader_init(&br, stream_buffer, bw.pos);
     br.allow_update_cdf = 1;
     av1_default_coef_probs(&fc, base_qindex);  // reset cdf
-    EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 0);
-    EXPECT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr), 1);
+    for (int i = 0; i < 500; i++) {
+        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+                  rnd(gen));
+        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+                  rnd(gen));
+    }
 }
 }  // namespace
