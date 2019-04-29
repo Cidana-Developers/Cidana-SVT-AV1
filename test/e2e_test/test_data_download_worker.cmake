@@ -28,7 +28,7 @@ endif()
 
 if("${SVT_AV1_STORE_PATH}" STREQUAL "")
   message(WARNING
-            "Writing test data to ${SVT_AV1_ROOT}, set "
+            "Writing test data to ${SVT_AV1_ROOT}/../vectors/, set "
             "$SVT_AV1_TEST_VECTOR_PATH in your environment to avoid this warning.")
   set(SVT_AV1_STORE_PATH "${SVT_AV1_ROOT}/../vectors/")
 endif()
