@@ -126,7 +126,7 @@ void YuvVideoSource::close_source() {
 }
 
 EbSvtIOFormat *YuvVideoSource::get_frame_by_index(const uint32_t index) {
-    if (index > frame_count_) {
+    if (index >= frame_count_) {
         return nullptr;
     }
     // Seek to frame by index

@@ -26,7 +26,7 @@ class VideoSource {
   public:
     VideoSource(const VideoColorFormat format, const uint32_t width,
                 const uint32_t height, const uint8_t bit_depth,
-                const bool use_compressed_2bit_plan_output)
+                const bool use_compressed_2bit_plane_output)
         : width_(width),
           width_with_padding_(width),
           height_(height),
@@ -40,7 +40,7 @@ class VideoSource {
           svt_compressed_2bit_plane_(false),
           file_frames_(0),
           init_pos_(0) {
-        if (bit_depth_ > 8 && use_compressed_2bit_plan_output)
+        if (bit_depth_ > 8 && use_compressed_2bit_plane_output)
             svt_compressed_2bit_plane_ = true;
         else
             svt_compressed_2bit_plane_ = false;
@@ -243,14 +243,14 @@ class VideoFileSource : public VideoSource {
     VideoFileSource(const std::string &file_name, const VideoColorFormat format,
                     const uint32_t width, const uint32_t height,
                     const uint8_t bit_depth,
-                    const bool use_compressed_2bit_plan_output)
+                    const bool use_compressed_2bit_plane_output)
         : VideoSource(format, width, height, bit_depth,
-                      use_compressed_2bit_plan_output),
+                      use_compressed_2bit_plane_output),
           file_name_(file_name),
           file_handle_(nullptr),
           file_length_(0) {
         if (width_ % 8 != 0)
-            width_with_padding_ += +(8 - width_ % 8);
+            width_with_padding_ += (8 - width_ % 8);
         if (height_ % 8 != 0)
             height_with_padding_ += (8 - height_ % 8);
     }

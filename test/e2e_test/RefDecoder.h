@@ -16,8 +16,6 @@
 
 #include <memory.h>
 #include <stdio.h>
-#include "aom/aom_decoder.h"
-#include "aom/aomdx.h"
 #include "VideoFrame.h"
 
 /** RefDecoder is a class designed for a refenece tool of conformance
@@ -128,10 +126,10 @@ class RefDecoder {
      * @param image  the video image from AOM decoder
      * @param frame  the video frame to output
      */
-    void trans_video_frame(const aom_image_t *image, VideoFrame &frame);
+    void trans_video_frame(const void *image, VideoFrame &frame);
 
   protected:
-    aom_codec_ctx_t codec_;   /**< AOM codec context */
+    void *codec_handle_;      /**< AOM codec context */
     uint32_t dec_frame_cnt_;  /**< count of decoded frame in processing */
     uint64_t init_timestamp_; /**< initial timestamp of stream */
     uint32_t frame_interval_; /**< time interval of two frame in miliseconds */

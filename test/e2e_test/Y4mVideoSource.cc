@@ -199,7 +199,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
             fseek(file_handle_, -1, SEEK_CUR);
             width_with_padding_ = width_;
             if (width_ % 8 != 0)
-                width_with_padding_ += +(8 - width_ % 8);
+                width_with_padding_ += 8 - width_ % 8;
         } break;
         case 'H':  // Height
         {

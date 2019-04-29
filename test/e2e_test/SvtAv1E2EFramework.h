@@ -20,8 +20,8 @@
 #include "PerformanceCollect.h"
 #include "CompareTools.h"
 
-using namespace svt_av1_e2e_tools;
 using namespace svt_av1_video_source;
+using svt_av1_e2e_tools::PsnrStatistics;
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
 
@@ -52,8 +52,8 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
     virtual ~SvtAv1E2ETestBase();
 
   protected:
-    virtual void SetUp() override;
-    virtual void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
     /** initialization for test */
     virtual void init_test();
     /** close for test */
