@@ -27,7 +27,8 @@ class YuvVideoSource : public VideoFileSource {
                    const uint8_t bit_depth);
     ~YuvVideoSource();
     /*!\brief Prepare stream. */
-    EbErrorType open_source() override;
+    EbErrorType open_source(const uint32_t init_pos,
+                            const uint32_t frame_count) override;
     /*!\brief Close stream. */
     void close_source() override;
     /*!\brief Get next frame. */

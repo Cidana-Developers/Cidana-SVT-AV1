@@ -26,7 +26,7 @@ class VideoSource {
   public:
     VideoSource(const VideoColorFormat format, const uint32_t width,
                 const uint32_t height, const uint8_t bit_depth,
-                const bool use_compressed_2bit_plan_output)
+                const bool use_compressed_2bit_plane_output)
         : width_(width),
           width_with_padding_(width),
           height_(height),
@@ -37,8 +37,10 @@ class VideoSource {
           frame_size_(0),
           frame_buffer_(nullptr),
           image_format_(format),
-          svt_compressed_2bit_plane_(false) {
-        if (bit_depth_ > 8 && use_compressed_2bit_plan_output)
+          svt_compressed_2bit_plane_(false),
+          file_frames_(0),
+          init_pos_(0) {
+        if (bit_depth_ > 8 && use_compressed_2bit_plane_output)
             svt_compressed_2bit_plane_ = true;
         else
             svt_compressed_2bit_plane_ = false;
@@ -47,7 +49,8 @@ class VideoSource {
         deinit_frame_buffer();
     };
     /*!\brief Prepare stream. */
-    virtual EbErrorType open_source() = 0;
+    virtual EbErrorType open_source(const uint32_t init_pos,
+                                    const uint32_t frame_count) = 0;
     /*!\brief Close stream. */
     virtual void close_source() = 0;
     /*!\brief Get next frame. */
@@ -225,26 +228,29 @@ class VideoSource {
     uint32_t width_with_padding_;
     uint32_t height_with_padding_;
     uint32_t bit_depth_;
+    uint32_t file_frames_;
+    uint32_t init_pos_;
     uint32_t frame_count_;
     int32_t current_frame_index_;
     uint32_t frame_size_;
     EbSvtIOFormat *frame_buffer_;
     VideoColorFormat image_format_;
     bool svt_compressed_2bit_plane_;
-};  // namespace svt_av1_video_source
+};
 
 class VideoFileSource : public VideoSource {
   public:
     VideoFileSource(const std::string &file_name, const VideoColorFormat format,
                     const uint32_t width, const uint32_t height,
                     const uint8_t bit_depth,
-                    const bool use_compressed_2bit_plan_output)
+                    const bool use_compressed_2bit_plane_output)
         : VideoSource(format, width, height, bit_depth,
-                      use_compressed_2bit_plan_output),
+                      use_compressed_2bit_plane_output),
           file_name_(file_name),
-          file_handle_(nullptr) {
+          file_handle_(nullptr),
+          file_length_(0) {
         if (width_ % 8 != 0)
-            width_with_padding_ += +(8 - width_ % 8);
+            width_with_padding_ += (8 - width_ % 8);
         if (height_ % 8 != 0)
             height_with_padding_ += (8 - height_ % 8);
     }

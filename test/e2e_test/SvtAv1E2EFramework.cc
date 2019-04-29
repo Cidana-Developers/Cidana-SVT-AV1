@@ -16,14 +16,11 @@
 #include "Y4mVideoSource.h"
 #include "YuvVideoSource.h"
 #include "gtest/gtest.h"
+#include "EbDefinitions.h"
 #include "RefDecoder.h"
 #include "SvtAv1E2EFramework.h"
 #include "CompareTools.h"
 
-#define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
-#define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
-#define INPUT_SIZE_1080p_TH 0x1AB3F0  // 1.75 Million
-#define INPUT_SIZE_4K_TH 0x29F630     // 2.75 Million
 #define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(resolution_size) \
     ((resolution_size) < (INPUT_SIZE_1080i_TH)           \
          ? 0x1E8480                                      \
@@ -34,13 +31,12 @@
 #if _WIN32
 #define fseeko64 _fseeki64
 #define ftello64 _ftelli64
-#define FOPEN(f, s, m) fopen_s(&f, s, m)
 #else
 #define fseeko64 fseek
 #define ftello64 ftell
-#define FOPEN(f, s, m) f = fopen(s, m)
 #endif
 
+// Copied from EbAppProcessCmd.c
 #define LONG_ENCODE_FRAME_ENCODE 4000
 #define SPEED_MEASUREMENT_INTERVAL 2000
 #define START_STEADY_STATE 1000
@@ -49,26 +45,16 @@
 #define IVF_FRAME_HEADER_SIZE 12
 #define OBU_FRAME_HEADER_SIZE 3
 #define TD_SIZE 2
-static __inline void mem_put_le32(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-    mem[2] = (uint8_t)((val >> 16) & 0xff);
-    mem[3] = (uint8_t)((val >> 24) & 0xff);
-}
-#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
-static __inline void mem_put_le16(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-}
 
 using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_tools;
 
 SvtAv1E2ETestBase::SvtAv1E2ETestBase()
     : video_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
-    memset(&ctxt_, 0, sizeof(ctxt_));
+    memset(&av1enc_ctx_, 0, sizeof(av1enc_ctx_));
+    start_pos_ = std::get<7>(GetParam());
+    frames_to_test_ = std::get<8>(GetParam());
+    printf("start: %d, count: %d\n", start_pos_, frames_to_test_);
 }
 
 SvtAv1E2ETestBase::~SvtAv1E2ETestBase() {
@@ -83,7 +69,7 @@ void SvtAv1E2ETestBase::SetUp() {
 
     // check for video source
     ASSERT_NE(video_src_, nullptr) << "video source create failed!";
-    return_error = video_src_->open_source();
+    return_error = video_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "open_source return error:" << return_error;
     // Check input parameters
@@ -98,62 +84,63 @@ void SvtAv1E2ETestBase::SetUp() {
     //
     // Init handle
     //
-    return_error = eb_init_handle(&ctxt_.enc_handle, &ctxt_, &ctxt_.enc_params);
+    return_error = eb_init_handle(
+        &av1enc_ctx_.enc_handle, &av1enc_ctx_, &av1enc_ctx_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_init_handle return error:" << return_error;
-    ASSERT_NE(ctxt_.enc_handle, nullptr)
+    ASSERT_NE(av1enc_ctx_.enc_handle, nullptr)
         << "eb_init_handle return null handle.";
 
-    ctxt_.enc_params.source_width = width;
-    ctxt_.enc_params.source_height = height;
-    ctxt_.enc_params.encoder_bit_depth = bit_depth;
-    ctxt_.enc_params.compressed_ten_bit_format =
+    av1enc_ctx_.enc_params.source_width = width;
+    av1enc_ctx_.enc_params.source_height = height;
+    av1enc_ctx_.enc_params.encoder_bit_depth = bit_depth;
+    av1enc_ctx_.enc_params.compressed_ten_bit_format =
         video_src_->get_compressed_10bit_mode();
-    ctxt_.enc_params.recon_enabled = 0;
+    av1enc_ctx_.enc_params.recon_enabled = 0;
 
     //
-    // Prepare buffer
+    // Prepare input and output buffer
     //
     // Input Buffer
-    ctxt_.input_picture_buffer = new EbBufferHeaderType;
-    ASSERT_NE(ctxt_.input_picture_buffer, nullptr)
+    av1enc_ctx_.input_picture_buffer = new EbBufferHeaderType;
+    ASSERT_NE(av1enc_ctx_.input_picture_buffer, nullptr)
         << "Malloc memory for inputPictureBuffer failed.";
-    ctxt_.input_picture_buffer->p_buffer = nullptr;
-    ctxt_.input_picture_buffer->size = sizeof(EbBufferHeaderType);
-    ctxt_.input_picture_buffer->p_app_private = nullptr;
-    ctxt_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
+    av1enc_ctx_.input_picture_buffer->p_buffer = nullptr;
+    av1enc_ctx_.input_picture_buffer->size = sizeof(EbBufferHeaderType);
+    av1enc_ctx_.input_picture_buffer->p_app_private = nullptr;
+    av1enc_ctx_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
 
     // Output buffer
-    ctxt_.output_stream_buffer = new EbBufferHeaderType;
-    ASSERT_NE(ctxt_.output_stream_buffer, nullptr)
+    av1enc_ctx_.output_stream_buffer = new EbBufferHeaderType;
+    ASSERT_NE(av1enc_ctx_.output_stream_buffer, nullptr)
         << "Malloc memory for outputStreamBuffer failed.";
-    ctxt_.output_stream_buffer->p_buffer =
+    av1enc_ctx_.output_stream_buffer->p_buffer =
         new uint8_t[EB_OUTPUTSTREAMBUFFERSIZE_MACRO(width * height)];
-    ASSERT_NE(ctxt_.output_stream_buffer->p_buffer, nullptr)
+    ASSERT_NE(av1enc_ctx_.output_stream_buffer->p_buffer, nullptr)
         << "Malloc memory for outputStreamBuffer->p_buffer failed.";
-    ctxt_.output_stream_buffer->size = sizeof(EbBufferHeaderType);
-    ctxt_.output_stream_buffer->n_alloc_len =
+    av1enc_ctx_.output_stream_buffer->size = sizeof(EbBufferHeaderType);
+    av1enc_ctx_.output_stream_buffer->n_alloc_len =
         EB_OUTPUTSTREAMBUFFERSIZE_MACRO(width * height);
-    ctxt_.output_stream_buffer->p_app_private = nullptr;
-    ctxt_.output_stream_buffer->pic_type = EB_AV1_INVALID_PICTURE;
+    av1enc_ctx_.output_stream_buffer->p_app_private = nullptr;
+    av1enc_ctx_.output_stream_buffer->pic_type = EB_AV1_INVALID_PICTURE;
 }
 
 void SvtAv1E2ETestBase::TearDown() {
     EbErrorType return_error = EB_ErrorNone;
 
     // Destruct the component
-    return_error = eb_deinit_handle(ctxt_.enc_handle);
+    return_error = eb_deinit_handle(av1enc_ctx_.enc_handle);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_deinit_handle return error:" << return_error;
-    ctxt_.enc_handle = nullptr;
+    av1enc_ctx_.enc_handle = nullptr;
 
     // Clear
-    if (ctxt_.output_stream_buffer != nullptr) {
-        if (ctxt_.output_stream_buffer->p_buffer != nullptr) {
-            delete[] ctxt_.output_stream_buffer->p_buffer;
+    if (av1enc_ctx_.output_stream_buffer != nullptr) {
+        if (av1enc_ctx_.output_stream_buffer->p_buffer != nullptr) {
+            delete[] av1enc_ctx_.output_stream_buffer->p_buffer;
         }
-        delete[] ctxt_.output_stream_buffer;
-        ctxt_.output_stream_buffer = nullptr;
+        delete[] av1enc_ctx_.output_stream_buffer;
+        av1enc_ctx_.output_stream_buffer = nullptr;
     }
 
     ASSERT_NE(video_src_, nullptr);
@@ -164,23 +151,22 @@ void SvtAv1E2ETestBase::TearDown() {
 void SvtAv1E2ETestBase::init_test() {
     EbErrorType return_error = EB_ErrorNone;
     /** TODO: encoder_color_format should be set with input source format*/
-    ctxt_.enc_params.encoder_color_format = EB_YUV420;
-    ctxt_.enc_params.frames_to_be_encoded = video_src_->get_frame_count();
-    return_error =
-        eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
+    av1enc_ctx_.enc_params.encoder_color_format = EB_YUV420;
+    return_error = eb_svt_enc_set_parameter(av1enc_ctx_.enc_handle,
+                                            &av1enc_ctx_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_svt_enc_set_parameter return error:" << return_error;
 
-    return_error = eb_init_encoder(ctxt_.enc_handle);
+    return_error = eb_init_encoder(av1enc_ctx_.enc_handle);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_init_encoder return error:" << return_error;
 
     // Get ivf header
-    return_error =
-        eb_svt_enc_stream_header(ctxt_.enc_handle, &ctxt_.output_stream_buffer);
+    return_error = eb_svt_enc_stream_header(av1enc_ctx_.enc_handle,
+                                            &av1enc_ctx_.output_stream_buffer);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_svt_enc_stream_header return error:" << return_error;
-    ASSERT_NE(ctxt_.output_stream_buffer, nullptr)
+    ASSERT_NE(av1enc_ctx_.output_stream_buffer, nullptr)
         << "eb_svt_enc_stream_header return null output buffer."
         << return_error;
 }
@@ -188,7 +174,7 @@ void SvtAv1E2ETestBase::init_test() {
 void SvtAv1E2ETestBase::close_test() {
     EbErrorType return_error = EB_ErrorNone;
     // Deinit
-    return_error = eb_deinit_encoder(ctxt_.enc_handle);
+    return_error = eb_deinit_encoder(av1enc_ctx_.enc_handle);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_deinit_encoder return error:" << return_error;
 }
@@ -217,7 +203,7 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
     return video_src;
 }
 
-svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
+SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     : psnr_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
     recon_sink_ = nullptr;
     refer_dec_ = nullptr;
@@ -227,7 +213,7 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     ref_compare_ = nullptr;
 }
 
-svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
+SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
     if (recon_sink_) {
         delete recon_sink_;
         recon_sink_ = nullptr;
@@ -256,11 +242,11 @@ svt_av1_e2e_test::SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
 }
 
 /** initialization for test */
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::init_test() {
+void SvtAv1E2ETestFramework::init_test() {
     SvtAv1E2ETestBase::init_test();
 #if TILES
-    EbBool has_tiles =
-        (EbBool)(ctxt_.enc_params.tile_columns || ctxt_.enc_params.tile_rows);
+    EbBool has_tiles = (EbBool)(av1enc_ctx_.enc_params.tile_columns ||
+                                av1enc_ctx_.enc_params.tile_rows);
 #else
     EbBool has_tiles = (EbBool)EB_FALSE;
 #endif
@@ -268,11 +254,11 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::init_test() {
         has_tiles ? OBU_FRAME_HEADER_SIZE + 1 : OBU_FRAME_HEADER_SIZE;
 
     ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
-    EbErrorType err = psnr_src_->open_source();
+    EbErrorType err = psnr_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
+void SvtAv1E2ETestFramework::run_encode_process() {
     static const char READ_SRC[] = "read_src";
     static const char ENCODING[] = "encoding";
     static const char RECON[] = "recon";
@@ -305,21 +291,22 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                 if (frame != nullptr && frame_count) {
                     frame_count--;
                     // Fill in Buffers Header control data
-                    ctxt_.input_picture_buffer->p_buffer = frame;
-                    ctxt_.input_picture_buffer->n_filled_len =
+                    av1enc_ctx_.input_picture_buffer->p_buffer = frame;
+                    av1enc_ctx_.input_picture_buffer->n_filled_len =
                         video_src_->get_frame_size();
-                    ctxt_.input_picture_buffer->flags = 0;
-                    ctxt_.input_picture_buffer->p_app_private = nullptr;
-                    ctxt_.input_picture_buffer->pts =
+                    av1enc_ctx_.input_picture_buffer->flags = 0;
+                    av1enc_ctx_.input_picture_buffer->p_app_private = nullptr;
+                    av1enc_ctx_.input_picture_buffer->pts =
                         video_src_->get_frame_index();
-                    ctxt_.input_picture_buffer->pic_type =
+                    av1enc_ctx_.input_picture_buffer->pic_type =
                         EB_AV1_INVALID_PICTURE;
                     // Send the picture
                     EXPECT_EQ(EB_ErrorNone,
                               return_error = eb_svt_enc_send_picture(
-                                  ctxt_.enc_handle, ctxt_.input_picture_buffer))
+                                  av1enc_ctx_.enc_handle,
+                                  av1enc_ctx_.input_picture_buffer))
                         << "eb_svt_enc_send_picture error at: "
-                        << ctxt_.input_picture_buffer->pts;
+                        << av1enc_ctx_.input_picture_buffer->pts;
                 }
                 if (frame_count == 0 || frame == nullptr) {
                     src_file_eos = true;
@@ -331,10 +318,10 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                     headerPtrLast.flags = EB_BUFFERFLAG_EOS;
                     headerPtrLast.p_buffer = nullptr;
                     headerPtrLast.pic_type = EB_AV1_INVALID_PICTURE;
-                    ctxt_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
+                    av1enc_ctx_.input_picture_buffer->flags = EB_BUFFERFLAG_EOS;
                     EXPECT_EQ(EB_ErrorNone,
                               return_error = eb_svt_enc_send_picture(
-                                  ctxt_.enc_handle, &headerPtrLast))
+                                  av1enc_ctx_.enc_handle, &headerPtrLast))
                         << "eb_svt_enc_send_picture EOS error";
                 }
             }
@@ -355,7 +342,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
                     TimeAutoCount counter(ENCODING, collect_);
                     int pic_send_done = (src_file_eos && rec_file_eos) ? 1 : 0;
                     return_error = eb_svt_get_packet(
-                        ctxt_.enc_handle, &enc_out, pic_send_done);
+                        av1enc_ctx_.enc_handle, &enc_out, pic_send_done);
                     ASSERT_NE(return_error, EB_ErrorMax)
                         << "Error while encoding, code:" << enc_out->flags;
                 }
@@ -423,7 +410,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::run_encode_process() {
     }
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_output_header() {
+void SvtAv1E2ETestFramework::write_output_header() {
     char header[IVF_STREAM_HEADER_SIZE];
     header[0] = 'D';
     header[1] = 'K';
@@ -432,17 +419,17 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_output_header() {
     mem_put_le16(header + 4, 0);                                // version
     mem_put_le16(header + 6, 32);                               // header size
     mem_put_le32(header + 8, AV1_FOURCC);                       // fourcc
-    mem_put_le16(header + 12, ctxt_.enc_params.source_width);   // width
-    mem_put_le16(header + 14, ctxt_.enc_params.source_height);  // height
-    if (ctxt_.enc_params.frame_rate_denominator != 0 &&
-        ctxt_.enc_params.frame_rate_numerator != 0) {
+    mem_put_le16(header + 12, av1enc_ctx_.enc_params.source_width);   // width
+    mem_put_le16(header + 14, av1enc_ctx_.enc_params.source_height);  // height
+    if (av1enc_ctx_.enc_params.frame_rate_denominator != 0 &&
+        av1enc_ctx_.enc_params.frame_rate_numerator != 0) {
         mem_put_le32(header + 16,
-                     ctxt_.enc_params.frame_rate_numerator);  // rate
+                     av1enc_ctx_.enc_params.frame_rate_numerator);  // rate
         mem_put_le32(header + 20,
-                     ctxt_.enc_params.frame_rate_denominator);  // scale
+                     av1enc_ctx_.enc_params.frame_rate_denominator);  // scale
     } else {
         mem_put_le32(header + 16,
-                     (ctxt_.enc_params.frame_rate >> 16) * 1000);  // rate
+                     (av1enc_ctx_.enc_params.frame_rate >> 16) * 1000);  // rate
         mem_put_le32(header + 20, 1000);                           // scale
     }
     mem_put_le32(header + 24, 0);  // length
@@ -491,14 +478,12 @@ static void write_ivf_frame_header(
         fwrite(header, 1, IVF_FRAME_HEADER_SIZE, ivf->file);
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
+void SvtAv1E2ETestFramework::write_compress_data(
     const EbBufferHeaderType *output) {
-    switch (output->flags &
-            0x00000006) {  // Check for the flags EB_BUFFERFLAG_HAS_TD and
-                           // EB_BUFFERFLAG_SHOW_EXT
-
+    // Check for the flags EB_BUFFERFLAG_HAS_TD and
+    // EB_BUFFERFLAG_SHOW_EXT
+    switch (output->flags & 0x00000006) {
     case (EB_BUFFERFLAG_HAS_TD | EB_BUFFERFLAG_SHOW_EXT):
-
         // terminate previous ivf packet, update the combined size of
         // packets sent
         update_prev_ivf_header(output_file_);
@@ -523,9 +508,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
                output_file_->file);
 
         break;
-
     case (EB_BUFFERFLAG_HAS_TD):
-
         // terminate previous ivf packet, update the combined size of
         // packets sent
         update_prev_ivf_header(output_file_);
@@ -533,11 +516,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
         // Write a new IVF frame header to file as a TD is in the packet
         write_ivf_frame_header(output_file_, output->n_filled_len);
         fwrite(output->p_buffer, 1, output->n_filled_len, output_file_->file);
-
         break;
-
     case (EB_BUFFERFLAG_SHOW_EXT):
-
         // this case means that there's only one TD in this packet and is
         // relater
         fwrite(output->p_buffer,
@@ -563,9 +543,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
                output_file_->file);
 
         break;
-
     default:
-
         // This is a packet without a TD, write it straight to file
         fwrite(output->p_buffer, 1, output->n_filled_len, output_file_->file);
 
@@ -575,7 +553,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::write_compress_data(
     }
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::process_compress_data(
+void SvtAv1E2ETestFramework::process_compress_data(
     const EbBufferHeaderType *data) {
     ASSERT_NE(data, nullptr);
     if (refer_dec_ == nullptr) {
@@ -596,8 +574,8 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::process_compress_data(
     }
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
-    const uint8_t *data, const uint32_t size) {
+void SvtAv1E2ETestFramework::decode_compress_data(const uint8_t *data,
+                                                  const uint32_t size) {
     ASSERT_NE(data, nullptr);
     ASSERT_GT(size, 0);
 
@@ -623,8 +601,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::decode_compress_data(
     }
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
-    const VideoFrame &frame) {
+void SvtAv1E2ETestFramework::check_psnr(const VideoFrame &frame) {
     // Calculate psnr with input frame and
     EbSvtIOFormat *src_frame =
         psnr_src_->get_frame_by_index((const uint32_t)frame.timestamp);
@@ -678,7 +655,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::check_psnr(
     }
 }
 
-void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
+void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
     do {
         ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
         ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
@@ -692,7 +669,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
         recon_frame.p_app_private = nullptr;
         // non-blocking call until all input frames are sent
         EbErrorType recon_status =
-            eb_svt_get_recon(ctxt_.enc_handle, &recon_frame);
+            eb_svt_get_recon(av1enc_ctx_.enc_handle, &recon_frame);
         ASSERT_NE(recon_status, EB_ErrorMax)
             << "Error while outputing recon, code:" << recon_frame.flags;
         if (recon_status == EB_NoErrorEmptyQueue) {
@@ -712,7 +689,7 @@ void svt_av1_e2e_test::SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
     } while (true);
 }
 
-svt_av1_e2e_test::SvtAv1E2ETestFramework::IvfFile::IvfFile(std::string path) {
+SvtAv1E2ETestFramework::IvfFile::IvfFile(std::string path) {
     FOPEN(file, path.c_str(), "wb");
     byte_count_since_ivf = 0;
     ivf_count = 0;

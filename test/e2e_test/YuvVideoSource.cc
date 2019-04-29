@@ -35,8 +35,9 @@ YuvVideoSource::~YuvVideoSource() {
 #endif
 }
 
-// Prepare stream
-EbErrorType YuvVideoSource::open_source() {
+// Prepare stream, and get first frame.
+EbErrorType YuvVideoSource::open_source(const uint32_t init_pos,
+                                        const uint32_t frame_count) {
     std::string full_path = get_vector_path() + "/" + file_name_.c_str();
     if (file_handle_ == nullptr) {
         file_handle_ = fopen(full_path.c_str(), "rb");
@@ -79,7 +80,24 @@ EbErrorType YuvVideoSource::open_source() {
     }
 
     // Calculate frame count
-    frame_count_ = file_length_ / frame_length_;
+    file_frames_ = file_length_ / frame_length_;
+
+    if (file_frames_ <= init_pos || init_pos + frame_count >= file_frames_) {
+        printf(
+            "setup of initial position(%u) and output frame count(%u) is out "
+            "of bound!\n",
+            init_pos,
+            frame_count);
+        fclose(file_handle_);
+        file_handle_ = nullptr;
+        return EB_ErrorInsufficientResources;
+    }
+    init_pos_ = init_pos;
+    if (frame_count == 0)
+        frame_count_ = file_frames_ - init_pos_;
+    else
+        frame_count_ = frame_count;
+    fseek(file_handle_, init_pos_ * frame_length_, SEEK_SET);
 
     current_frame_index_ = -1;
 #ifdef ENABLE_DEBUG_MONITOR
@@ -102,15 +120,17 @@ void YuvVideoSource::close_source() {
         file_handle_ = nullptr;
     }
     deinit_frame_buffer();
+    init_pos_ = 0;
     frame_count_ = 0;
+    file_frames_ = 0;
 }
 
 EbSvtIOFormat *YuvVideoSource::get_frame_by_index(const uint32_t index) {
-    if (index > frame_count_) {
+    if (index >= frame_count_) {
         return nullptr;
     }
     // Seek to frame by index
-    fseek(file_handle_, index * frame_length_, SEEK_SET);
+    fseek(file_handle_, (init_pos_ + index) * frame_length_, SEEK_SET);
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;

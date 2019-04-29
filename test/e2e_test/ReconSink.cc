@@ -218,8 +218,9 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
             const VideoFrame *p = frame_vec_.back();
             frame_vec_.pop_back();
             if (p) {
-                printf("Reference Sink still remain frames when delete(%u)\n",
-                       (uint32_t)p->timestamp);
+                // printf("Reference Sink still remain frames when
+                // delete(%u)\n",
+                //       (uint32_t)p->timestamp);
                 delete p;
             }
         }

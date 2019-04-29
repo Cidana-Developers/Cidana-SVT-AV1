@@ -54,7 +54,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         recon_sink_ = create_recon_sink(param);
         ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
         if (recon_sink_)
-            ctxt_.enc_params.recon_enabled = 1;
+            av1enc_ctx_.enc_params.recon_enabled = 1;
 
         // create reference decoder
         refer_dec_ = create_reference_decoder();
@@ -87,7 +87,7 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
         /** initialization for test */                                    \
         void init_test(const size_t i) {                                  \
             collect_ = new PerformanceCollect(typeid(this).name());       \
-            ctxt_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
+            av1enc_ctx_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
             SvtAv1E2EParamBase::init_test();                              \
         }                                                                 \
         /** close for test */                                             \
