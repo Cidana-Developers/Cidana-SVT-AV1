@@ -205,7 +205,7 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
 
 SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     : psnr_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
-    recon_sink_ = nullptr;
+    frame_queue_ = nullptr;
     refer_dec_ = nullptr;
     output_file_ = nullptr;
     obu_frame_header_size_ = 0;
@@ -214,9 +214,9 @@ SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
 }
 
 SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
-    if (recon_sink_) {
-        delete recon_sink_;
-        recon_sink_ = nullptr;
+    if (frame_queue_) {
+        delete frame_queue_;
+        frame_queue_ = nullptr;
     }
     if (refer_dec_) {
         delete refer_dec_;
@@ -268,8 +268,8 @@ void SvtAv1E2ETestFramework::run_encode_process() {
 
     uint32_t frame_count = video_src_->get_frame_count();
     ASSERT_GT(frame_count, 0) << "video srouce file does not contain frame!!";
-    if (recon_sink_) {
-        recon_sink_->set_frame_count(frame_count);
+    if (frame_queue_) {
+        frame_queue_->set_frame_count(frame_count);
     }
 
     if (output_file_) {
@@ -279,7 +279,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
     uint8_t *frame = nullptr;
     bool src_file_eos = false;
     bool enc_file_eos = false;
-    bool rec_file_eos = recon_sink_ ? false : true;
+    bool rec_file_eos = frame_queue_ ? false : true;
     do {
         if (!src_file_eos) {
             {
@@ -328,7 +328,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
         }
 
         // recon
-        if (recon_sink_ && !rec_file_eos) {
+        if (frame_queue_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
             if (!rec_file_eos)
                 get_recon_frame(rec_file_eos);
@@ -416,9 +416,9 @@ void SvtAv1E2ETestFramework::write_output_header() {
     header[1] = 'K';
     header[2] = 'I';
     header[3] = 'F';
-    mem_put_le16(header + 4, 0);                                // version
-    mem_put_le16(header + 6, 32);                               // header size
-    mem_put_le32(header + 8, AV1_FOURCC);                       // fourcc
+    mem_put_le16(header + 4, 0);           // version
+    mem_put_le16(header + 6, 32);          // header size
+    mem_put_le32(header + 8, AV1_FOURCC);  // fourcc
     mem_put_le16(header + 12, av1enc_ctx_.enc_params.source_width);   // width
     mem_put_le16(header + 14, av1enc_ctx_.enc_params.source_height);  // height
     if (av1enc_ctx_.enc_params.frame_rate_denominator != 0 &&
@@ -430,7 +430,7 @@ void SvtAv1E2ETestFramework::write_output_header() {
     } else {
         mem_put_le32(header + 16,
                      (av1enc_ctx_.enc_params.frame_rate >> 16) * 1000);  // rate
-        mem_put_le32(header + 20, 1000);                           // scale
+        mem_put_le32(header + 20, 1000);  // scale
     }
     mem_put_le32(header + 24, 0);  // length
     mem_put_le32(header + 28, 0);  // unused
@@ -585,10 +585,11 @@ void SvtAv1E2ETestFramework::decode_compress_data(const uint8_t *data,
     VideoFrame ref_frame;
     memset(&ref_frame, 0, sizeof(ref_frame));
     while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
-        if (recon_sink_) {
+        if (frame_queue_) {
             // compare tools
             if (ref_compare_ == nullptr) {
-                ref_compare_ = create_ref_compare_sink(ref_frame, recon_sink_);
+                ref_compare_ =
+                    create_ref_compare_queue(ref_frame, frame_queue_);
                 ASSERT_NE(ref_compare_, nullptr);
             }
             // Compare ref decode output with recon output.
@@ -657,15 +658,17 @@ void SvtAv1E2ETestFramework::check_psnr(const VideoFrame &frame) {
 
 void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
     do {
-        ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
-        ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
-        ASSERT_NE(new_mug->mug_buf, nullptr)
-            << "can not get new mug for recon frame!!";
+        FrameQueue::FrameContainer *new_container =
+            frame_queue_->get_empty_container();
+        ASSERT_NE(new_container, nullptr)
+            << "can not get new container for recon frame!!";
+        ASSERT_NE(new_container->container_buf, nullptr)
+            << "can not get new container for recon frame!!";
 
         EbBufferHeaderType recon_frame = {0};
         recon_frame.size = sizeof(EbBufferHeaderType);
-        recon_frame.p_buffer = new_mug->mug_buf;
-        recon_frame.n_alloc_len = new_mug->mug_size;
+        recon_frame.p_buffer = new_container->container_buf;
+        recon_frame.n_alloc_len = new_container->container_size;
         recon_frame.p_app_private = nullptr;
         // non-blocking call until all input frames are sent
         EbErrorType recon_status =
@@ -673,18 +676,18 @@ void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
         ASSERT_NE(recon_status, EB_ErrorMax)
             << "Error while outputing recon, code:" << recon_frame.flags;
         if (recon_status == EB_NoErrorEmptyQueue) {
-            recon_sink_->pour_mug(new_mug);
+            frame_queue_->pour_container(new_container);
             break;
         } else {
-            ASSERT_EQ(recon_frame.n_filled_len, new_mug->mug_size)
+            ASSERT_EQ(recon_frame.n_filled_len, new_container->container_size)
                 << "recon frame size incorrect@" << recon_frame.pts;
             // mark the recon eos flag
             if (recon_frame.flags & EB_BUFFERFLAG_EOS)
                 is_eos = true;
-            new_mug->filled_size = recon_frame.n_filled_len;
-            new_mug->time_stamp = recon_frame.pts;
-            new_mug->tag = recon_frame.flags;
-            recon_sink_->fill_mug(new_mug);
+            new_container->filled_size = recon_frame.n_filled_len;
+            new_container->time_stamp = recon_frame.pts;
+            new_container->tag = recon_frame.flags;
+            frame_queue_->fill_container(new_container);
         }
     } while (true);
 }

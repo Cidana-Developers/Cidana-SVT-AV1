@@ -18,10 +18,10 @@
 #include <stdint.h>
 #include <math.h>
 #include <float.h>
-#include "ReconSink.h"
+#include "FrameQueue.h"
 
 namespace svt_av1_e2e_tools {
-static inline bool compare_image(const ReconSink::ReconMug *recon,
+static inline bool compare_image(const FrameQueue::FrameContainer *recon,
                                  const VideoFrame *ref_frame,
                                  VideoColorFormat fmt) {
     const uint32_t width = ref_frame->disp_width;
@@ -32,7 +32,7 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
         return true;
     if (ref_frame->bits_per_sample == 8) {
         for (uint32_t l = 0; l < height; l++) {
-            const uint8_t *s = recon->mug_buf + l * width;
+            const uint8_t *s = recon->container_buf + l * width;
             const uint8_t *d = ref_frame->planes[0] + l * ref_frame->stride[0];
             for (uint32_t r = 0; r < width; r++) {
                 if (s[r] != d[r * 2])  // ref decoder use 2bytes to store 8 bits
@@ -44,7 +44,7 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
 
         for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint8_t *s =
-                (recon->mug_buf + width * height) + l * (width >> 1);
+                (recon->container_buf + width * height) + l * (width >> 1);
             const uint8_t *d = ref_frame->planes[1] + l * ref_frame->stride[1];
             for (uint32_t r = 0; r < (width >> 1); r++) {
                 if (s[r] != d[r * 2])
@@ -54,8 +54,8 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
         }
 
         for (uint32_t l = 0; l < (height >> 1); l++) {
-            const uint8_t *s =
-                (recon->mug_buf + width * height * 5 / 4) + l * (width >> 1);
+            const uint8_t *s = (recon->container_buf + width * height * 5 / 4) +
+                               l * (width >> 1);
             const uint8_t *d = ref_frame->planes[2] + l * ref_frame->stride[2];
             for (uint32_t r = 0; r < (width >> 1); r++) {
                 if (s[r] != d[r * 2])
@@ -66,7 +66,8 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
     } else  // 10bit mode.
     {
         for (uint32_t l = 0; l < height; l++) {
-            const uint16_t *s = (uint16_t *)(recon->mug_buf + l * width * 2);
+            const uint16_t *s =
+                (uint16_t *)(recon->container_buf + l * width * 2);
             const uint16_t *d =
                 (uint16_t *)(ref_frame->planes[0] + l * ref_frame->stride[0]);
             for (uint32_t r = 0; r < width; r++) {
@@ -78,7 +79,7 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
 
         for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint16_t *s =
-                (uint16_t *)(recon->mug_buf + width * height * 2 +
+                (uint16_t *)(recon->container_buf + width * height * 2 +
                              l * (width >> 1) * 2);
             const uint16_t *d =
                 (uint16_t *)(ref_frame->planes[1] + l * ref_frame->stride[1]);
@@ -91,7 +92,7 @@ static inline bool compare_image(const ReconSink::ReconMug *recon,
 
         for (uint32_t l = 0; l < (height >> 1); l++) {
             const uint16_t *s =
-                (uint16_t *)(recon->mug_buf + width * height * 5 / 4 * 2 +
+                (uint16_t *)(recon->container_buf + width * height * 5 / 4 * 2 +
                              l * (width >> 1) * 2);
             const uint16_t *d =
                 (uint16_t *)(ref_frame->planes[2] + l * ref_frame->stride[2]);

@@ -45,15 +45,15 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
     }
     /** initialization for test */
     void init_test() override {
-        // create recon sink before setup parameter of encoder
+        // create recon queue before setup parameter of encoder
         VideoFrameParam param;
         memset(&param, 0, sizeof(param));
         param.format = video_src_->get_image_format();
         param.width = video_src_->get_width_with_padding();
         param.height = video_src_->get_height_with_padding();
-        recon_sink_ = create_recon_sink(param);
-        ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
-        if (recon_sink_)
+        frame_queue_ = create_frame_queue(param);
+        ASSERT_NE(frame_queue_, nullptr) << "can not create recon queue!!";
+        if (frame_queue_)
             av1enc_ctx_.enc_params.recon_enabled = 1;
 
         // create reference decoder
@@ -79,43 +79,44 @@ class SvtAv1E2EParamBase : public SvtAv1E2ETestFramework {
 /** @breif This class is a template based on EncParamTestBase to test each
  * parameter
  */
-#define DEFINE_PARAM_TEST_CLASS(test_name, param_name)                    \
-    class test_name : public SvtAv1E2EParamBase {                         \
-      public:                                                             \
-        test_name() : SvtAv1E2EParamBase(#param_name) {                   \
-        }                                                                 \
-        /** initialization for test */                                    \
-        void init_test(const size_t i) {                                  \
-            collect_ = new PerformanceCollect(typeid(this).name());       \
-            av1enc_ctx_.enc_params.param_name = GET_VALID_PARAM(param_name, i); \
-            SvtAv1E2EParamBase::init_test();                              \
-        }                                                                 \
-        /** close for test */                                             \
-        void close_test() override {                                      \
-            SvtAv1E2EParamBase::close_test();                             \
-            if (collect_) {                                               \
-                delete collect_;                                          \
-                collect_ = nullptr;                                       \
-            }                                                             \
-        }                                                                 \
-        /** run for the conformance test */                               \
-        void run_conformance_test() {                                     \
-            for (size_t i = 0; i < SIZE_VALID_PARAM(param_name); ++i) {   \
-                SvtAv1E2EParamBase::SetUp();                              \
-                init_test(i);                                             \
-                run_encode_process();                                     \
-                close_test();                                             \
-                SvtAv1E2EParamBase::TearDown();                           \
-            }                                                             \
-        }                                                                 \
-                                                                          \
-      protected:                                                          \
-        void SetUp() override {                                           \
-            /* skip SvtAv1E2EParamBase::SetUp() */                        \
-        }                                                                 \
-        void TearDown() override {                                        \
-            /* skip SvtAv1E2EParamBase::TearDown() */                     \
-        }                                                                 \
+#define DEFINE_PARAM_TEST_CLASS(test_name, param_name)                  \
+    class test_name : public SvtAv1E2EParamBase {                       \
+      public:                                                           \
+        test_name() : SvtAv1E2EParamBase(#param_name) {                 \
+        }                                                               \
+        /** initialization for test */                                  \
+        void init_test(const size_t i) {                                \
+            collect_ = new PerformanceCollect(typeid(this).name());     \
+            av1enc_ctx_.enc_params.param_name =                         \
+                GET_VALID_PARAM(param_name, i);                         \
+            SvtAv1E2EParamBase::init_test();                            \
+        }                                                               \
+        /** close for test */                                           \
+        void close_test() override {                                    \
+            SvtAv1E2EParamBase::close_test();                           \
+            if (collect_) {                                             \
+                delete collect_;                                        \
+                collect_ = nullptr;                                     \
+            }                                                           \
+        }                                                               \
+        /** run for the conformance test */                             \
+        void run_conformance_test() {                                   \
+            for (size_t i = 0; i < SIZE_VALID_PARAM(param_name); ++i) { \
+                SvtAv1E2EParamBase::SetUp();                            \
+                init_test(i);                                           \
+                run_encode_process();                                   \
+                close_test();                                           \
+                SvtAv1E2EParamBase::TearDown();                         \
+            }                                                           \
+        }                                                               \
+                                                                        \
+      protected:                                                        \
+        void SetUp() override {                                         \
+            /* skip SvtAv1E2EParamBase::SetUp() */                      \
+        }                                                               \
+        void TearDown() override {                                      \
+            /* skip SvtAv1E2EParamBase::TearDown() */                   \
+        }                                                               \
     };
 
 /** Test case for enc_mode*/

@@ -16,7 +16,7 @@
 #define _SVT_AV1_E2E_FRAMEWORK_H_
 
 #include "E2eTestVectors.h"
-#include "ReconSink.h"
+#include "FrameQueue.h"
 #include "PerformanceCollect.h"
 #include "CompareTools.h"
 
@@ -65,10 +65,10 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
 
   protected:
-    VideoSource *video_src_;  /**< video source context */
+    VideoSource *video_src_;   /**< video source context */
     SvtAv1Context av1enc_ctx_; /**< AV1 encoder context */
-    uint32_t start_pos_;      /**< start position of video frame */
-    uint32_t frames_to_test_; /**< frame count for this test */
+    uint32_t start_pos_;       /**< start position of video frame */
+    uint32_t frames_to_test_;  /**< frame count for this test */
 };
 
 /** SvtAv1E2ETestFramework is a class with impelmention of video source control,
@@ -128,13 +128,13 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     virtual void get_recon_frame(bool &is_eos);
 
   protected:
-    ReconSink *recon_sink_; /**< reconstruction frame collection */
-    RefDecoder *refer_dec_; /**< reference decoder context */
-    IvfFile *output_file_;  /**< file handle for save encoder output data */
+    FrameQueue *frame_queue_; /**< reconstruction frame collection */
+    RefDecoder *refer_dec_;   /**< reference decoder context */
+    IvfFile *output_file_;    /**< file handle for save encoder output data */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect *collect_;   /**< performance and time collection*/
     VideoSource *psnr_src_;         /**< video source context for psnr */
-    ICompareSink *ref_compare_; /**< sink of reference to compare with recon*/
+    ICompareQueue *ref_compare_; /**< queue of reference to compare with recon*/
     svt_av1_e2e_tools::PsnrStatistics
         pnsr_statistics_; /**< psnr statistics recorder.*/
 };
