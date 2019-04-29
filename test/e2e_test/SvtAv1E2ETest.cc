@@ -102,7 +102,7 @@ class SvtAv1E2EReconFileTest : public SvtAv1E2ETestFramework {
         recon_sink_ = create_recon_sink(param, "enc_recon.rcs");
         ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
         if (recon_sink_)
-            ctxt_.enc_params.recon_enabled = 1;
+            av1enc_ctx_.enc_params.recon_enabled = 1;
         SvtAv1E2ETestFramework::init_test();
     }
 };
@@ -144,7 +144,7 @@ class SvtAv1E2EReconBufferTest : public SvtAv1E2ETestFramework {
         recon_sink_ = create_recon_sink(param);
         ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
         if (recon_sink_)
-            ctxt_.enc_params.recon_enabled = 1;
+            av1enc_ctx_.enc_params.recon_enabled = 1;
         SvtAv1E2ETestFramework::init_test();
     }
 };
@@ -187,7 +187,7 @@ class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {
         recon_sink_ = create_recon_sink(param);
         ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
         if (recon_sink_)
-            ctxt_.enc_params.recon_enabled = 1;
+            av1enc_ctx_.enc_params.recon_enabled = 1;
 
         // create reference decoder
         refer_dec_ = create_reference_decoder();

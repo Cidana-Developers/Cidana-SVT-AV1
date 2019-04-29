@@ -66,7 +66,7 @@ class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
 
   protected:
     VideoSource *video_src_;  /**< video source context */
-    SvtAv1Context ctxt_;      /**< AV1 encoder context */
+    SvtAv1Context av1enc_ctx_; /**< AV1 encoder context */
     uint32_t start_pos_;      /**< start position of video frame */
     uint32_t frames_to_test_; /**< frame count for this test */
 };
