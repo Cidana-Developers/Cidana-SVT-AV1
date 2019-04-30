@@ -545,7 +545,7 @@ EbSvtIOFormat *VideoFileSource::get_frame_by_index(const uint32_t index) {
         return nullptr;
     }
     // Seek to frame by index
-    if (seek_to_frame(init_pos_) != EB_ErrorNone)
+    if (seek_to_frame(init_pos_ + index) != EB_ErrorNone)
         return nullptr;
 
     frame_size_ = read_input_frame();
