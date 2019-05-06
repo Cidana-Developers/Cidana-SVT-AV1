@@ -35,9 +35,7 @@ using namespace svt_av1_e2e_test_vector;
 class SvtAv1E2ESimpleTest : public SvtAv1E2ETestFramework {};
 
 TEST_P(SvtAv1E2ESimpleTest, run_smoking_test) {
-    init_test();
     run_encode_process();
-    close_test();
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
@@ -67,9 +65,7 @@ class SvtAv1E2ESimpleFileTest : public SvtAv1E2ETestFramework {
 };
 
 TEST_P(SvtAv1E2ESimpleFileTest, run_smoking_with_output_test) {
-    init_test();
     run_encode_process();
-    close_test();
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleFileTest,
@@ -108,9 +104,7 @@ class SvtAv1E2EReconFileTest : public SvtAv1E2ETestFramework {
 };
 
 TEST_P(SvtAv1E2EReconFileTest, run_recon_collect_test) {
-    init_test();
     run_encode_process();
-    close_test();
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconFileTest,
@@ -150,9 +144,7 @@ class SvtAv1E2EReconBufferTest : public SvtAv1E2ETestFramework {
 };
 
 TEST_P(SvtAv1E2EReconBufferTest, run_recon_collect_test) {
-    init_test();
     run_encode_process();
-    close_test();
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
@@ -200,9 +192,7 @@ class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {
 };
 
 TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
-    init_test();
     run_encode_process();
-    close_test();
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,

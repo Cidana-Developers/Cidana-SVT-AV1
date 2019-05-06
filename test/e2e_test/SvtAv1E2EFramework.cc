@@ -49,22 +49,78 @@
 using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_tools;
 
-SvtAv1E2ETestBase::SvtAv1E2ETestBase()
-    : video_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
+VideoSource *SvtAv1E2ETestFramework::prepare_video_src(
+    const TestVideoVector &vector) {
+    VideoSource *video_src = nullptr;
+    switch (std::get<1>(vector)) {
+    case YUV_VIDEO_FILE:
+        video_src = new YuvVideoSource(std::get<0>(vector),
+                                       std::get<2>(vector),
+                                       std::get<3>(vector),
+                                       std::get<4>(vector),
+                                       std::get<5>(vector));
+        break;
+    case Y4M_VIDEO_FILE:
+        video_src = new Y4MVideoSource(std::get<0>(vector),
+                                       std::get<2>(vector),
+                                       std::get<3>(vector),
+                                       std::get<4>(vector),
+                                       std::get<5>(vector),
+                                       std::get<6>(vector));
+        break;
+    default: assert(0); break;
+    }
+    return video_src;
+}
+
+SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
+    : video_src_(SvtAv1E2ETestFramework::prepare_video_src(GetParam())),
+      psnr_src_(SvtAv1E2ETestFramework::prepare_video_src(GetParam())) {
     memset(&av1enc_ctx_, 0, sizeof(av1enc_ctx_));
+    recon_sink_ = nullptr;
+    refer_dec_ = nullptr;
+    output_file_ = nullptr;
+    obu_frame_header_size_ = 0;
+    collect_ = nullptr;
+    ref_compare_ = nullptr;
     start_pos_ = std::get<7>(GetParam());
     frames_to_test_ = std::get<8>(GetParam());
     printf("start: %d, count: %d\n", start_pos_, frames_to_test_);
 }
 
-SvtAv1E2ETestBase::~SvtAv1E2ETestBase() {
+SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
     if (video_src_) {
         delete video_src_;
         video_src_ = nullptr;
     }
+    if (recon_sink_) {
+        delete recon_sink_;
+        recon_sink_ = nullptr;
+    }
+    if (refer_dec_) {
+        delete refer_dec_;
+        refer_dec_ = nullptr;
+    }
+    if (output_file_) {
+        delete output_file_;
+        output_file_ = nullptr;
+    }
+    if (collect_) {
+        delete collect_;
+        collect_ = nullptr;
+    }
+    if (psnr_src_) {
+        psnr_src_->close_source();
+        delete psnr_src_;
+        psnr_src_ = nullptr;
+    }
+    if (ref_compare_) {
+        delete ref_compare_;
+        ref_compare_ = nullptr;
+    }
 }
 
-void SvtAv1E2ETestBase::SetUp() {
+void SvtAv1E2ETestFramework::SetUp() {
     EbErrorType return_error = EB_ErrorNone;
 
     // check for video source
@@ -123,11 +179,16 @@ void SvtAv1E2ETestBase::SetUp() {
         EB_OUTPUTSTREAMBUFFERSIZE_MACRO(width * height);
     av1enc_ctx_.output_stream_buffer->p_app_private = nullptr;
     av1enc_ctx_.output_stream_buffer->pic_type = EB_AV1_INVALID_PICTURE;
+
+    // initialize test
+    init_test();
 }
 
-void SvtAv1E2ETestBase::TearDown() {
-    EbErrorType return_error = EB_ErrorNone;
+void SvtAv1E2ETestFramework::TearDown() {
+    // close test before teardown
+    close_test();
 
+    EbErrorType return_error = EB_ErrorNone;
     // Destruct the component
     return_error = eb_deinit_handle(av1enc_ctx_.enc_handle);
     ASSERT_EQ(return_error, EB_ErrorNone)
@@ -148,7 +209,7 @@ void SvtAv1E2ETestBase::TearDown() {
 }
 
 /** initialization for test */
-void SvtAv1E2ETestBase::init_test() {
+void SvtAv1E2ETestFramework::init_test() {
     EbErrorType return_error = EB_ErrorNone;
     /** TODO: encoder_color_format should be set with input source format*/
     av1enc_ctx_.enc_params.encoder_color_format = EB_YUV420;
@@ -169,81 +230,7 @@ void SvtAv1E2ETestBase::init_test() {
     ASSERT_NE(av1enc_ctx_.output_stream_buffer, nullptr)
         << "eb_svt_enc_stream_header return null output buffer."
         << return_error;
-}
 
-void SvtAv1E2ETestBase::close_test() {
-    EbErrorType return_error = EB_ErrorNone;
-    // Deinit
-    return_error = eb_deinit_encoder(av1enc_ctx_.enc_handle);
-    ASSERT_EQ(return_error, EB_ErrorNone)
-        << "eb_deinit_encoder return error:" << return_error;
-}
-
-VideoSource *SvtAv1E2ETestBase::prepare_video_src(
-    const TestVideoVector &vector) {
-    VideoSource *video_src = nullptr;
-    switch (std::get<1>(vector)) {
-    case YUV_VIDEO_FILE:
-        video_src = new YuvVideoSource(std::get<0>(vector),
-                                       std::get<2>(vector),
-                                       std::get<3>(vector),
-                                       std::get<4>(vector),
-                                       std::get<5>(vector));
-        break;
-    case Y4M_VIDEO_FILE:
-        video_src = new Y4MVideoSource(std::get<0>(vector),
-                                       std::get<2>(vector),
-                                       std::get<3>(vector),
-                                       std::get<4>(vector),
-                                       std::get<5>(vector),
-                                       std::get<6>(vector));
-        break;
-    default: assert(0); break;
-    }
-    return video_src;
-}
-
-SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
-    : psnr_src_(SvtAv1E2ETestBase::prepare_video_src(GetParam())) {
-    recon_sink_ = nullptr;
-    refer_dec_ = nullptr;
-    output_file_ = nullptr;
-    obu_frame_header_size_ = 0;
-    collect_ = nullptr;
-    ref_compare_ = nullptr;
-}
-
-SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
-    if (recon_sink_) {
-        delete recon_sink_;
-        recon_sink_ = nullptr;
-    }
-    if (refer_dec_) {
-        delete refer_dec_;
-        refer_dec_ = nullptr;
-    }
-    if (output_file_) {
-        delete output_file_;
-        output_file_ = nullptr;
-    }
-    if (collect_) {
-        delete collect_;
-        collect_ = nullptr;
-    }
-    if (psnr_src_) {
-        psnr_src_->close_source();
-        delete psnr_src_;
-        psnr_src_ = nullptr;
-    }
-    if (ref_compare_) {
-        delete ref_compare_;
-        ref_compare_ = nullptr;
-    }
-}
-
-/** initialization for test */
-void SvtAv1E2ETestFramework::init_test() {
-    SvtAv1E2ETestBase::init_test();
 #if TILES
     EbBool has_tiles = (EbBool)(av1enc_ctx_.enc_params.tile_columns ||
                                 av1enc_ctx_.enc_params.tile_rows);
@@ -256,6 +243,14 @@ void SvtAv1E2ETestFramework::init_test() {
     ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
     EbErrorType err = psnr_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
+}
+
+void SvtAv1E2ETestFramework::close_test() {
+    EbErrorType return_error = EB_ErrorNone;
+    // Deinit
+    return_error = eb_deinit_encoder(av1enc_ctx_.enc_handle);
+    ASSERT_EQ(return_error, EB_ErrorNone)
+        << "eb_deinit_encoder return error:" << return_error;
 }
 
 void SvtAv1E2ETestFramework::run_encode_process() {
@@ -416,9 +411,9 @@ void SvtAv1E2ETestFramework::write_output_header() {
     header[1] = 'K';
     header[2] = 'I';
     header[3] = 'F';
-    mem_put_le16(header + 4, 0);                                // version
-    mem_put_le16(header + 6, 32);                               // header size
-    mem_put_le32(header + 8, AV1_FOURCC);                       // fourcc
+    mem_put_le16(header + 4, 0);           // version
+    mem_put_le16(header + 6, 32);          // header size
+    mem_put_le32(header + 8, AV1_FOURCC);  // fourcc
     mem_put_le16(header + 12, av1enc_ctx_.enc_params.source_width);   // width
     mem_put_le16(header + 14, av1enc_ctx_.enc_params.source_height);  // height
     if (av1enc_ctx_.enc_params.frame_rate_denominator != 0 &&
@@ -430,7 +425,7 @@ void SvtAv1E2ETestFramework::write_output_header() {
     } else {
         mem_put_le32(header + 16,
                      (av1enc_ctx_.enc_params.frame_rate >> 16) * 1000);  // rate
-        mem_put_le32(header + 20, 1000);                           // scale
+        mem_put_le32(header + 20, 1000);  // scale
     }
     mem_put_le32(header + 24, 0);  // length
     mem_put_le32(header + 28, 0);  // unused
