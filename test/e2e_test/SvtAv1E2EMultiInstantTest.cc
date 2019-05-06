@@ -20,8 +20,8 @@ class EncTestCtxt : public ::testing::Test {
   public:
     EncTestCtxt() = delete;
     EncTestCtxt(const TestVideoVector& vector, const uint32_t id) {
-        video_src_ = SvtAv1E2ETestBase::prepare_video_src(vector);
-        memset(&ctxt_, 0, sizeof(ctxt_));
+        video_src_ = SvtAv1E2ETestFramework::prepare_video_src(vector);
+        memset(&av1enc_ctx_, 0, sizeof(av1enc_ctx_));
         recon_sink_ = nullptr;
         refer_dec_ = nullptr;
         obu_frame_header_size_ = 0;
@@ -58,7 +58,7 @@ class EncTestCtxt : public ::testing::Test {
 
         // check for video source
         ASSERT_NE(video_src_, nullptr) << "video source create failed!";
-        return_error = video_src_->open_source();
+        return_error = video_src_->open_source(0, 0);
         ASSERT_EQ(return_error, EB_ErrorNone)
             << "open_source return error:" << return_error;
         // Check input parameters
@@ -74,27 +74,27 @@ class EncTestCtxt : public ::testing::Test {
         // Init handle
         //
         return_error =
-            eb_init_handle(&ctxt_.enc_handle, &ctxt_, &ctxt_.enc_params);
+            eb_init_handle(&av1enc_ctx_.enc_handle, &av1enc_ctx_, &av1enc_ctx_.enc_params);
         ASSERT_EQ(return_error, EB_ErrorNone)
             << "eb_init_handle return error:" << return_error;
-        ASSERT_NE(ctxt_.enc_handle, nullptr)
+        ASSERT_NE(av1enc_ctx_.enc_handle, nullptr)
             << "eb_init_handle return null handle.";
-        SvtAv1E2ETestBase::trans_src_param(video_src_, ctxt_.enc_params);
+		SvtAv1E2ETestFramework::trans_src_param(video_src_, av1enc_ctx_.enc_params);
         /** setup channel id for instant identify */
-        ctxt_.enc_params.channel_id = channel_id_;
+        av1enc_ctx_.enc_params.channel_id = channel_id_;
         // trans_src_param();
         return_error =
-            eb_svt_enc_set_parameter(ctxt_.enc_handle, &ctxt_.enc_params);
+            eb_svt_enc_set_parameter(av1enc_ctx_.enc_handle, &av1enc_ctx_.enc_params);
         ASSERT_EQ(return_error, EB_ErrorNone)
             << "eb_svt_enc_set_parameter return error:" << return_error;
 
-        return_error = eb_init_encoder(ctxt_.enc_handle);
+        return_error = eb_init_encoder(av1enc_ctx_.enc_handle);
         ASSERT_EQ(return_error, EB_ErrorNone)
             << "eb_init_encoder return error:" << return_error;
 
 #if TILES
-        EbBool has_tiles = (EbBool)(ctxt_.enc_params.tile_columns ||
-                                    ctxt_.enc_params.tile_rows);
+        EbBool has_tiles = (EbBool)(av1enc_ctx_.enc_params.tile_columns ||
+                                    av1enc_ctx_.enc_params.tile_rows);
 #else
         EbBool has_tiles = (EbBool)EB_FALSE;
 #endif
@@ -109,7 +109,7 @@ class EncTestCtxt : public ::testing::Test {
         param.height = video_src_->get_height_with_padding();
         recon_sink_ = create_recon_sink(param);
         ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
-        ctxt_.enc_params.recon_enabled = 1;
+        av1enc_ctx_.enc_params.recon_enabled = 1;
 
         // create reference decoder
         refer_dec_ = create_reference_decoder();
@@ -119,45 +119,45 @@ class EncTestCtxt : public ::testing::Test {
         // Prepare buffer
         //
         // Input Buffer
-        ctxt_.input_picture_buffer = new EbBufferHeaderType;
-        ASSERT_NE(ctxt_.input_picture_buffer, nullptr)
+        av1enc_ctx_.input_picture_buffer = new EbBufferHeaderType;
+        ASSERT_NE(av1enc_ctx_.input_picture_buffer, nullptr)
             << "Malloc memory for inputPictureBuffer failed.";
-        ctxt_.input_picture_buffer->p_buffer = nullptr;
-        ctxt_.input_picture_buffer->size = sizeof(EbBufferHeaderType);
-        ctxt_.input_picture_buffer->p_app_private = nullptr;
-        ctxt_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
+        av1enc_ctx_.input_picture_buffer->p_buffer = nullptr;
+        av1enc_ctx_.input_picture_buffer->size = sizeof(EbBufferHeaderType);
+        av1enc_ctx_.input_picture_buffer->p_app_private = nullptr;
+        av1enc_ctx_.input_picture_buffer->pic_type = EB_AV1_INVALID_PICTURE;
 
         // Output buffer
-        ctxt_.output_stream_buffer = new EbBufferHeaderType;
-        ASSERT_NE(ctxt_.output_stream_buffer, nullptr)
+        av1enc_ctx_.output_stream_buffer = new EbBufferHeaderType;
+        ASSERT_NE(av1enc_ctx_.output_stream_buffer, nullptr)
             << "Malloc memory for outputStreamBuffer failed.";
-        ctxt_.output_stream_buffer->p_buffer =
+        av1enc_ctx_.output_stream_buffer->p_buffer =
             new uint8_t[EB_OUTPUTSTREAMBUFFERSIZE_MACRO(width * height)];
-        ASSERT_NE(ctxt_.output_stream_buffer->p_buffer, nullptr)
+        ASSERT_NE(av1enc_ctx_.output_stream_buffer->p_buffer, nullptr)
             << "Malloc memory for outputStreamBuffer->p_buffer failed.";
-        ctxt_.output_stream_buffer->size = sizeof(EbBufferHeaderType);
-        ctxt_.output_stream_buffer->n_alloc_len =
+        av1enc_ctx_.output_stream_buffer->size = sizeof(EbBufferHeaderType);
+        av1enc_ctx_.output_stream_buffer->n_alloc_len =
             EB_OUTPUTSTREAMBUFFERSIZE_MACRO(width * height);
-        ctxt_.output_stream_buffer->p_app_private = nullptr;
-        ctxt_.output_stream_buffer->pic_type = EB_AV1_INVALID_PICTURE;
+        av1enc_ctx_.output_stream_buffer->p_app_private = nullptr;
+        av1enc_ctx_.output_stream_buffer->pic_type = EB_AV1_INVALID_PICTURE;
     }
 
     void TearDown() override {
         EbErrorType return_error = EB_ErrorNone;
 
         // Destruct the component
-        return_error = eb_deinit_handle(ctxt_.enc_handle);
+        return_error = eb_deinit_handle(av1enc_ctx_.enc_handle);
         ASSERT_EQ(return_error, EB_ErrorNone)
             << "eb_deinit_handle return error:" << return_error;
-        ctxt_.enc_handle = nullptr;
+        av1enc_ctx_.enc_handle = nullptr;
 
         // Clear
-        if (ctxt_.output_stream_buffer != nullptr) {
-            if (ctxt_.output_stream_buffer->p_buffer != nullptr) {
-                delete[] ctxt_.output_stream_buffer->p_buffer;
+        if (av1enc_ctx_.output_stream_buffer != nullptr) {
+            if (av1enc_ctx_.output_stream_buffer->p_buffer != nullptr) {
+                delete[] av1enc_ctx_.output_stream_buffer->p_buffer;
             }
-            delete[] ctxt_.output_stream_buffer;
-            ctxt_.output_stream_buffer = nullptr;
+            delete[] av1enc_ctx_.output_stream_buffer;
+            av1enc_ctx_.output_stream_buffer = nullptr;
         }
 
         ASSERT_NE(video_src_, nullptr);
@@ -167,7 +167,7 @@ class EncTestCtxt : public ::testing::Test {
   protected:
     uint32_t channel_id_;           /**< channel id for encoder instance*/
     VideoSource* video_src_;        /**< video source context */
-    SvtAv1Context ctxt_;            /**< AV1 encoder context */
+    SvtAv1Context av1enc_ctx_;            /**< AV1 encoder context */
     ReconSink* recon_sink_;         /**< reconstruction frame collection */
     RefDecoder* refer_dec_;         /**< reference decoder context */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */

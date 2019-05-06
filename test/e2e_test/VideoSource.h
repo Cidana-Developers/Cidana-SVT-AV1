@@ -1,7 +1,8 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
 /******************************************************************************
  * @file VideoSource.h
  *
@@ -13,32 +14,27 @@
 
 #ifndef _SVT_TEST_VIDEO_SOURCE_H_
 #define _SVT_TEST_VIDEO_SOURCE_H_
+#include <string>
 #include "EbSvtAv1Enc.h"
 #include "VideoFrame.h"
+#ifdef ENABLE_DEBUG_MONITOR
+#include "VideoMonitor.h"
+#endif
 
 namespace svt_av1_video_source {
 
 /**
- * @brief      Use this funcion to get vector path defined by envrionment
- * variable SVT_AV1_TEST_VECTOR_PATH, or it will return a default path.
- *
- * @return     The vectors path.
+ * @brief      Video source abstract class.
  */
-static std::string get_vector_path() {
-    const char *const path = getenv("SVT_AV1_TEST_VECTOR_PATH");
-    if (path == nullptr) {
-        return "../../test/vectors";
-    }
-    return path;
-}
-
 class VideoSource {
   public:
-    virtual ~VideoSource() {
-        deinit_frame_buffer();
-    };
+    VideoSource(const VideoColorFormat format, const uint32_t width,
+                const uint32_t height, const uint8_t bit_depth,
+                const bool use_compressed_2bit_plane_output);
+    virtual ~VideoSource();
     /*!\brief Prepare stream. */
-    virtual EbErrorType open_source() = 0;
+    virtual EbErrorType open_source(const uint32_t init_pos,
+                                    const uint32_t frame_count) = 0;
     /*!\brief Close stream. */
     virtual void close_source() = 0;
     /*!\brief Get next frame. */
@@ -78,151 +74,71 @@ class VideoSource {
     /*!\brief If the return value is true, video source will use svt compressed
      * 10bit mode for output . */
     virtual bool get_compressed_10bit_mode() const {
-        return svt_compressed_2bit_plane;
+        return svt_compressed_2bit_plane_;
     }
 
   protected:
-    bool is_10bit_mode() {
-        if (image_format_ == IMG_FMT_420P10_PACKED ||
-            image_format_ == IMG_FMT_422P10_PACKED ||
-            image_format_ == IMG_FMT_444P10_PACKED) {
-            return true;
-        }
-        return false;
-    }
-
-    void deinit_frame_buffer() {
-        if (frame_buffer_ == nullptr)
-            return;
-
-        if (frame_buffer_->luma != nullptr) {
-            free(frame_buffer_->luma);
-            frame_buffer_->luma = nullptr;
-        }
-        if (frame_buffer_->cb != nullptr) {
-            free(frame_buffer_->cb);
-            frame_buffer_->cb = nullptr;
-        }
-        if (frame_buffer_->cr != nullptr) {
-            free(frame_buffer_->cr);
-            frame_buffer_->cr = nullptr;
-        }
-        if (frame_buffer_->luma_ext != nullptr) {
-            free(frame_buffer_->luma_ext);
-            frame_buffer_->luma_ext = nullptr;
-        }
-        if (frame_buffer_->cb_ext != nullptr) {
-            free(frame_buffer_->cb_ext);
-            frame_buffer_->cb_ext = nullptr;
-        }
-        if (frame_buffer_->cr_ext != nullptr) {
-            free(frame_buffer_->cr_ext);
-            frame_buffer_->cr_ext = nullptr;
-        }
-        free(frame_buffer_);
-        frame_buffer_ = nullptr;
-    }
-    virtual EbErrorType init_frame_buffer() {
-        // Determine size of each plane
-        uint32_t luma_size = width_with_padding_ * height_with_padding_;
-        uint32_t chroma_size = 0;
-
-        switch (image_format_) {
-        case IMG_FMT_420P10_PACKED:
-        case IMG_FMT_420: {
-            chroma_size = luma_size >> 2;
-        } break;
-        case IMG_FMT_422P10_PACKED:
-        case IMG_FMT_422: {
-            chroma_size = luma_size >> 1;
-        } break;
-        case IMG_FMT_444P10_PACKED:
-        case IMG_FMT_444: {
-            chroma_size = luma_size;
-        } break;
-        default: { chroma_size = luma_size >> 2; } break;
-        }
-
-        // Determine
-        if (frame_buffer_ == nullptr)
-            frame_buffer_ = (EbSvtIOFormat *)malloc(sizeof(EbSvtIOFormat));
-        else {
-            deinit_frame_buffer();
-            return EB_ErrorInsufficientResources;
-        }
-
-        frame_buffer_->width = width_with_padding_;
-        frame_buffer_->height = height_with_padding_;
-        frame_buffer_->origin_x = 0;
-        frame_buffer_->origin_y = 0;
-
-        // SVT-AV1 use pixel size as stride?
-        frame_buffer_->y_stride = luma_size;
-        frame_buffer_->cb_stride = chroma_size;
-        frame_buffer_->cr_stride = chroma_size;
-
-        if (is_10bit_mode() && !svt_compressed_2bit_plane) {
-            luma_size *= 2;
-            chroma_size *= 2;
-        }
-
-        frame_buffer_->luma = (uint8_t *)malloc(luma_size);
-        if (!frame_buffer_->luma) {
-            deinit_frame_buffer();
-            return EB_ErrorInsufficientResources;
-        }
-
-        frame_buffer_->cb = (uint8_t *)malloc(chroma_size);
-        if (!frame_buffer_->cb) {
-            deinit_frame_buffer();
-            return EB_ErrorInsufficientResources;
-        }
-
-        frame_buffer_->cr = (uint8_t *)malloc(chroma_size);
-        if (!frame_buffer_->cr) {
-            deinit_frame_buffer();
-            return EB_ErrorInsufficientResources;
-        }
-
-        if (is_10bit_mode() && svt_compressed_2bit_plane) {
-            frame_buffer_->luma_ext = (uint8_t *)malloc(luma_size / 4);
-            if (!frame_buffer_->luma_ext) {
-                deinit_frame_buffer();
-                return EB_ErrorInsufficientResources;
-            }
-
-            frame_buffer_->cb_ext = (uint8_t *)malloc(chroma_size / 4);
-            if (!frame_buffer_->cb_ext) {
-                deinit_frame_buffer();
-                return EB_ErrorInsufficientResources;
-            }
-
-            frame_buffer_->cr_ext = (uint8_t *)malloc(chroma_size / 4);
-            if (!frame_buffer_->cr_ext) {
-                deinit_frame_buffer();
-                return EB_ErrorInsufficientResources;
-            }
-        } else {
-            frame_buffer_->luma_ext = nullptr;
-            frame_buffer_->cb_ext = nullptr;
-            frame_buffer_->cr_ext = nullptr;
-        }
-
-        return EB_ErrorNone;
-    }
+    bool is_10bit_mode();
+    void deinit_frame_buffer();
+    virtual EbErrorType init_frame_buffer();
     uint32_t width_;
     uint32_t height_;
     uint32_t width_with_padding_;
     uint32_t height_with_padding_;
     uint32_t bit_depth_;
+    uint32_t init_pos_;
     uint32_t frame_count_;
     int32_t current_frame_index_;
     uint32_t frame_size_;
     EbSvtIOFormat *frame_buffer_;
     VideoColorFormat image_format_;
-    bool svt_compressed_2bit_plane;
+    bool svt_compressed_2bit_plane_;
 };
 
+/**
+ * @brief      Video file source abstract class, use to read image from file.
+ */
+class VideoFileSource : public VideoSource {
+  public:
+    VideoFileSource(const std::string &file_name, const VideoColorFormat format,
+                    const uint32_t width, const uint32_t height,
+                    const uint8_t bit_depth,
+                    const bool use_compressed_2bit_plane_output);
+    virtual ~VideoFileSource();
+    /**
+     * @brief      Use this funcion to get vector path defined by envrionment
+     * variable SVT_AV1_TEST_VECTOR_PATH, or it will return a default path.
+     *
+     * @return     The vectors path.
+     */
+    static std::string get_vector_path();
+
+    /*!\brief Prepare stream. */
+    EbErrorType open_source(const uint32_t init_pos,
+                            const uint32_t frame_count) override;
+    /*!\brief Close stream. */
+    void close_source() override;
+    /*!\brief Get next frame. */
+    EbSvtIOFormat *get_next_frame() override;
+    /*!\brief Get frame by index. */
+    EbSvtIOFormat *get_frame_by_index(const uint32_t index) override;
+
+  protected:
+    virtual uint32_t read_input_frame();
+
+    /*!\brief Sub class need to implement this function, file_frames_ and
+     * frame_length_ must be init in this function. */
+    virtual EbErrorType parse_file_info() = 0;
+    virtual EbErrorType seek_to_frame(const uint32_t index) = 0;
+    std::string file_name_;
+    FILE *file_handle_;
+    uint32_t file_length_;
+    uint32_t frame_length_;
+    uint32_t file_frames_;
+#ifdef ENABLE_DEBUG_MONITOR
+    VideoMonitor *monitor;
+#endif
+};
 }  // namespace svt_av1_video_source
 
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

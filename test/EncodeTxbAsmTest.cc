@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
 
@@ -32,18 +32,11 @@
 #include "EbTransforms.h"
 #include "util.h"
 #include "aom_dsp_rtcd.h"
+#include "TxfmCommon.h"
+#include "random.h"
 
+using svt_av1_test_tool::SVTRandom;  // to generate the random
 namespace {
-
-const int deterministic_seed = 0xa42b;
-static INLINE int32_t get_txb_wide(TxSize tx_size) {
-    tx_size = av1_get_adjusted_tx_size(tx_size);
-    return tx_size_wide[tx_size];
-}
-static INLINE int32_t get_txb_high(TxSize tx_size) {
-    tx_size = av1_get_adjusted_tx_size(tx_size);
-    return tx_size_high[tx_size];
-}
 static INLINE uint8_t *set_levels(uint8_t *const levels_buf,
                                   const int32_t width) {
     return levels_buf + TX_PAD_TOP * (width + TX_PAD_HOR);
@@ -74,16 +67,16 @@ using TxbInitLevelParam = std::tuple<TxbInitLevelsFunc, int>;
 class EncodeTxbInitLevelTest
     : public ::testing::TestWithParam<TxbInitLevelParam> {
   public:
-    EncodeTxbInitLevelTest()
-        : gen_(deterministic_seed), ref_func_(&av1_txb_init_levels_c) {
-        std::uniform_int_distribution<> uni_dist(0, UINT8_MAX);
-        for (int i = 0; i < TX_PAD_2D; i++) {
-            levels_buf_test_[i] = uni_dist(gen_);
-            levels_buf_ref_[i] = uni_dist(gen_);
-        }
+    EncodeTxbInitLevelTest() : ref_func_(&av1_txb_init_levels_c) {
+        // fill input_coeff_ with 16bit signed random
+        // The random is only used in prepare_data function, however
+        // we should not declare in that function, otherwise
+        // we will get repeated random numbers.
+        rnd_ = new SVTRandom(16, true);
     }
 
     virtual ~EncodeTxbInitLevelTest() {
+        delete rnd_;
         aom_clear_system_state();
     }
 
@@ -92,17 +85,15 @@ class EncodeTxbInitLevelTest
         const int width = get_txb_wide((TxSize)tx_size);
         const int height = get_txb_high((TxSize)tx_size);
 
-        levels_test_ = set_levels(levels_buf_test_, width);
-        levels_ref_ = set_levels(levels_buf_ref_, width);
+        ASSERT_NE(rnd_, nullptr) << "Fail to create SVTRandom";
 
-        std::uniform_int_distribution<> uni_dist(0, UINT16_MAX);
-        for (int i = 0; i < width * height; i++) {
-            input_coeff_[i] = uni_dist(gen_) - INT16_MAX;
-        }
+        // prepare data, same input, differente output by default.
+        prepare_data(tx_size);
 
         ref_func_(input_coeff_, width, height, levels_ref_);
         test_func(input_coeff_, width, height, levels_test_);
 
+        // compare the result
         const int stride = width + TX_PAD_HOR;
         for (int r = 0; r < height + TX_PAD_VER; ++r) {
             for (int c = 0; c < stride; ++c) {
@@ -114,7 +105,25 @@ class EncodeTxbInitLevelTest
     }
 
   private:
-    std::mt19937 gen_;
+    void prepare_data(int tx_size) {
+        const int width = get_txb_wide((TxSize)tx_size);
+        const int height = get_txb_high((TxSize)tx_size);
+
+        // make output different by default
+        memset(levels_buf_test_, 0, sizeof(levels_buf_test_));
+        memset(levels_buf_ref_, 128, sizeof(levels_buf_test_));
+
+        // fill the input buffer with random
+        levels_test_ = set_levels(levels_buf_test_, width);
+        levels_ref_ = set_levels(levels_buf_ref_, width);
+
+        for (int i = 0; i < width * height; i++) {
+            input_coeff_[i] = rnd_->random();
+        }
+    }
+
+  private:
+    SVTRandom *rnd_;
     uint8_t levels_buf_test_[TX_PAD_2D];
     uint8_t levels_buf_ref_[TX_PAD_2D];
     tran_low_t input_coeff_[MAX_TX_SQUARE];
@@ -125,7 +134,10 @@ class EncodeTxbInitLevelTest
 };
 
 TEST_P(EncodeTxbInitLevelTest, txb_init_levels_assmbly) {
-    check_txb_init_levels_assembly(TEST_GET_PARAM(0), TEST_GET_PARAM(1));
+    const int loops = 100;
+    for (int i = 0; i < loops; ++i) {
+        check_txb_init_levels_assembly(TEST_GET_PARAM(0), TEST_GET_PARAM(1));
+    }
 }
 
 INSTANTIATE_TEST_CASE_P(

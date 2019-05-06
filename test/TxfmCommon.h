@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
 
@@ -134,128 +134,20 @@ static INLINE Txfm1dFunc inv_txfm_type_to_func(TxfmType txfm_type) {
     }
 }
 
-static INLINE TxfmFwd2dFunc fwd_txfm_2d_size_to_func(TxSize txfm_size) {
-    switch (txfm_size) {
-    case TX_4X4:
-        return Av1TransformTwoD_4x4_c;  // 4x4 transform
-    case TX_8X8:
-        return Av1TransformTwoD_8x8_c;  // 8x8 transform
-    case TX_16X16:
-        return Av1TransformTwoD_16x16_c;  // 16x16 transform
-    case TX_32X32:
-        return Av1TransformTwoD_32x32_c;  // 32x32 transform
-    case TX_64X64:
-        return Av1TransformTwoD_64x64_c;  // 64x64 transform
-    case TX_4X8:
-        return av1_fwd_txfm2d_4x8_c;  // 4x8 transform
-    case TX_8X4:
-        return av1_fwd_txfm2d_8x4_c;  // 8x4 transform
-    case TX_8X16:
-        return av1_fwd_txfm2d_8x16_c;  // 8x16 transform
-    case TX_16X8:
-        return av1_fwd_txfm2d_16x8_c;  // 16x8 transform
-    case TX_16X32:
-        return av1_fwd_txfm2d_16x32_c;  // 16x32 transform
-    case TX_32X16:
-        return av1_fwd_txfm2d_32x16_c;  // 32x16 transform
-    case TX_32X64:
-        return av1_fwd_txfm2d_32x64_c;  // 32x64 transform
-    case TX_64X32:
-        return av1_fwd_txfm2d_64x32_c;  // 64x32 transform
-    case TX_4X16:
-        return av1_fwd_txfm2d_4x16_c;  // 4x16 transform
-    case TX_16X4:
-        return av1_fwd_txfm2d_16x4_c;  // 16x4 transform
-    case TX_8X32:
-        return av1_fwd_txfm2d_8x32_c;  // 8x32 transform
-    case TX_32X8:
-        return av1_fwd_txfm2d_32x8_c;  // 32x8 transform
-    case TX_16X64:
-        return av1_fwd_txfm2d_16x64_c;  // 16x64 transform
-    case TX_64X16:
-        return av1_fwd_txfm2d_64x16_c;  // 64x16 transform
-    default: assert(0); return NULL;
-    }
-}
-
-static INLINE std::string fwd_txfm_2d_size_to_name(TxSize txfm_size) {
-    switch (txfm_size) {
-    case TX_4X4:
-        return "Av1TransformTwoD_4x4_c";  // 4x4 transform
-    case TX_8X8:
-        return "Av1TransformTwoD_8x8_c";  // 8x8 transform
-    case TX_16X16:
-        return "Av1TransformTwoD_16x16_c";  // 16x16 transform
-    case TX_32X32:
-        return "Av1TransformTwoD_32x32_c";  // 32x32 transform
-    case TX_64X64:
-        return "Av1TransformTwoD_64x64_c";  // 64x64 transform
-    case TX_4X8:
-        return "av1_fwd_txfm2d_4x8_c";  // 4x8 transform
-    case TX_8X4:
-        return "av1_fwd_txfm2d_8x4_c";  // 8x4 transform
-    case TX_8X16:
-        return "av1_fwd_txfm2d_8x16_c";  // 8x16 transform
-    case TX_16X8:
-        return "av1_fwd_txfm2d_16x8_c";  // 16x8 transform
-    case TX_16X32:
-        return "av1_fwd_txfm2d_16x32_c";  // 16x32 transform
-    case TX_32X16:
-        return "av1_fwd_txfm2d_32x16_c";  // 32x16 transform
-    case TX_32X64:
-        return "av1_fwd_txfm2d_32x64_c";  // 32x64 transform
-    case TX_64X32:
-        return "av1_fwd_txfm2d_64x32_c";  // 64x32 transform
-    case TX_4X16:
-        return "av1_fwd_txfm2d_4x16_c";  // 4x16 transform
-    case TX_16X4:
-        return "av1_fwd_txfm2d_16x4_c";  // 16x4 transform
-    case TX_8X32:
-        return "av1_fwd_txfm2d_8x32_c";  // 8x32 transform
-    case TX_32X8:
-        return "av1_fwd_txfm2d_32x8_c";  // 32x8 transform
-    case TX_16X64:
-        return "av1_fwd_txfm2d_16x64_c";  // 16x64 transform
-    case TX_64X16:
-        return "av1_fwd_txfm2d_64x16_c";  // 64x16 transform
-    default: assert(0); return "";
-    }
-}
-
-static INLINE std::string fwd_txfm_2d_type_to_name(TxType txfm_type) {
-    switch (txfm_type) {
-    case DCT_DCT: return "DCT_DCT";
-    case ADST_DCT: return "ADST_DCT";
-    case DCT_ADST: return "DCT_ADST";
-    case ADST_ADST: return "ADST_ADST";
-    case FLIPADST_DCT: return "FLIPADST_DCT";
-    case DCT_FLIPADST: return "DCT_FLIPADST";
-    case FLIPADST_FLIPADST: return "FLIPADST_FLIPADST";
-    case ADST_FLIPADST: return "ADST_FLIPADST";
-    case FLIPADST_ADST: return "FLIPADST_ADST";
-    case IDTX: return "IDTX";
-    case V_DCT: return "V_DCT";
-    case H_DCT: return "H_DCT";
-    case V_ADST: return "V_ADST";
-    case H_ADST: return "H_ADST";
-    case V_FLIPADST: return "V_FLIPADST";
-    case H_FLIPADST: return "H_FLIPADST";
-    default: assert(0); return "";
-    }
-}
-
-static INLINE bool valid_txsize_txtype(TxSize txfm_size, TxType txfm_type) {
-    const TxSize txfm_size_sqr_up = txsize_sqr_up_map[txfm_size];
-    TxSetType txfm_set_type;
-    if (txfm_size_sqr_up > TX_32X32) {
-        txfm_set_type = EXT_TX_SET_DCTONLY;
-    } else if (txfm_size_sqr_up == TX_32X32) {
-        txfm_set_type = EXT_TX_SET_DCT_IDTX;
-    } else {
-        txfm_set_type = EXT_TX_SET_ALL16;
-    }
-    return av1_ext_tx_used[txfm_set_type][txfm_type] != 0;
-}
+using FwdTxfm2dFunc = void (*)(int16_t *input, int32_t *output, uint32_t stride,
+                               TxType tx_type, uint8_t bd);
+static const FwdTxfm2dFunc fwd_txfm_2d_c_func[TX_SIZES_ALL] = {
+    Av1TransformTwoD_4x4_c,   Av1TransformTwoD_8x8_c,
+    Av1TransformTwoD_16x16_c, Av1TransformTwoD_32x32_c,
+    Av1TransformTwoD_64x64_c, av1_fwd_txfm2d_4x8_c,
+    av1_fwd_txfm2d_8x4_c,     av1_fwd_txfm2d_8x16_c,
+    av1_fwd_txfm2d_16x8_c,    av1_fwd_txfm2d_16x32_c,
+    av1_fwd_txfm2d_32x16_c,   av1_fwd_txfm2d_32x64_c,
+    av1_fwd_txfm2d_64x32_c,   av1_fwd_txfm2d_4x16_c,
+    av1_fwd_txfm2d_16x4_c,    av1_fwd_txfm2d_8x32_c,
+    av1_fwd_txfm2d_32x8_c,    av1_fwd_txfm2d_16x64_c,
+    av1_fwd_txfm2d_64x16_c,
+};
 
 static INLINE int get_txfm1d_size(TxfmType txfm_type) {
     switch (txfm_type) {

@@ -1,7 +1,8 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
 /******************************************************************************
  * @file SvtAv1E2EFramework.h
  *
@@ -21,14 +22,9 @@
 
 using namespace svt_av1_e2e_tools;
 using namespace svt_av1_video_source;
+
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
-
-/** @defgroup svt_av1_e2e_test Test framework for E2E test
- *  Defines the framework body of E2E test for the mainly test progress
- *  @{
- */
-namespace svt_av1_e2e_test {
 
 #define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
 #define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
@@ -41,6 +37,7 @@ namespace svt_av1_e2e_test {
                ? 0x2DC6C0                                \
                : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
 
+// Copied from EbAppProcessCmd.c
 #define LONG_ENCODE_FRAME_ENCODE 4000
 #define SPEED_MEASUREMENT_INTERVAL 2000
 #define START_STEADY_STATE 1000
@@ -49,19 +46,12 @@ namespace svt_av1_e2e_test {
 #define IVF_FRAME_HEADER_SIZE 12
 #define OBU_FRAME_HEADER_SIZE 3
 #define TD_SIZE 2
-static __inline void mem_put_le32(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-    mem[2] = (uint8_t)((val >> 16) & 0xff);
-    mem[3] = (uint8_t)((val >> 24) & 0xff);
-}
-#define MEM_VALUE_T_SZ_BITS (sizeof(MEM_VALUE_T) << 3)
-static __inline void mem_put_le16(void *vmem, int32_t val) {
-    uint8_t *mem = (uint8_t *)vmem;
-    mem[0] = (uint8_t)((val >> 0) & 0xff);
-    mem[1] = (uint8_t)((val >> 8) & 0xff);
-}
+
+/** @defgroup svt_av1_e2e_test Test framework for E2E test
+ *  Defines the framework body of E2E test for the mainly test progress
+ *  @{
+ */
+namespace svt_av1_e2e_test {
 
 using namespace svt_av1_e2e_test_vector;
 
@@ -76,36 +66,10 @@ typedef struct {
         *input_picture_buffer; /**< input buffer of encoder in test */
 } SvtAv1Context;
 
-/** SvtAv1E2ETestBase is a basic class for only impelmention of setup, teardown,
- * init and close with normal setting */
-class SvtAv1E2ETestBase : public ::testing::TestWithParam<TestVideoVector> {
-  public:
-    SvtAv1E2ETestBase();
-    virtual ~SvtAv1E2ETestBase();
-
-  protected:
-    virtual void SetUp() override;
-    virtual void TearDown() override;
-    /** initialization for test */
-    virtual void init_test();
-    /** close for test */
-    virtual void close_test();
-    /** test processing body */
-    virtual void run_encode_process() = 0;
-
-  public:
-    static VideoSource *prepare_video_src(const TestVideoVector &vector);
-    static void trans_src_param(const VideoSource *source,
-                                EbSvtAv1EncConfiguration &config);
-
-  protected:
-    VideoSource *video_src_; /**< video source context */
-    SvtAv1Context ctxt_;     /**< AV1 encoder context */
-};
-
 /** SvtAv1E2ETestFramework is a class with impelmention of video source control,
  * encoding progress, decoding progress, data collection and data comparision */
-class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
+class SvtAv1E2ETestFramework
+    : public ::testing::TestWithParam<TestVideoVector> {
   public:
     typedef struct IvfFile {
         FILE *file;
@@ -127,10 +91,19 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
     virtual ~SvtAv1E2ETestFramework();
 
   protected:
+    void SetUp() override;
+    void TearDown() override;
     /** initialization for test */
-    virtual void init_test() override;
+    virtual void init_test();
+    /** close for test */
+    virtual void close_test();
     /** test processing body */
-    void run_encode_process() override;
+    virtual void run_encode_process();
+
+  public:
+    static VideoSource *prepare_video_src(const TestVideoVector &vector);
+    static void trans_src_param(const VideoSource *source,
+                                EbSvtAv1EncConfiguration &config);
 
   private:
     /** write ivf header to output file */
@@ -152,23 +125,24 @@ class SvtAv1E2ETestFramework : public SvtAv1E2ETestBase {
      * @param frame  video frame from reference decoder
      */
     void check_psnr(const VideoFrame &frame);
-
-  protected:
     /** get reconstruction frame from encoder, it should call after send data
      * @param is_eos  flag of recon frames is eos
      * into decoder */
-    virtual void get_recon_frame(bool &is_eos);
+    void get_recon_frame(bool &is_eos);
 
   protected:
-    ReconSink *recon_sink_; /**< reconstruction frame collection */
-    RefDecoder *refer_dec_; /**< reference decoder context */
-    IvfFile *output_file_;  /**< file handle for save encoder output data */
+    VideoSource *video_src_;   /**< video source context */
+    SvtAv1Context av1enc_ctx_; /**< AV1 encoder context */
+    uint32_t start_pos_;       /**< start position of video frame */
+    uint32_t frames_to_test_;  /**< frame count for this test */
+    ReconSink *recon_sink_;    /**< reconstruction frame collection */
+    RefDecoder *refer_dec_;    /**< reference decoder context */
+    IvfFile *output_file_;     /**< file handle for save encoder output data */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect *collect_;   /**< performance and time collection*/
     VideoSource *psnr_src_;         /**< video source context for psnr */
     ICompareSink *ref_compare_; /**< sink of reference to compare with recon*/
-    svt_av1_e2e_tools::PsnrStatistics
-        pnsr_statistics_; /**< psnr statistics recorder.*/
+    PsnrStatistics pnsr_statistics_; /**< psnr statistics recorder.*/
     uint64_t total_enc_out_;
 };
 

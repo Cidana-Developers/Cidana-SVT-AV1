@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
 
@@ -39,49 +39,19 @@
 using svt_av1_test_tool::SVTRandom;
 namespace {
 using FwdTxfm2dAsmParam = std::tuple<int, int>;
-using FwdTxfm2dFunc = void (*)(int16_t *input, int32_t *output, uint32_t stride,
-                               TxType tx_type, uint8_t bd);
-typedef struct {
-    const char *name;
-    FwdTxfm2dFunc ref_func;
-    FwdTxfm2dFunc test_func;
-} TxfmFuncPair;
-
-#define FUNC_PAIRS(name, type)                                 \
-    {                                                          \
-        #name, reinterpret_cast < FwdTxfm2dFunc > (name##_c),  \
-            reinterpret_cast < FwdTxfm2dFunc > (name##_##type) \
-    }
-
-static const TxfmFuncPair txfm_func_pairs[TX_SIZES_ALL] = {
-    {"av1_fwd_txfm2d_4x4", Av1TransformTwoD_4x4_c, av1_fwd_txfm2d_4x4_sse4_1},
-    {"av1_fwd_txfm2d_8x8", Av1TransformTwoD_8x8_c, av1_fwd_txfm2d_8x8_avx2},
-    {"av1_fwd_txfm2d_16x16",
-     Av1TransformTwoD_16x16_c,
-     av1_fwd_txfm2d_16x16_avx2},
-    {"av1_fwd_txfm2d_32x32",
-     Av1TransformTwoD_32x32_c,
-     av1_fwd_txfm2d_32x32_avx2},
-    {"av1_fwd_txfm2d_64x64",
-     Av1TransformTwoD_64x64_c,
-     av1_fwd_txfm2d_64x64_avx2},
-    FUNC_PAIRS(av1_fwd_txfm2d_4x8, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_8x4, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_8x16, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x8, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x32, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_32x16, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_32x64, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_64x32, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_4x16, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x4, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_8x32, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_32x8, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_16x64, avx2),
-    FUNC_PAIRS(av1_fwd_txfm2d_64x16, avx2),
+static const FwdTxfm2dFunc fwd_txfm_2d_asm_func[TX_SIZES_ALL] = {
+    av1_fwd_txfm2d_4x4_sse4_1, av1_fwd_txfm2d_8x8_avx2,
+    av1_fwd_txfm2d_16x16_avx2, av1_fwd_txfm2d_32x32_avx2,
+    av1_fwd_txfm2d_64x64_avx2, av1_fwd_txfm2d_4x8_avx2,
+    av1_fwd_txfm2d_8x4_avx2,   av1_fwd_txfm2d_8x16_avx2,
+    av1_fwd_txfm2d_16x8_avx2,  av1_fwd_txfm2d_16x32_avx2,
+    av1_fwd_txfm2d_32x16_avx2, av1_fwd_txfm2d_32x64_avx2,
+    av1_fwd_txfm2d_64x32_avx2, av1_fwd_txfm2d_4x16_avx2,
+    av1_fwd_txfm2d_16x4_avx2,  av1_fwd_txfm2d_8x32_avx2,
+    av1_fwd_txfm2d_32x8_avx2,  av1_fwd_txfm2d_16x64_avx2,
+    av1_fwd_txfm2d_64x16_avx2,
 };
 
-const int deterministic_seed = 0xa42b;
 /**
  * @brief Unit test for fwd tx 2d avx2 functions:
  * - av1_fwd_txfm2d_{4, 8, 16, 32, 64}x{4, 8, 16, 32, 64}_avx2
@@ -105,24 +75,33 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
   public:
     FwdTxfm2dAsmTest()
         : tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
-          bd_(TEST_GET_PARAM(1)),
-          gen_(deterministic_seed) {
-        decltype(dist_nbit_)::param_type param{-(1 << bd_) + 1, (1 << bd_) - 1};
-        dist_nbit_.param(param);
+          bd_(TEST_GET_PARAM(1)) {
+        // input are signed value with bitdepth + 1 bits
+        rnd_ = new SVTRandom(-(1 << bd_) + 1, (1 << bd_) - 1);
+
         width_ = tx_size_wide[tx_size_];
         height_ = tx_size_high[tx_size_];
-        memset(output_test_, 0, sizeof(output_test_));
-        memset(output_ref_, 255, sizeof(output_ref_));  // -1
+        // set default value to 0
+        memset(output_test_buf_, 0, sizeof(output_test_buf_));
+        // set default value to -1
+        memset(output_ref_buf_, 255, sizeof(output_ref_buf_));
+        input_ = ALIGNED_ADDR(int16_t, ALIGNMENT, input_buf_);
+        output_test_ = ALIGNED_ADDR(int32_t, ALIGNMENT, output_test_buf_);
+        output_ref_ = ALIGNED_ADDR(int32_t, ALIGNMENT, output_ref_buf_);
     }
 
     ~FwdTxfm2dAsmTest() {
+        delete rnd_;
         aom_clear_system_state();
     }
 
     void run_match_test() {
-        TxfmFuncPair pair = txfm_func_pairs[tx_size_];
-        if (pair.ref_func == nullptr || pair.test_func == nullptr)
+        FwdTxfm2dFunc test_func = fwd_txfm_2d_asm_func[tx_size_];
+        FwdTxfm2dFunc ref_func = fwd_txfm_2d_c_func[tx_size_];
+        if (ref_func == nullptr || test_func == nullptr)
             return;
+
+        ASSERT_NE(rnd_, nullptr) << "Failed to create random generator";
         for (int tx_type = 0; tx_type < TX_TYPES; ++tx_type) {
             TxType type = static_cast<TxType>(tx_type);
             // tx_type and tx_size are not compatible in the av1-spec.
@@ -135,8 +114,8 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
             for (int k = 0; k < loops; k++) {
                 populate_with_random();
 
-                pair.ref_func(input_, output_ref_, stride_, type, bd_);
-                pair.test_func(input_, output_test_, stride_, type, bd_);
+                ref_func(input_, output_ref_, stride_, type, bd_);
+                test_func(input_, output_test_, stride_, type, bd_);
 
                 for (int i = 0; i < height_; i++)
                     for (int j = 0; j < width_; j++)
@@ -153,7 +132,7 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     void populate_with_random() {
         for (int i = 0; i < height_; i++) {
             for (int j = 0; j < width_; j++) {
-                input_[i * stride_ + j] = dist_nbit_(gen_);
+                input_[i * stride_ + j] = rnd_->random();
             }
         }
 
@@ -161,17 +140,18 @@ class FwdTxfm2dAsmTest : public ::testing::TestWithParam<FwdTxfm2dAsmParam> {
     }
 
   private:
-    std::mt19937 gen_; /**< seed for random */
-    std::uniform_int_distribution<>
-        dist_nbit_;        /**< random int for 8bit and 10bit coeffs */
     const TxSize tx_size_; /**< input param tx_size */
     const int bd_;         /**< input param 8bit or 10bit */
     int width_;
     int height_;
+    SVTRandom *rnd_;
     static const int stride_ = MAX_TX_SIZE;
-    DECLARE_ALIGNED(32, int16_t, input_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, int32_t, output_test_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, int32_t, output_ref_[MAX_TX_SQUARE]);
+    uint8_t input_buf_[MAX_TX_SQUARE * sizeof(int16_t) + ALIGNMENT - 1];
+    uint8_t output_test_buf_[MAX_TX_SQUARE * sizeof(int32_t) + ALIGNMENT - 1];
+    uint8_t output_ref_buf_[MAX_TX_SQUARE * sizeof(int32_t) + ALIGNMENT - 1];
+    int16_t *input_;       /**< aligned address for input */
+    int32_t *output_test_; /**< aligned address for output test */
+    int32_t *output_ref_;  /**< aligned address for output ref */
 };
 
 TEST_P(FwdTxfm2dAsmTest, match_test) {

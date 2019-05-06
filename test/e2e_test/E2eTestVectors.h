@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
 
@@ -31,8 +31,15 @@ typedef enum TestVectorFormat {
 } TestVectorFormat;
 
 /** TestVideoVector is tuple of test params in a test case */
-typedef std::tuple<std::string, TestVectorFormat, VideoColorFormat, uint32_t,
-                   uint32_t, uint8_t, bool>
+typedef std::tuple<std::string,      /**< file name */
+                   TestVectorFormat, /**< file format */
+                   VideoColorFormat, /**< color format */
+                   uint32_t,         /**< width */
+                   uint32_t,         /**< height */
+                   uint8_t,          /**< bit depth */
+                   bool,             /**< compressed 2-bit in 10-bit frame */
+                   uint32_t,         /**< start read position in frame */
+                   uint32_t> /**< frames to test, (0) means full-frames*/
     TestVideoVector;
 
 static const TestVideoVector video_src_vectors[] = {
@@ -42,49 +49,83 @@ static const TestVideoVector video_src_vectors[] = {
                     160,
                     90,
                     8,
-                    false},
+                    false,
+                    0,
+                    0},
     TestVideoVector{"park_joy_90p_10_420.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420P10_PACKED,
                     160,
                     90,
                     10,
-                    false},
-    TestVideoVector{"park_joy_420_720p50.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420,
-                    1280,
-                    720,
-                    8,
-                    false},
+                    false,
+                    0,
+                    0},
 };
 
 static const TestVideoVector comformance_test_vectors[] = {
-    TestVideoVector{"jellyfish-420-180p.y4m",
-                    Y4M_VIDEO_FILE,
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
                     IMG_FMT_420,
-                    320,
-                    180,
+                    640,
+                    480,
                     8,
-                    false},
-    TestVideoVector{"jellyfish-420p10-180p.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420P10_PACKED,
-                    320,
-                    180,
-                    10,
-                    false},
+                    false,
+                    0,
+                    0},
+    TestVideoVector{"niklas_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    640,
+                    480,
+                    8,
+                    false,
+                    0,
+                    0},
 };
 
 static const TestVideoVector smoking_vectors[] = {
-    TestVideoVector{"jellyfish-420-180p.y4m",
+    TestVideoVector{"park_joy_90p_8_420.y4m",
                     Y4M_VIDEO_FILE,
                     IMG_FMT_420,
-                    320,
-                    180,
+                    160,
+                    90,
                     8,
-                    false},
+                    false,
+                    0,
+                    0},
 };
+
+static const TestVideoVector partial_src_frame_vectors[] = {
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    640,
+                    480,
+                    8,
+                    false,
+                    100,
+                    100},
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    640,
+                    480,
+                    8,
+                    false,
+                    100,
+                    0},
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    640,
+                    480,
+                    8,
+                    false,
+                    0,
+                    200},
+};
+
 }  // namespace svt_av1_e2e_test_vector
 /** @} */  // end of svt_av1_e2e_test_vector
 

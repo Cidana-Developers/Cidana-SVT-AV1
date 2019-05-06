@@ -1,7 +1,8 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
 /******************************************************************************
  * @file ReconSink.h
  *
@@ -166,6 +167,7 @@ class ReconSink {
 
 class ICompareSink {
   public:
+    virtual ~ICompareSink(){};
     virtual bool compare_video(const VideoFrame& frame) = 0;
     virtual bool flush_video() = 0;
 };

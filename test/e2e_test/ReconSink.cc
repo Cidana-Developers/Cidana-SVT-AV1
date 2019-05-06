@@ -1,7 +1,8 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
 /******************************************************************************
  * @file ReconSink.cc
  *
@@ -106,9 +107,10 @@ class ReconSinkFile : public ReconSink {
                 if (read_size <= 0) {
                     pour_mug(mug);
                     mug = nullptr;
+                } else {
+                    mug->filled_size = (uint32_t)read_size;
+                    mug->time_stamp = time_stamp;
                 }
-                mug->filled_size = (uint32_t)read_size;
-                mug->time_stamp = time_stamp;
             }
         }
 
@@ -216,8 +218,9 @@ class RefSink : public ICompareSink, ReconSinkBuffer {
             const VideoFrame *p = frame_vec_.back();
             frame_vec_.pop_back();
             if (p) {
-                printf("Reference Sink still remain frames when delete(%u)\n",
-                       (uint32_t)p->timestamp);
+                // printf("Reference Sink still remain frames when
+                // delete(%u)\n",
+                //       (uint32_t)p->timestamp);
                 delete p;
             }
         }

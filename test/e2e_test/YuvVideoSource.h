@@ -1,7 +1,8 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
 /******************************************************************************
  * @file YuvVideoSource.h
  *
@@ -12,31 +13,18 @@
  ******************************************************************************/
 #ifndef _SVT_TEST_YUV_VIDEO_SOURCE_H_
 #define _SVT_TEST_YUV_VIDEO_SOURCE_H_
-#include <cstdio>
-#include <string>
 #include "VideoSource.h"
 namespace svt_av1_video_source {
-class YuvVideoSource : public VideoSource {
+class YuvVideoSource : public VideoFileSource {
   public:
     YuvVideoSource(const std::string &file_name, const VideoColorFormat format,
                    const uint32_t width, const uint32_t height,
                    const uint8_t bit_depth);
     ~YuvVideoSource();
-    /*!\brief Prepare stream. */
-    EbErrorType open_source() override;
-    /*!\brief Close stream. */
-    void close_source() override;
-    /*!\brief Get next frame. */
-    EbSvtIOFormat *get_next_frame() override;
-    /*!\brief Get frame ny index. */
-    EbSvtIOFormat *get_frame_by_index(const uint32_t index) override {
-        return nullptr;
-    };
 
-  private:
-    uint32_t read_input_frame();
-    std::string file_name_;
-    FILE *file_handle_;
+  protected:
+    EbErrorType parse_file_info() override;
+    EbErrorType seek_to_frame(const uint32_t index) override;
 };
 }  // namespace svt_av1_video_source
 #endif  //_SVT_TEST_VIDEO_SOURCE_H_

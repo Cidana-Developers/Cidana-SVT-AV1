@@ -1,7 +1,8 @@
 /*
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 Netflix, Inc.
  * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
 /******************************************************************************
  * @file random.h
  *
@@ -85,6 +86,7 @@ class SVTRandom {
         decltype(dist_nbit_)::param_type param{min_bound, max_bound};
         dist_nbit_.param(param);
     }
+
     /** calculate and setup bounds of generator */
     void calculate_bounds(const int nbits, const bool is_signed) {
         assert(is_signed ? nbits < 31 : nbits <= 31);
