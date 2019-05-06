@@ -50,6 +50,8 @@ fi
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2ESimpleTest.*
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EReconBufferTest.*
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EConformance*.*
+./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EMultiInstSerialTest*.*
+./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EMultiInstParallelTest*.*
 #./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EParam*.*
 
 

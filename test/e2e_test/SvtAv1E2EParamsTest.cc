@@ -18,6 +18,7 @@
 
 #define HIGH_LEVEL_TOOL 0
 #define LOW_LEVEL_TOOL 0
+#define THIS_TEST_IS_DEATH 1
 
 /**
  * @brief SVT-AV1 encoder parameter coverage E2E test
@@ -50,6 +51,18 @@ using namespace svt_av1_e2e_test_vector;
 #define PARAM_TEST(param_test) \
     PARAM_TEST_WITH_VECTOR(param_test, smoking_vectors)
 
+#define PARAM_DEATHTEST_WITH_VECTOR(param_test, vectors) \
+    TEST_P(param_test, run_paramter_conformance_test) {  \
+        run_conformance_death_test();                    \
+    }                                                    \
+    INSTANTIATE_TEST_CASE_P(SVT_AV1, param_test, ::testing::ValuesIn(vectors));
+
+#define PARAM_DEATHTEST(param_test) \
+    PARAM_DEATHTEST_WITH_VECTOR(param_test, smoking_vectors)
+
+#define GET_PARAM GET_VALID_PARAM
+#define SIZE_PARAM SIZE_VALID_PARAM
+
 /** @breif This class is a template based on EncParamTestBase to test each
  * parameter
  */
@@ -64,7 +77,7 @@ using namespace svt_av1_e2e_test_vector;
         void init_test() override {                                           \
             collect_ = new PerformanceCollect(typeid(this).name());           \
             av1enc_ctx_.enc_params.param_name =                               \
-                GET_VALID_PARAM(param_name, param_value_idx_);                \
+                GET_PARAM(param_name, param_value_idx_);                      \
             /** create recon sink before setup parameter of encoder */        \
             VideoFrameParam param;                                            \
             memset(&param, 0, sizeof(param));                                 \
@@ -95,10 +108,20 @@ using namespace svt_av1_e2e_test_vector;
         /** run for the conformance test */                                   \
         void run_conformance_test() {                                         \
             for (param_value_idx_ = 0;                                        \
-                 param_value_idx_ < SIZE_VALID_PARAM(param_name);             \
+                 param_value_idx_ < SIZE_PARAM(param_name);                   \
                  ++param_value_idx_) {                                        \
                 SvtAv1E2ETestFramework::SetUp();                              \
                 run_encode_process();                                         \
+                SvtAv1E2ETestFramework::TearDown();                           \
+            }                                                                 \
+        }                                                                     \
+        /** run for the conformance death test */                             \
+        void run_conformance_death_test() {                                   \
+            for (param_value_idx_ = 0;                                        \
+                 param_value_idx_ < SIZE_PARAM(param_name);                   \
+                 ++param_value_idx_) {                                        \
+                SvtAv1E2ETestFramework::SetUp();                              \
+                ASSERT_DEATH(run_encode_process(), "");                       \
                 SvtAv1E2ETestFramework::TearDown();                           \
             }                                                                 \
         }                                                                     \
@@ -237,11 +260,9 @@ DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamEnableDenoiseTest, enable_denoise_flag);
 PARAM_TEST(SvtAv1E2EParamEnableDenoiseTest);
 
 /** Test case for film_grain_denoise_strength*/
-#if THIS_TEST_IS_DEATH
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamFilmGrainDenoiseStrTest,
                         film_grain_denoise_strength);
 PARAM_TEST(SvtAv1E2EParamFilmGrainDenoiseStrTest);
-#endif  // THIS_TEST_IS_DEATH
 
 #if LOW_LEVEL_TOOL
 /** Test case for enable_warped_motion*/
@@ -331,18 +352,19 @@ PARAM_TEST(SvtAv1E2EParamTierTest);
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamLevelTest, level);
 PARAM_TEST(SvtAv1E2EParamLevelTest);
 
+#if THIS_TEST_IS_DEATH
+#undef GET_PARAM
+#undef SIZE_PARAM
+#define GET_PARAM GET_DEATH_PARAM
+#define SIZE_PARAM SIZE_DEATH_PARAM
 /** Test case for asm_type*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamAsmTypeTest, asm_type);
-PARAM_TEST(SvtAv1E2EParamAsmTypeTest);
-
-#if MULIT_INSTANCE_TEST_CASE
-/** Test case for channel_id*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamChIdTest, channel_id);
-PARAM_TEST(SvtAv1E2EParamChIdTest);
-/** Test case for active_channel_count*/
-DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamActiveChCountTest, active_channel_count);
-PARAM_TEST(SvtAv1E2EParamActiveChCountTest);
-#endif  // MULIT_INSTANCE_TEST_CASE
+PARAM_DEATHTEST(SvtAv1E2EParamAsmTypeTest);
+#undef GET_PARAM
+#undef SIZE_PARAM
+#define GET_PARAM GET_VALID_PARAM
+#define SIZE_PARAM SIZE_VALID_PARAM
+#endif
 
 /** Test case for speed_control_flag*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamSpeedCtrlTest, speed_control_flag);

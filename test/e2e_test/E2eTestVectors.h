@@ -126,6 +126,25 @@ static const TestVideoVector partial_src_frame_vectors[] = {
                     200},
 };
 
+/** MultiInstVector */
+typedef std::tuple<TestVideoVector, /**< video source */
+                   uint32_t>        /**< instance number for test */
+    MultiInstVector;
+
+static const MultiInstVector multi_inst_vectors[] = {
+    MultiInstVector{TestVideoVector{"kirland_640_480_30.yuv",
+                                    YUV_VIDEO_FILE,
+                                    IMG_FMT_420,
+                                    640,
+                                    480,
+                                    8,
+                                    false,
+                                    0,
+                                    0},
+
+                    3},
+};
+
 }  // namespace svt_av1_e2e_test_vector
 /** @} */  // end of svt_av1_e2e_test_vector
 

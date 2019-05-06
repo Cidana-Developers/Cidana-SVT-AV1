@@ -134,8 +134,8 @@ void SvtAv1E2ETestFramework::SetUp() {
     uint32_t width = video_src_->get_width_with_padding();
     uint32_t height = video_src_->get_height_with_padding();
     uint32_t bit_depth = video_src_->get_bit_depth();
-    ASSERT_GE(width, 0) << "Video vector width error.";
-    ASSERT_GE(height, 0) << "Video vector height error.";
+    ASSERT_GT(width, 0) << "Video vector width error.";
+    ASSERT_GT(height, 0) << "Video vector height error.";
     ASSERT_TRUE(bit_depth == 10 || bit_depth == 8)
         << "Video vector bitDepth error.";
 
@@ -197,8 +197,12 @@ void SvtAv1E2ETestFramework::TearDown() {
         if (av1enc_ctx_.output_stream_buffer->p_buffer != nullptr) {
             delete[] av1enc_ctx_.output_stream_buffer->p_buffer;
         }
-        delete[] av1enc_ctx_.output_stream_buffer;
+        delete av1enc_ctx_.output_stream_buffer;
         av1enc_ctx_.output_stream_buffer = nullptr;
+    }
+    if (av1enc_ctx_.input_picture_buffer != nullptr) {
+        delete av1enc_ctx_.input_picture_buffer;
+        av1enc_ctx_.input_picture_buffer = nullptr;
     }
 
     ASSERT_NE(video_src_, nullptr);
