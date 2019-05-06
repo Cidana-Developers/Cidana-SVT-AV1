@@ -499,7 +499,9 @@ EbErrorType VideoFileSource::open_source(const uint32_t init_pos,
     if (frame_count == 0)
         frame_count_ = file_frames_ - init_pos_;
     else
-        frame_count_ = frame_count;
+        frame_count_ = (file_frames_ - init_pos_) > frame_count
+                           ? frame_count
+                           : (file_frames_ - init_pos_);
 
     if (seek_to_frame(init_pos_) != EB_ErrorNone) {
         fclose(file_handle_);
@@ -545,7 +547,7 @@ EbSvtIOFormat *VideoFileSource::get_frame_by_index(const uint32_t index) {
         return nullptr;
     }
     // Seek to frame by index
-    if (seek_to_frame(init_pos_) != EB_ErrorNone)
+    if (seek_to_frame(index) != EB_ErrorNone)
         return nullptr;
 
     frame_size_ = read_input_frame();
