@@ -28,7 +28,7 @@ class EncTestCtxt {
                 uint32_t max_ch) {
         video_src_ = SvtAv1E2ETestFramework::prepare_video_src(vector);
         memset(&av1enc_ctx_, 0, sizeof(av1enc_ctx_));
-        recon_sink_ = nullptr;
+        recon_queue_ = nullptr;
         refer_dec_ = nullptr;
         obu_frame_header_size_ = 0;
         collect_ = nullptr;
@@ -38,16 +38,16 @@ class EncTestCtxt {
         src_frame_count_ = 0;
         src_eos_ = false;
         enc_eos_ = false;
-        rec_eos_ = false;
+        recon_eos_ = false;
     }
     ~EncTestCtxt() {
         if (video_src_) {
             delete video_src_;
             video_src_ = nullptr;
         }
-        if (recon_sink_) {
-            delete recon_sink_;
-            recon_sink_ = nullptr;
+        if (recon_queue_) {
+            delete recon_queue_;
+            recon_queue_ = nullptr;
         }
         if (refer_dec_) {
             delete refer_dec_;
@@ -64,7 +64,7 @@ class EncTestCtxt {
     }
 
   public:
-    void setup() {
+    void init_test() {
         EbErrorType return_error = EB_ErrorNone;
 
         // check for video source
@@ -111,9 +111,9 @@ class EncTestCtxt {
         param.format = video_src_->get_image_format();
         param.width = video_src_->get_width_with_padding();
         param.height = video_src_->get_height_with_padding();
-        recon_sink_ = create_recon_sink(param);
-        ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
-        recon_sink_->set_frame_count(src_frame_count_);
+        recon_queue_ = create_frame_queue(param);
+        ASSERT_NE(recon_queue_, nullptr) << "can not create recon sink!!";
+        recon_queue_->set_frame_count(src_frame_count_);
         av1enc_ctx_.enc_params.recon_enabled = 1;
 
         // set param and init encoder
@@ -153,7 +153,7 @@ class EncTestCtxt {
         ASSERT_NE(refer_dec_, nullptr) << "can not create reference decoder!!";
     }
 
-    void teardown() {
+    void close_test() {
         EbErrorType return_error = EB_ErrorNone;
 
         // close encoder
@@ -227,8 +227,9 @@ class EncTestCtxt {
         }
 
         // get recon
-        if (recon_sink_ && !rec_eos_) {
-            get_recon_frame(av1enc_ctx_, recon_sink_, rec_eos_);
+        if (recon_queue_ && !recon_eos_) {
+            SvtAv1E2ETestFramework::get_recon_frame(
+                av1enc_ctx_, recon_queue_, recon_eos_);
         }
 
         // get encoder output can check with recon
@@ -236,7 +237,7 @@ class EncTestCtxt {
             do {
                 // non-blocking call
                 EbBufferHeaderType* enc_out = nullptr;
-                int pic_send_done = (src_eos_ && rec_eos_) ? 1 : 0;
+                int pic_send_done = (src_eos_ && recon_eos_) ? 1 : 0;
                 return_error = eb_svt_get_packet(
                     av1enc_ctx_.enc_handle, &enc_out, pic_send_done);
                 ASSERT_NE(return_error, EB_ErrorMax)
@@ -286,46 +287,10 @@ class EncTestCtxt {
     }
 
     bool is_complete() {
-        return src_eos_ && rec_eos_ && enc_eos_;
+        return src_eos_ && recon_eos_ && enc_eos_;
     }
 
   private:
-    static void get_recon_frame(const SvtAv1Context& ctxt,
-                                ReconSink* recon_sink, bool& is_eos) {
-        do {
-            ReconSink::ReconMug* new_mug = recon_sink->get_empty_mug();
-            ASSERT_NE(new_mug, nullptr)
-                << "can not get new mug for recon frame!!";
-            ASSERT_NE(new_mug->mug_buf, nullptr)
-                << "can not get new mug for recon frame!!";
-
-            EbBufferHeaderType recon_frame = {0};
-            recon_frame.size = sizeof(EbBufferHeaderType);
-            recon_frame.p_buffer = new_mug->mug_buf;
-            recon_frame.n_alloc_len = new_mug->mug_size;
-            recon_frame.p_app_private = nullptr;
-            // non-blocking call until all input frames are sent
-            EbErrorType recon_status =
-                eb_svt_get_recon(ctxt.enc_handle, &recon_frame);
-            ASSERT_NE(recon_status, EB_ErrorMax)
-                << "Error while outputing recon, code:" << recon_frame.flags;
-            if (recon_status == EB_NoErrorEmptyQueue) {
-                recon_sink->pour_mug(new_mug);
-                break;
-            } else {
-                ASSERT_EQ(recon_frame.n_filled_len, new_mug->mug_size)
-                    << "recon frame size incorrect@" << recon_frame.pts;
-                // mark the recon eos flag
-                if (recon_frame.flags & EB_BUFFERFLAG_EOS)
-                    is_eos = true;
-                new_mug->filled_size = recon_frame.n_filled_len;
-                new_mug->time_stamp = recon_frame.pts;
-                new_mug->tag = recon_frame.flags;
-                recon_sink->fill_mug(new_mug);
-            }
-        } while (true);
-    }
-
     void decode_compress_data(const uint8_t* data, const uint32_t size) {
         ASSERT_NE(data, nullptr);
         ASSERT_GT(size, 0);
@@ -337,11 +302,11 @@ class EncTestCtxt {
         VideoFrame ref_frame;
         memset(&ref_frame, 0, sizeof(ref_frame));
         while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
-            if (recon_sink_) {
+            if (recon_queue_) {
                 // compare tools
                 if (ref_compare_ == nullptr) {
                     ref_compare_ =
-                        create_ref_compare_sink(ref_frame, recon_sink_);
+                        create_ref_compare_queue(ref_frame, recon_queue_);
                     ASSERT_NE(ref_compare_, nullptr);
                 }
                 // Compare ref decode output with recon output.
@@ -359,15 +324,15 @@ class EncTestCtxt {
     uint32_t max_channel_num_;      /**< maximum channel available */
     VideoSource* video_src_;        /**< video source context */
     SvtAv1Context av1enc_ctx_;      /**< AV1 encoder context */
-    ReconSink* recon_sink_;         /**< reconstruction frame collection */
+    FrameQueue* recon_queue_;       /**< reconstruction frame collection */
     RefDecoder* refer_dec_;         /**< reference decoder context */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
     PerformanceCollect* collect_;   /**< performance and time collection*/
-    ICompareSink* ref_compare_; /**< sink of reference to compare with recon*/
-    uint32_t src_frame_count_;  /**< frame counter of source video*/
-    bool src_eos_;              /**< end flag of video source */
-    bool rec_eos_;              /**< end flag of recon frames */
-    bool enc_eos_;              /**< end flag of encoder output */
+    ICompareQueue* ref_compare_; /**< sink of reference to compare with recon*/
+    uint32_t src_frame_count_;   /**< frame counter of source video*/
+    bool src_eos_;               /**< end flag of video source */
+    bool recon_eos_;             /**< end flag of recon frames */
+    bool enc_eos_;               /**< end flag of encoder output */
 };
 
 class SvtAv1E2EMultiInstSerialTest
@@ -386,14 +351,14 @@ class SvtAv1E2EMultiInstSerialTest
             EncTestCtxt* new_inst =
                 new EncTestCtxt(std::get<0>(GetParam()), i, num_inst_);
             ASSERT_NE(new_inst, nullptr) << "create new test instance failed.";
-            new_inst->setup();
+            new_inst->init_test();
             inst_vec_.push_back(new_inst);
         }
     }
     void TearDown() override {
         while (inst_vec_.size()) {
             EncTestCtxt* inst = inst_vec_.back();
-            inst->teardown();
+            inst->close_test();
             delete inst;
             inst_vec_.pop_back();
         }
@@ -464,7 +429,7 @@ class SvtAv1E2EMultiInstParallelTest
             EncTestCtxt* new_inst =
                 new EncTestCtxt(std::get<0>(GetParam()), i, num_inst_);
             ASSERT_NE(new_inst, nullptr) << "create new test instance failed.";
-            new_inst->setup();
+            new_inst->init_test();
             std::thread* new_thrd =
                 new std::thread(run_instance_check, new_inst);
             InstanceBind inst_bind = {new_thrd, new_inst};
@@ -474,7 +439,7 @@ class SvtAv1E2EMultiInstParallelTest
     void TearDown() override {
         while (inst_vec_.size()) {
             InstanceBind inst_bind = inst_vec_.back();
-            inst_bind.test_ctxt->teardown();
+            inst_bind.test_ctxt->close_test();
             inst_bind.run_thrd->join();
             delete inst_bind.run_thrd;
             delete inst_bind.test_ctxt;
