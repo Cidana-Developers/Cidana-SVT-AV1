@@ -52,7 +52,7 @@
 #endif
 
 #define ALIGNED_ADDR(T, alignment, buffer) \
-    (T*)(((uintptr_t)buffer + (alignment - 1)) & ~(alignment - 1))
+    (T *)(((uintptr_t)buffer + (alignment - 1)) & ~(alignment - 1))
 
 #define ALIGNMENT (32)
 
@@ -88,56 +88,58 @@ typedef struct aom_op_timing_info_t {
 } aom_op_timing_info_t;
 
 typedef struct SequenceHeader {
-    int error;
+    int error;  // indicate what kind of error on parsing the headers
+    int ready;  // 1 - valid sequence header;
+                // 0 - invalid sequence header
 
-    int use_highbitdepth;
-    int bit_depth;
-    int color_range;
-    // TODO(jkoleszar): this implies chroma ss right now, but could vary per
-    // plane. Revisit as part of the future change to YV12_BUFFER_CONFIG to
-    // support additional planes.
-    int subsampling_x;
-    int subsampling_y;
-    int separate_uv_delta_q;
+    int still_picture;                 // Video is a single frame still picture
+    int reduced_still_picture_header;  // Use reduced header for still picture
 
-    aom_color_primaries_t color_primaries;
-    aom_transfer_characteristics_t transfer_characteristics;
-    aom_matrix_coefficients_t matrix_coefficients;
-    aom_chroma_sample_position_t chroma_sample_position;
+    /* timing info */
+    int timing_info_present_flag;
+    int decoder_model_info_present_flag;
+    aom_timing_info_t timing_info;
+    aom_dec_model_info_t buffer_model;
 
+    /* operating points */
+    aom_dec_model_op_parameters_t op_params[MAX_NUM_OPERATING_POINTS + 1];
+    aom_op_timing_info_t op_frame_timing[MAX_NUM_OPERATING_POINTS + 1];
+    int operating_points_cnt_minus_1;
+    int operating_point_idc[MAX_NUM_OPERATING_POINTS];
+    int initial_display_delay_present_flag;
+    uint8_t tier[MAX_NUM_OPERATING_POINTS];  // seq_tier in the spec. One bit: 0
+
+    /* profile and levels */
     BITSTREAM_PROFILE profile;
     uint8_t seq_level_idx;
     unsigned int number_temporal_layers;
     unsigned int number_spatial_layers;
-    int film_grain_params_present;
-    int timing_info_present_flag;
-    aom_timing_info_t timing_info;
-    aom_dec_model_info_t buffer_model;
-    aom_dec_model_op_parameters_t op_params[MAX_NUM_OPERATING_POINTS + 1];
-    aom_op_timing_info_t op_frame_timing[MAX_NUM_OPERATING_POINTS + 1];
+    BitstreamLevel level[MAX_NUM_OPERATING_POINTS];
 
+    /* resolution and superblock size */
     int frame_width_bits;
     int frame_height_bits;
     int max_frame_width;
     int max_frame_height;
-    int frame_id_numbers_present_flag;
-    int frame_id_length;
-    int delta_frame_id_length;
     block_size sb_size;  // Size of the superblock used for this frame
     int mib_size;        // Size of the superblock in units of MI blocks
     int mib_size_log2;   // Log 2 of above.
+
+    /* frame id */
+    int frame_id_numbers_present_flag;
+    int frame_id_length;
+    int delta_frame_id_length;
+
+    /* coding tools */
     int order_hint_bits;
     int force_screen_content_tools;  // 0 - force off
                                      // 1 - force on
                                      // 2 - adaptive
-    int force_integer_mv;           // 0 - Not to force. MV can be in 1/4 or 1/8
-                                    // 1 - force to integer
-                                    // 2 - adaptive
-    int still_picture;              // Video is a single frame still picture
-    int reduced_still_picture_header;  // Use reduced header for still picture
-    int monochrome;                 // Monochorme video
-    int enable_filter_intra;        // enables/disables filterintra
-    int enable_intra_edge_filter;   // enables/disables corner/edge/upsampling
+    int force_integer_mv;          // 0 - Not to force. MV can be in 1/4 or 1/8
+                                   // 1 - force to integer
+                                   // 2 - adaptive
+    int enable_filter_intra;       // enables/disables filterintra
+    int enable_intra_edge_filter;  // enables/disables corner/edge/upsampling
     int enable_interintra_compound;  // enables/disables interintra_compound
     int enable_masked_compound;      // enables/disables masked compound
     int enable_dual_filter;          // 0 - disable dual interpolation filter
@@ -159,15 +161,19 @@ typedef struct SequenceHeader {
                           //     enabled for that frame.
     int enable_cdef;      // To turn on/off CDEF
     int enable_restoration;  // To turn on/off loop restoration
-    int operating_points_cnt_minus_1;
-    int operating_point_idc[MAX_NUM_OPERATING_POINTS];
-    int initial_display_delay_present_flag;
-    int decoder_model_info_present_flag;
-    BitstreamLevel level[MAX_NUM_OPERATING_POINTS];
-    uint8_t tier[MAX_NUM_OPERATING_POINTS];  // seq_tier in the spec. One bit: 0
-                                             // or 1.
-    int ready;                               // 1 - valid sequence header;
-                                             // 0 - invalid sequence header
+    int film_grain_params_present;
+
+    /* color config */
+    int monochrome;  // Monochorme video
+    int bit_depth;
+    int color_range;
+    int subsampling_x;
+    int subsampling_y;
+    int separate_uv_delta_q;
+    aom_color_primaries_t color_primaries;
+    aom_transfer_characteristics_t transfer_characteristics;
+    aom_matrix_coefficients_t matrix_coefficients;
+    aom_chroma_sample_position_t chroma_sample_position;
 } SequenceHeader;
 
 typedef void (*aom_rb_error_handler)(void *data);

@@ -180,7 +180,8 @@ int ivf_read_frame(FILE *infile, uint8_t **buffer, size_t *bytes_read,
         }
 
         if (frame_size > *buffer_size) {
-            uint8_t *new_buffer = (uint8_t *)realloc(*buffer, 2 * frame_size);
+            uint8_t *new_buffer =
+                reinterpret_cast<uint8_t *>(realloc(*buffer, 2 * frame_size));
 
             if (new_buffer) {
                 *buffer = new_buffer;
@@ -423,12 +424,9 @@ static void av1_read_op_parameters_info(SequenceHeader *const cm,
 }
 
 static void av1_read_color_config(struct aom_read_bit_buffer *rb,
-                                  int allow_lowbitdepth,
                                   SequenceHeader *seq_params) {
     av1_read_bitdepth(seq_params, rb);
 
-    seq_params->use_highbitdepth =
-        seq_params->bit_depth > AOM_BITS_8 || !allow_lowbitdepth;
     // monochrome bit (not needed for PROFILE_1)
     const int is_monochrome =
         seq_params->profile != PROFILE_1 ? aom_rb_read_bit(rb) : 0;
@@ -755,7 +753,7 @@ uint32_t read_sequence_header_obu(SequenceHeader *seq_params,
 
     av1_read_sequence_header(rb, seq_params);
 
-    av1_read_color_config(rb, 1, seq_params);
+    av1_read_color_config(rb, seq_params);
     seq_params->film_grain_params_present = aom_rb_read_bit(rb);
 
     if (av1_check_trailing_bits(seq_params, rb) != 0) {
@@ -765,4 +763,75 @@ uint32_t read_sequence_header_obu(SequenceHeader *seq_params,
 
     seq_params->ready = 1;
     return ((rb->bit_offset - saved_bit_offset + 7) >> 3);
+}
+
+int parse_sequence_header_from_file(const char *ivf_file) {
+    FILE *f = fopen(ivf_file, "rb");
+    struct AvxInputContext input_ctx = {ivf_file, f, 0, 0, 0, {0, 0}};
+    if (!file_is_ivf(&input_ctx)) {
+        printf("File is NOT valid ivf\n");
+        return -1;
+    }
+
+    uint8_t *stream_buf = reinterpret_cast<uint8_t *>(malloc(1024));
+    size_t buf_sz = 1024;
+    aom_codec_pts_t pts;
+    size_t frame_sz = 0;
+    int frame_cnt = 0;
+    // keep reading ivf frames
+    while (ivf_read_frame(f, &stream_buf, &frame_sz, &buf_sz, &pts) == 0) {
+        printf("ivf frame count: %d\n", frame_cnt++);
+        uint8_t *frame_buf = stream_buf;
+        aom_codec_err_t err = AOM_CODEC_OK;
+        do {
+            // one ivf frame may contain multiple obus
+            ObuHeader ou = {0};
+            struct aom_read_bit_buffer rb = {
+                frame_buf, frame_buf + frame_sz, 0, NULL, NULL};
+
+            err = read_obu_header(&rb, 0, &ou);
+            int header_size = ou.has_extension ? 2 : 1;
+            frame_buf += header_size;
+            frame_sz -= header_size;
+
+            if (ou.has_size_field) {
+                uint64_t u64_payload_length = 0;
+                int value_len = 0;
+
+                // read payload length
+                for (int len = 0; len < OBU_MAX_LENGTH_FIELD_SIZE; ++len) {
+                    if ((frame_buf[len] >> 7) == 0) {
+                        ++len;
+                        value_len = len;
+                        break;
+                    }
+                }
+
+                aom_uleb_decode(
+                    frame_buf, value_len, &u64_payload_length, NULL);
+                frame_buf += value_len;
+                frame_sz -= value_len;
+                printf("OBU type: %d, payload length: %lld\n",
+                       ou.type,
+                       u64_payload_length);
+
+                // check the ou type and parse sequence header
+                if (ou.type == OBU_SEQUENCE_HEADER) {
+                    struct aom_read_bit_buffer rb = {
+                        frame_buf, frame_buf + frame_sz, 0, NULL, NULL};
+                    SequenceHeader sqs_headers = {0};
+                    if (read_sequence_header_obu(&sqs_headers, &rb) == 0) {
+                        printf("read seqence header fail\n");
+                    }
+                }
+
+                frame_buf += u64_payload_length;
+                frame_sz -= u64_payload_length;
+            }
+        } while (err == 0 && frame_sz > 0);
+    }
+
+    free(stream_buf);
+    fclose(f);
+    return 0;
 }
