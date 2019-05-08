@@ -56,7 +56,8 @@ enable_testing()
 
 file(GLOB all_files
     "*.h"
-    "*.cc")
+    "*.cc"
+    "../../Source/App/EncApp/EbAppInputy4m.c")
 
 if (UNIX)
         
