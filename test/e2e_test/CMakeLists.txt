@@ -4,8 +4,9 @@
 # 
 
 include(ProcessorCount)
-set(SVT_AV1_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
-include("${SVT_AV1_ROOT}/test_data_util.cmake")
+set(SVT_AV1_E2E_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+include("${SVT_AV1_E2E_ROOT}/test_data_util.cmake")
+include("${SVT_AV1_E2E_ROOT}/libaom_dependency.cmake")
 
 # APP Directory CMakeLists.txt
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/)
@@ -93,7 +94,7 @@ add_test(SvtAv1E2ETests ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/SvtAv1E2ET
 
 
 # testdata download targets.
-set(TEST_DATA_LIST_FILE "${SVT_AV1_ROOT}/test_vector_list.txt")
+set(TEST_DATA_LIST_FILE "${SVT_AV1_E2E_ROOT}/test_vector_list.txt")
 make_test_data_lists("${TEST_DATA_LIST_FILE}" test_files
                          test_file_checksums)
 list(LENGTH test_files num_test_files)
@@ -106,10 +107,10 @@ foreach(test_index RANGE ${max_file_index})
     add_custom_target(testdata_${test_file}
                         COMMAND
                           ${CMAKE_COMMAND}
-                          -DSVT_AV1_ROOT="${SVT_AV1_ROOT}"
+                          -DSVT_AV1_E2E_ROOT="${SVT_AV1_E2E_ROOT}"
                           -DSVT_AV1_TEST_FILE="${test_file}"
                           -DAVT_AV1_TEST_CHECKSUM=${test_file_checksum} -P
-                          "${SVT_AV1_ROOT}/test_data_download_worker.cmake")
+                          "${SVT_AV1_E2E_ROOT}/test_data_download_worker.cmake")
     list(APPEND testdata_targets testdata_${test_file})
 endforeach()
 
