@@ -77,7 +77,7 @@ SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     : video_src_(SvtAv1E2ETestFramework::prepare_video_src(GetParam())),
       psnr_src_(SvtAv1E2ETestFramework::prepare_video_src(GetParam())) {
     memset(&av1enc_ctx_, 0, sizeof(av1enc_ctx_));
-    recon_sink_ = nullptr;
+    recon_queue_ = nullptr;
     refer_dec_ = nullptr;
     output_file_ = nullptr;
     obu_frame_header_size_ = 0;
@@ -93,9 +93,9 @@ SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
         delete video_src_;
         video_src_ = nullptr;
     }
-    if (recon_sink_) {
-        delete recon_sink_;
-        recon_sink_ = nullptr;
+    if (recon_queue_) {
+        delete recon_queue_;
+        recon_queue_ = nullptr;
     }
     if (refer_dec_) {
         delete refer_dec_;
@@ -263,8 +263,8 @@ void SvtAv1E2ETestFramework::run_encode_process() {
 
     uint32_t frame_count = video_src_->get_frame_count();
     ASSERT_GT(frame_count, 0) << "video srouce file does not contain frame!!";
-    if (recon_sink_) {
-        recon_sink_->set_frame_count(frame_count);
+    if (recon_queue_) {
+        recon_queue_->set_frame_count(frame_count);
     }
 
     if (output_file_) {
@@ -274,7 +274,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
     uint8_t *frame = nullptr;
     bool src_file_eos = false;
     bool enc_file_eos = false;
-    bool rec_file_eos = recon_sink_ ? false : true;
+    bool rec_file_eos = recon_queue_ ? false : true;
     do {
         if (!src_file_eos) {
             {
@@ -323,7 +323,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
         }
 
         // recon
-        if (recon_sink_ && !rec_file_eos) {
+        if (recon_queue_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
             if (!rec_file_eos)
                 get_recon_frame(rec_file_eos);
@@ -580,10 +580,11 @@ void SvtAv1E2ETestFramework::decode_compress_data(const uint8_t *data,
     VideoFrame ref_frame;
     memset(&ref_frame, 0, sizeof(ref_frame));
     while (refer_dec_->get_frame(ref_frame) == RefDecoder::REF_CODEC_OK) {
-        if (recon_sink_) {
+        if (recon_queue_) {
             // compare tools
             if (ref_compare_ == nullptr) {
-                ref_compare_ = create_ref_compare_sink(ref_frame, recon_sink_);
+                ref_compare_ =
+                    create_ref_compare_queue(ref_frame, recon_queue_);
                 ASSERT_NE(ref_compare_, nullptr);
             }
             // Compare ref decode output with recon output.
@@ -604,63 +605,65 @@ void SvtAv1E2ETestFramework::check_psnr(const VideoFrame &frame) {
         double luma_psnr = 0.0;
         double cb_psnr = 0.0;
         double cr_psnr = 0.0;
-
-        if (video_src_->get_bit_depth() == 8) {
-            luma_psnr = psnr_8bit(src_frame->luma,
-                                  src_frame->y_stride,
-                                  frame.planes[0],
-                                  frame.stride[0],
-                                  frame.width,
-                                  frame.height);
-            cb_psnr = psnr_8bit(src_frame->cb,
-                                src_frame->cb_stride,
-                                frame.planes[1],
-                                frame.stride[1],
-                                frame.width >> 1,
-                                frame.height >> 1);
-            cr_psnr = psnr_8bit(src_frame->cr,
-                                src_frame->cr_stride,
-                                frame.planes[2],
-                                frame.stride[2],
-                                frame.width >> 1,
-                                frame.height >> 1);
-        }
-        if (video_src_->get_bit_depth() == 10) {
-            luma_psnr = psnr_10bit((const uint16_t *)src_frame->luma,
-                                   src_frame->y_stride,
-                                   (const uint16_t *)frame.planes[0],
-                                   frame.stride[0] / 2,
-                                   frame.width,
-                                   frame.height);
-            cb_psnr = psnr_10bit((const uint16_t *)src_frame->cb,
-                                 src_frame->cb_stride,
-                                 (const uint16_t *)frame.planes[1],
-                                 frame.stride[1] / 2,
-                                 frame.width >> 1,
-                                 frame.height >> 1);
-            cr_psnr = psnr_10bit((const uint16_t *)src_frame->cr,
-                                 src_frame->cr_stride,
-                                 (const uint16_t *)frame.planes[2],
-                                 frame.stride[2] / 2,
-                                 frame.width >> 1,
-                                 frame.height >> 1);
-        }
+        psnr_frame(src_frame,
+                   video_src_->get_bit_depth(),
+                   frame,
+                   luma_psnr,
+                   cb_psnr,
+                   cr_psnr);
         pnsr_statistics_.add(luma_psnr, cb_psnr, cr_psnr);
         // TODO: Check PSNR value reasonable here?
     }
 }
 
+static bool transfer_frame_planes(VideoFrame *frame) {
+    uint32_t luma_size = frame->stride[0] * frame->height;
+    if (frame->buf_size != 4 * luma_size) {
+        printf("buffer size doesn't match!\n");
+        return false;
+    }
+    bool half_height = false;
+    if (frame->format == IMG_FMT_420P10_PACKED ||
+        frame->format == IMG_FMT_422P10_PACKED ||
+        frame->format == IMG_FMT_444P10_PACKED) {
+        luma_size *= 2;
+    }
+    if (frame->format == IMG_FMT_420 ||
+        frame->format == IMG_FMT_420P10_PACKED ||
+        frame->format == IMG_FMT_NV12) {
+        half_height = true;
+    }
+    if (frame->stride[3]) {
+        uint32_t offset = frame->stride[0] * frame->height +
+                          ((frame->stride[1] + frame->stride[2]) *
+                           (half_height ? frame->height / 2 : frame->height));
+        memcpy(frame->planes[3], frame->buffer + offset, frame->buf_size >> 2);
+    }
+    if (frame->stride[2]) {
+        uint32_t offset = frame->stride[0] * frame->height +
+                          (frame->stride[1] *
+                           (half_height ? frame->height / 2 : frame->height));
+        memcpy(frame->planes[2], frame->buffer + offset, frame->buf_size >> 2);
+    }
+    if (frame->stride[1]) {
+        uint32_t offset = frame->stride[0] * frame->height;
+        memcpy(frame->planes[1], frame->buffer + offset, frame->buf_size >> 2);
+    }
+    return true;
+}
+
 void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
     do {
-        ReconSink::ReconMug *new_mug = recon_sink_->get_empty_mug();
-        ASSERT_NE(new_mug, nullptr) << "can not get new mug for recon frame!!";
-        ASSERT_NE(new_mug->mug_buf, nullptr)
-            << "can not get new mug for recon frame!!";
+        VideoFrame *new_frame = recon_queue_->get_empty_frame();
+        ASSERT_NE(new_frame, nullptr)
+            << "can not get new frame for recon frame!!";
+        ASSERT_NE(new_frame->buffer, nullptr)
+            << "can not get new buffer of recon frame!!";
 
         EbBufferHeaderType recon_frame = {0};
         recon_frame.size = sizeof(EbBufferHeaderType);
-        recon_frame.p_buffer = new_mug->mug_buf;
-        recon_frame.n_alloc_len = new_mug->mug_size;
+        recon_frame.p_buffer = new_frame->buffer;
+        recon_frame.n_alloc_len = new_frame->buf_size;
         recon_frame.p_app_private = nullptr;
         // non-blocking call until all input frames are sent
         EbErrorType recon_status =
@@ -668,18 +671,17 @@ void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
         ASSERT_NE(recon_status, EB_ErrorMax)
             << "Error while outputing recon, code:" << recon_frame.flags;
         if (recon_status == EB_NoErrorEmptyQueue) {
-            recon_sink_->pour_mug(new_mug);
+            recon_queue_->delete_frame(new_frame);
             break;
         } else {
-            ASSERT_EQ(recon_frame.n_filled_len, new_mug->mug_size)
+            ASSERT_LE(recon_frame.n_filled_len, new_frame->buf_size)
                 << "recon frame size incorrect@" << recon_frame.pts;
             // mark the recon eos flag
             if (recon_frame.flags & EB_BUFFERFLAG_EOS)
                 is_eos = true;
-            new_mug->filled_size = recon_frame.n_filled_len;
-            new_mug->time_stamp = recon_frame.pts;
-            new_mug->tag = recon_frame.flags;
-            recon_sink_->fill_mug(new_mug);
+            transfer_frame_planes(new_frame);
+            new_frame->timestamp = recon_frame.pts;
+            recon_queue_->add_frame(new_frame);
         }
     } while (true);
 }

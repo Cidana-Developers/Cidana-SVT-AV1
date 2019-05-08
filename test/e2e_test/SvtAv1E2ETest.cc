@@ -95,9 +95,9 @@ class SvtAv1E2EReconFileTest : public SvtAv1E2ETestFramework {
         param.format = video_src_->get_image_format();
         param.width = video_src_->get_width_with_padding();
         param.height = video_src_->get_height_with_padding();
-        recon_sink_ = create_recon_sink(param, "enc_recon.rcs");
-        ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
-        if (recon_sink_)
+        recon_queue_ = create_frame_queue(param, "enc_recon.rcs");
+        ASSERT_NE(recon_queue_, nullptr) << "can not create recon sink!!";
+        if (recon_queue_)
             av1enc_ctx_.enc_params.recon_enabled = 1;
         SvtAv1E2ETestFramework::init_test();
     }
@@ -135,9 +135,9 @@ class SvtAv1E2EReconBufferTest : public SvtAv1E2ETestFramework {
         param.format = video_src_->get_image_format();
         param.width = video_src_->get_width_with_padding();
         param.height = video_src_->get_height_with_padding();
-        recon_sink_ = create_recon_sink(param);
-        ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
-        if (recon_sink_)
+        recon_queue_ = create_frame_queue(param);
+        ASSERT_NE(recon_queue_, nullptr) << "can not create recon sink!!";
+        if (recon_queue_)
             av1enc_ctx_.enc_params.recon_enabled = 1;
         SvtAv1E2ETestFramework::init_test();
     }
@@ -176,9 +176,9 @@ class SvtAv1E2EConformanceTest : public SvtAv1E2ETestFramework {
         param.format = video_src_->get_image_format();
         param.width = video_src_->get_width_with_padding();
         param.height = video_src_->get_height_with_padding();
-        recon_sink_ = create_recon_sink(param);
-        ASSERT_NE(recon_sink_, nullptr) << "can not create recon sink!!";
-        if (recon_sink_)
+        recon_queue_ = create_frame_queue(param);
+        ASSERT_NE(recon_queue_, nullptr) << "can not create recon sink!!";
+        if (recon_queue_)
             av1enc_ctx_.enc_params.recon_enabled = 1;
 
         // create reference decoder
