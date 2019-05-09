@@ -14,7 +14,9 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
-#include "util.h"
+#include "ParseUtil.h"
+
+namespace svt_av1_e2e_tools {
 
 // bit reader
 static size_t aom_rb_bytes_read(struct aom_read_bit_buffer *rb) {
@@ -604,6 +606,12 @@ static void av1_read_sequence_header(struct aom_read_bit_buffer *rb,
     seq_params->enable_restoration = aom_rb_read_bit(rb);
 }
 
+static INLINE uint8_t major_minor_to_seq_level_idx(BitstreamLevel bl) {
+    assert(bl.major >= LEVEL_MAJOR_MIN && bl.major <= LEVEL_MAJOR_MAX);
+    // assert(bl.minor >= LEVEL_MINOR_MIN && bl.minor <= LEVEL_MINOR_MAX);
+    return ((bl.major - LEVEL_MAJOR_MIN) << LEVEL_MINOR_BITS) + bl.minor;
+}
+
 // parse sequence header;
 // On success, sets pbi->sequence_header_ready to 1 and returns the number of
 // bytes read from 'rb'.
@@ -811,9 +819,9 @@ int parse_sequence_header_from_file(const char *ivf_file) {
                     frame_buf, value_len, &u64_payload_length, NULL);
                 frame_buf += value_len;
                 frame_sz -= value_len;
-                printf("OBU type: %d, payload length: %lld\n",
+                printf("OBU type: %d, payload length: %u\n",
                        ou.type,
-                       u64_payload_length);
+                       (uint32_t)u64_payload_length);
 
                 // check the ou type and parse sequence header
                 if (ou.type == OBU_SEQUENCE_HEADER) {
@@ -835,3 +843,4 @@ int parse_sequence_header_from_file(const char *ivf_file) {
     fclose(f);
     return 0;
 }
+}  // namespace svt_av1_e2e_tools
