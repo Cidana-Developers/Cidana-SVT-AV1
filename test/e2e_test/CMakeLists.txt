@@ -25,6 +25,7 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
 link_directories(${PROJECT_SOURCE_DIR}/third_party/SDL2-2.0.9/lib/x64)
 link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/msvc)
 endif(MSVC OR MSYS OR MINGW OR WIN32)
+
 if (UNIX AND NOT APPLE)
 link_directories(${PROJECT_SOURCE_DIR}/third_party/aom/lib/linux)
 endif(UNIX AND NOT APPLE)
@@ -48,8 +49,6 @@ option(
   gtest_force_shared_crt
   "Use shared (DLL) run-time lib even when Google Test is built as static lib."
   OFF)
-
-add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1)
 
 enable_testing()
 
@@ -82,6 +81,13 @@ if (MSVC OR MSYS OR MINGW OR WIN32)
     target_link_libraries(SvtAv1E2ETests 
     #SDL2.lib 
     aom.lib)
+
+if(MSVC)
+    set (CMAKE_EXE_LINKER_FLAGS
+      "${CMAKE_EXE_LINKER_FLAGS} 
+	  /NODEFAULTLIB:COMMON_CODEC.lib,COMMON_C_DEFAULT.lib,COMMON_ASM_SSE2.lib,COMMON_ASM_SSSE3.lib,COMMON_ASM_SSE4_1.lib,COMMON_ASM_AVX2.lib")
+endif()
+
     set_target_properties(SvtAv1E2ETests
                         PROPERTIES
                         COMPILE_DEFINITIONS "GTEST_LINKED_AS_SHARED_LIBRARY=1")
