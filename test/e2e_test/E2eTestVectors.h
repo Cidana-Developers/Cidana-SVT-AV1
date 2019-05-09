@@ -20,6 +20,9 @@
 /** @defgroup svt_av1_e2e_test_vector Test vectors for E2E test
  *  Defines the test vectors of E2E test, with file-type, width, height and
  * file-path
+ *  *** You need to get test vectors before run e2e test, we use CMaked
+ * generated makefile to download test vectors, you can use 'make TestVectors'
+ * to download them.
  *  @{
  */
 namespace svt_av1_e2e_test_vector {

@@ -467,8 +467,17 @@ EbErrorType VideoFileSource::open_source(const uint32_t init_pos,
     std::string full_path = get_vector_path() + "/" + file_name_.c_str();
 
     file_handle_ = fopen(full_path.c_str(), "rb");
-    if (file_handle_ == nullptr)
+    if (file_handle_ == nullptr) {
+        printf(">>> Open video source %s failed!\r\n", full_path.c_str());
+        printf(
+            "    You can use CMake generated build target TestVectors to get "
+            "correct test vectors before run this test.\r\n");
+        printf(
+            "    For unix like system, run 'make TestVectors', or build "
+            "TestVectors project on "
+            "VisualStudio.\r\n");
         return EB_ErrorBadParameter;
+    }
 
     // Seek to begin
     fseek(file_handle_, 0, SEEK_SET);
