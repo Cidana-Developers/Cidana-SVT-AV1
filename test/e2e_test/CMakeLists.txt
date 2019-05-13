@@ -92,7 +92,7 @@ endif(MSVC OR MSYS OR MINGW OR WIN32)
 install(TARGETS SvtAv1E2ETests RUNTIME DESTINATION bin)
 
 add_test(SvtAv1E2ETests ${PROJECT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE}/SvtAv1E2ETests)
-
+add_dependencies(SvtAv1E2ETests DepLibAom)
 
 # testdata download targets.
 set(TEST_DATA_LIST_FILE "${SVT_AV1_E2E_ROOT}/test_vector_list.txt")
