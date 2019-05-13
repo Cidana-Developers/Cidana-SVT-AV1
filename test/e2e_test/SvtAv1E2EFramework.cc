@@ -21,13 +21,6 @@
 #include "SvtAv1E2EFramework.h"
 #include "CompareTools.h"
 
-#define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(resolution_size) \
-    ((resolution_size) < (INPUT_SIZE_1080i_TH)           \
-         ? 0x1E8480                                      \
-         : (resolution_size) < (INPUT_SIZE_1080p_TH)     \
-               ? 0x2DC6C0                                \
-               : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
-
 #if _WIN32
 #define fseeko64 _fseeki64
 #define ftello64 _ftelli64
@@ -35,16 +28,6 @@
 #define fseeko64 fseek
 #define ftello64 ftell
 #endif
-
-// Copied from EbAppProcessCmd.c
-#define LONG_ENCODE_FRAME_ENCODE 4000
-#define SPEED_MEASUREMENT_INTERVAL 2000
-#define START_STEADY_STATE 1000
-#define AV1_FOURCC 0x31305641  // used for ivf header
-#define IVF_STREAM_HEADER_SIZE 32
-#define IVF_FRAME_HEADER_SIZE 12
-#define OBU_FRAME_HEADER_SIZE 3
-#define TD_SIZE 2
 
 using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_tools;
@@ -71,6 +54,25 @@ VideoSource *SvtAv1E2ETestFramework::prepare_video_src(
     default: assert(0); break;
     }
     return video_src;
+}
+
+void SvtAv1E2ETestFramework::trans_src_param(const VideoSource *source,
+                                             EbSvtAv1EncConfiguration &config) {
+    VideoColorFormat fmt = source->get_image_format();
+    switch (fmt) {
+    case IMG_FMT_420:
+    case IMG_FMT_420P10_PACKED: config.encoder_color_format = EB_YUV420; break;
+    case IMG_FMT_422:
+    case IMG_FMT_422P10_PACKED: config.encoder_color_format = EB_YUV422; break;
+    case IMG_FMT_444:
+    case IMG_FMT_444P10_PACKED: config.encoder_color_format = EB_YUV444; break;
+    default: assert(0); break;
+    }
+    config.source_width = source->get_width_with_padding();
+    config.source_height = source->get_height_with_padding();
+    config.encoder_bit_depth = source->get_bit_depth();
+    config.compressed_ten_bit_format = source->get_compressed_10bit_mode();
+    config.frames_to_be_encoded = source->get_frame_count();
 }
 
 SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
@@ -132,8 +134,8 @@ void SvtAv1E2ETestFramework::SetUp() {
     uint32_t width = video_src_->get_width_with_padding();
     uint32_t height = video_src_->get_height_with_padding();
     uint32_t bit_depth = video_src_->get_bit_depth();
-    ASSERT_GE(width, 0) << "Video vector width error.";
-    ASSERT_GE(height, 0) << "Video vector height error.";
+    ASSERT_GT(width, 0) << "Video vector width error.";
+    ASSERT_GT(height, 0) << "Video vector height error.";
     ASSERT_TRUE(bit_depth == 10 || bit_depth == 8)
         << "Video vector bitDepth error.";
 
@@ -146,12 +148,7 @@ void SvtAv1E2ETestFramework::SetUp() {
         << "eb_init_handle return error:" << return_error;
     ASSERT_NE(av1enc_ctx_.enc_handle, nullptr)
         << "eb_init_handle return null handle.";
-
-    av1enc_ctx_.enc_params.source_width = width;
-    av1enc_ctx_.enc_params.source_height = height;
-    av1enc_ctx_.enc_params.encoder_bit_depth = bit_depth;
-    av1enc_ctx_.enc_params.compressed_ten_bit_format =
-        video_src_->get_compressed_10bit_mode();
+    trans_src_param(video_src_, av1enc_ctx_.enc_params);
     av1enc_ctx_.enc_params.recon_enabled = 0;
 
     //
@@ -200,8 +197,12 @@ void SvtAv1E2ETestFramework::TearDown() {
         if (av1enc_ctx_.output_stream_buffer->p_buffer != nullptr) {
             delete[] av1enc_ctx_.output_stream_buffer->p_buffer;
         }
-        delete[] av1enc_ctx_.output_stream_buffer;
+        delete av1enc_ctx_.output_stream_buffer;
         av1enc_ctx_.output_stream_buffer = nullptr;
+    }
+    if (av1enc_ctx_.input_picture_buffer != nullptr) {
+        delete av1enc_ctx_.input_picture_buffer;
+        av1enc_ctx_.input_picture_buffer = nullptr;
     }
 
     ASSERT_NE(video_src_, nullptr);
@@ -210,11 +211,8 @@ void SvtAv1E2ETestFramework::TearDown() {
 
 /** initialization for test */
 void SvtAv1E2ETestFramework::init_test() {
-    EbErrorType return_error = EB_ErrorNone;
-    /** TODO: encoder_color_format should be set with input source format*/
-    av1enc_ctx_.enc_params.encoder_color_format = EB_YUV420;
-    return_error = eb_svt_enc_set_parameter(av1enc_ctx_.enc_handle,
-                                            &av1enc_ctx_.enc_params);
+    EbErrorType return_error = eb_svt_enc_set_parameter(
+        av1enc_ctx_.enc_handle, &av1enc_ctx_.enc_params);
     ASSERT_EQ(return_error, EB_ErrorNone)
         << "eb_svt_enc_set_parameter return error:" << return_error;
 
@@ -243,6 +241,7 @@ void SvtAv1E2ETestFramework::init_test() {
     ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
     EbErrorType err = psnr_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
+    total_enc_out_ = 0;
 }
 
 void SvtAv1E2ETestFramework::close_test() {
@@ -326,7 +325,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
         if (recon_queue_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
             if (!rec_file_eos)
-                get_recon_frame(rec_file_eos);
+                get_recon_frame(av1enc_ctx_, recon_queue_, rec_file_eos);
         }
 
         if (!enc_file_eos) {
@@ -652,9 +651,10 @@ static bool transfer_frame_planes(VideoFrame *frame) {
     return true;
 }
 
-void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
+void SvtAv1E2ETestFramework::get_recon_frame(const SvtAv1Context &ctxt,
+                                             FrameQueue *recon, bool &is_eos) {
     do {
-        VideoFrame *new_frame = recon_queue_->get_empty_frame();
+        VideoFrame *new_frame = recon->get_empty_frame();
         ASSERT_NE(new_frame, nullptr)
             << "can not get new frame for recon frame!!";
         ASSERT_NE(new_frame->buffer, nullptr)
@@ -667,11 +667,11 @@ void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
         recon_frame.p_app_private = nullptr;
         // non-blocking call until all input frames are sent
         EbErrorType recon_status =
-            eb_svt_get_recon(av1enc_ctx_.enc_handle, &recon_frame);
+            eb_svt_get_recon(ctxt.enc_handle, &recon_frame);
         ASSERT_NE(recon_status, EB_ErrorMax)
             << "Error while outputing recon, code:" << recon_frame.flags;
         if (recon_status == EB_NoErrorEmptyQueue) {
-            recon_queue_->delete_frame(new_frame);
+            recon->delete_frame(new_frame);
             break;
         } else {
             ASSERT_LE(recon_frame.n_filled_len, new_frame->buf_size)
@@ -681,7 +681,7 @@ void SvtAv1E2ETestFramework::get_recon_frame(bool &is_eos) {
                 is_eos = true;
             transfer_frame_planes(new_frame);
             new_frame->timestamp = recon_frame.pts;
-            recon_queue_->add_frame(new_frame);
+            recon->add_frame(new_frame);
         }
     } while (true);
 }

@@ -23,6 +23,27 @@
 class RefDecoder;
 extern RefDecoder *create_reference_decoder();
 
+#define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
+#define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
+#define INPUT_SIZE_1080p_TH 0x1AB3F0  // 1.75 Million
+#define INPUT_SIZE_4K_TH 0x29F630     // 2.75 Million
+#define EB_OUTPUTSTREAMBUFFERSIZE_MACRO(resolution_size) \
+    ((resolution_size) < (INPUT_SIZE_1080i_TH)           \
+         ? 0x1E8480                                      \
+         : (resolution_size) < (INPUT_SIZE_1080p_TH)     \
+               ? 0x2DC6C0                                \
+               : (resolution_size) < (INPUT_SIZE_4K_TH) ? 0x2DC6C0 : 0x2DC6C0)
+
+// Copied from EbAppProcessCmd.c
+#define LONG_ENCODE_FRAME_ENCODE 4000
+#define SPEED_MEASUREMENT_INTERVAL 2000
+#define START_STEADY_STATE 1000
+#define AV1_FOURCC 0x31305641  // used for ivf header
+#define IVF_STREAM_HEADER_SIZE 32
+#define IVF_FRAME_HEADER_SIZE 12
+#define OBU_FRAME_HEADER_SIZE 3
+#define TD_SIZE 2
+
 /** @defgroup svt_av1_e2e_test Test framework for E2E test
  *  Defines the framework body of E2E test for the mainly test progress
  *  @{
@@ -78,12 +99,17 @@ class SvtAv1E2ETestFramework
     /** test processing body */
     virtual void run_encode_process();
 
-  protected:
+  public:
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
+    static void trans_src_param(const VideoSource *source,
+                                EbSvtAv1EncConfiguration &config);
     /** get reconstruction frame from encoder, it should call after send data
+     * @param ctxt  context of encoder
+     * @param recon  video frame queue of reconstruction
      * @param is_eos  flag of recon frames is eos
      * into decoder */
-    virtual void get_recon_frame(bool &is_eos);
+    static void get_recon_frame(const SvtAv1Context &ctxt, FrameQueue *recon,
+                                bool &is_eos);
 
   private:
     /** write ivf header to output file */
@@ -119,6 +145,7 @@ class SvtAv1E2ETestFramework
     VideoSource *psnr_src_;         /**< video source context for psnr */
     ICompareQueue *ref_compare_; /**< sink of reference to compare with recon*/
     PsnrStatistics pnsr_statistics_; /**< psnr statistics recorder.*/
+    uint64_t total_enc_out_;
 };
 
 }  // namespace svt_av1_e2e_test
