@@ -24,10 +24,11 @@ using namespace svt_av1_e2e_test_vector;
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames
+ * frames.
  *
- * Expect result:
- * No error from encoding progress and output compressed data exist
+ * Expected result:
+ * No error is reported in encoding progress. The output compressed data
+ * is complete.
  *
  * Test coverage:
  * All test vectors
@@ -46,11 +47,11 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames. Save the compressed data into IVF file
+ * frames. Save the compressed data into IVF file.
  *
- * Expect result:
- * No error from encoding progress and output compressed data is saved into IVF
- * file
+ * Expected result:
+ * No error is reported in encoding progress. The output compressed data
+ * is saved into IVF file.
  *
  * Test coverage:
  * Smoking test vectors
@@ -151,17 +152,17 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
                         ::testing::ValuesIn(smoking_vectors));
 
 /**
- * @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
- * output frames from decoder buffer list
+ * @brief SVT-AV1 encoder E2E test with comparing the reconstructed frame with
+ * output frame from decoder buffer list
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames. Collect the reconstruction frames and compared with reference decoder
- * output
+ * frames. Collect the reconstructed frames and compared them with reference
+ * decoder output.
  *
- * Expect result:
- * No error from encoding progress and reconstruction frame data is same as the
- * output frame from reference decoder
+ * Expected result:
+ * No error is reported in encoding progress. The reconstructed frame
+ * data is same as the output frame from reference decoder.
  *
  * Test coverage:
  * All test vectors
@@ -199,7 +200,7 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
                         ::testing::ValuesIn(comformance_test_vectors));
 
 /**
- * @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
+ * @brief SVT-AV1 encoder E2E test with comparing the reconstructed frames with
  * output frames from decoder buffer list in longtime (3000 frames)
  *
  * Test strategy:
@@ -229,3 +230,79 @@ TEST_P(SvtAv1E2ELongTimeConformanceTest, run_conformance_test) {
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ELongTimeConformanceTest,
                         ::testing::ValuesIn(longtime_comformance_test_vectors));
+
+/* @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
+ * output frame from decoder buffer list, but found dead in linux
+ *
+ * Test strategy:
+ * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
+ * frames. Collect the reconstructed frames and compared them with reference
+ * decoder output, and in progress the test will crashes with segment fault.
+ *
+ * Expected result:
+ * The assert of death is true and pass the test
+ *
+ * Test coverage:
+ * Special test vectors with resolution 952x512 and 952x704 in
+ * src_resolution_death_test_vectors
+ */
+class SvtAv1E2EConformanceDeathTest : public SvtAv1E2EConformanceTest {};
+
+TEST_P(SvtAv1E2EConformanceDeathTest, run_conformance_test) {
+    testing::FLAGS_gtest_death_test_style = "threadsafe";
+    ASSERT_DEATH(run_encode_process(), "");
+}
+
+INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceDeathTest,
+                        ::testing::ValuesIn(src_resolution_death_test_vectors));
+
+class SvtAv1E2ERepeatConformanceTest : public SvtAv1E2EConformanceTest {
+  protected:
+    SvtAv1E2ERepeatConformanceTest() {
+        recon_storage_.clear();
+    }
+    virtual ~SvtAv1E2ERepeatConformanceTest() {
+        for (FrameQueue* recon_queue : recon_storage_)
+            delete recon_queue;
+        recon_storage_.clear();
+    }
+    /** initialization for test */
+    void init_test() override {
+        SvtAv1E2EConformanceTest::init_test();
+        // store the recon queue for compared with other encoder instances
+        recon_storage_.push_back(recon_queue_);
+    }
+    void close_test() override {
+        SvtAv1E2EConformanceTest::close_test();
+        recon_queue_ = nullptr;
+    }
+    void repeat_encode_process(uint32_t times) {
+        uint32_t left = times;
+        // repeat run encode process
+        while (left != 0) {
+            if (left != times)  // first time is automatically initialized
+                SetUp();
+            run_encode_process();
+            left--;
+            if (left != 0)
+                TearDown();
+        }
+        // check for frame
+        FrameQueue* ref_queue = recon_storage_.back();
+        for (FrameQueue* recon_queue : recon_storage_) {
+            if (ref_queue != recon_queue)
+                ASSERT_TRUE(ref_queue->compare(recon_queue))
+                    << "frame queues compare failed";
+        }
+    }
+
+  protected:
+    std::vector<FrameQueue*> recon_storage_;
+};
+
+TEST_P(SvtAv1E2ERepeatConformanceTest, repeat_encode_process) {
+    repeat_encode_process(5);
+}
+
+INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ERepeatConformanceTest,
+                        ::testing::ValuesIn(comformance_test_vectors));

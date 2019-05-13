@@ -93,6 +93,7 @@ SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     obu_frame_header_size_ = 0;
     collect_ = nullptr;
     ref_compare_ = nullptr;
+    use_ext_qp_ = false;
     start_pos_ = std::get<7>(GetParam());
     frames_to_test_ = std::get<8>(GetParam());
     printf("start: %d, count: %d\n", start_pos_, frames_to_test_);
@@ -249,7 +250,6 @@ void SvtAv1E2ETestFramework::init_test() {
     ASSERT_NE(psnr_src_, nullptr) << "PSNR source create failed!";
     EbErrorType err = psnr_src_->open_source(start_pos_, frames_to_test_);
     ASSERT_EQ(err, EB_ErrorNone) << "open_source return error:" << err;
-    total_enc_out_ = 0;
 }
 
 void SvtAv1E2ETestFramework::close_test() {
@@ -302,6 +302,11 @@ void SvtAv1E2ETestFramework::run_encode_process() {
                         video_src_->get_frame_index();
                     av1enc_ctx_.input_picture_buffer->pic_type =
                         EB_AV1_INVALID_PICTURE;
+                    av1enc_ctx_.input_picture_buffer->qp =
+                        video_src_->get_frame_qp(video_src_->get_frame_index());
+                    // printf("QP[%u] in src: %u\n",
+                    // video_src_->get_frame_index(),
+                    //       av1enc_ctx_.input_picture_buffer->qp);
                     // Send the picture
                     EXPECT_EQ(EB_ErrorNone,
                               return_error = eb_svt_enc_send_picture(
@@ -351,6 +356,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
 
                 // process the output buffer
                 if (return_error != EB_NoErrorEmptyQueue && enc_out) {
+                    // send to reference decoder
                     TimeAutoCount counter(CONFORMANCE, collect_);
                     process_compress_data(enc_out);
                     if (enc_out->flags & EB_BUFFERFLAG_EOS) {

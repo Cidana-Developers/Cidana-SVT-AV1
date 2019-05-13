@@ -27,7 +27,7 @@ namespace {
  * Report a death caused by set a null pointer to function
  * eb_svt_enc_set_parameter, which should not happen <br>
  *
- * Expect result: <br>
+ * Expected result: <br>
  * Capture a signal of death in function eb_svt_enc_set_parameter <br>
  *
  * Test coverage:
@@ -56,7 +56,7 @@ TEST(EncApiDeathTest, set_parameter_null_pointer) {
  * Test strategy: <br>
  * Input nullptr to the encoder API and check the return value.
  *
- * Expect result: <br>
+ * Expected result: <br>
  * Encoder API should not crash and report EB_ErrorBadParameter.
  *
  * Test coverage:
@@ -104,7 +104,7 @@ TEST(EncApiTest, check_null_pointer) {
  * Test strategy: <br>
  * Input normal parameters to the encoder API and check the return value.
  *
- * Expect result: <br>
+ * Expected result: <br>
  * Encoder API should not crash and report EB_ErrorNone.
  *
  * Test coverage:
@@ -150,7 +150,7 @@ TEST(EncApiTest, DISABLED_check_normal_setup) {
  * Input normal parameters to the encoder API and repeat the proccessing of
  * initialize and destory encoder handle and check the return value.
  *
- * Expect result: <br>
+ * Expected result: <br>
  * Encoder can initialize normally without any error reported.
  *
  * Test coverage:

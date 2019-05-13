@@ -19,9 +19,8 @@
 #include "FrameQueue.h"
 #include "PerformanceCollect.h"
 #include "CompareTools.h"
-
-class RefDecoder;
-extern RefDecoder *create_reference_decoder();
+#include "EbDefinitions.h"
+#include "RefDecoder.h"
 
 #define INPUT_SIZE_576p_TH 0x90000    // 0.58 Million
 #define INPUT_SIZE_1080i_TH 0xB71B0   // 0.75 Million
@@ -103,9 +102,9 @@ class SvtAv1E2ETestFramework
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
     static void trans_src_param(const VideoSource *source,
                                 EbSvtAv1EncConfiguration &config);
-    /** get reconstruction frame from encoder, it should call after send data
+    /** get reconstructed frame from encoder, it should call after send data
      * @param ctxt  context of encoder
-     * @param recon  video frame queue of reconstruction
+     * @param recon  video frame queue of reconstructed
      * @param is_eos  flag of recon frames is eos
      * into decoder */
     static void get_recon_frame(const SvtAv1Context &ctxt, FrameQueue *recon,
@@ -137,7 +136,7 @@ class SvtAv1E2ETestFramework
     SvtAv1Context av1enc_ctx_; /**< AV1 encoder context */
     uint32_t start_pos_;       /**< start position of video frame */
     uint32_t frames_to_test_;  /**< frame count for this test */
-    FrameQueue *recon_queue_;  /**< reconstruction frame collection */
+    FrameQueue *recon_queue_;  /**< reconstructed frame collection */
     RefDecoder *refer_dec_;    /**< reference decoder context */
     IvfFile *output_file_;     /**< file handle for save encoder output data */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */
@@ -145,7 +144,7 @@ class SvtAv1E2ETestFramework
     VideoSource *psnr_src_;         /**< video source context for psnr */
     ICompareQueue *ref_compare_; /**< sink of reference to compare with recon*/
     PsnrStatistics pnsr_statistics_; /**< psnr statistics recorder.*/
-    uint64_t total_enc_out_;
+    bool use_ext_qp_; /**< flag of use external qp from video source or not*/
 };
 
 }  // namespace svt_av1_e2e_test
