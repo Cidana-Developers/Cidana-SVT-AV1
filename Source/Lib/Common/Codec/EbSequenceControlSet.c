@@ -61,7 +61,7 @@ EbErrorType eb_sequence_control_set_ctor(
         sequence_control_set_ptr->encode_context_ptr = scsInitData->encode_context_ptr;
     }
     else {
-        sequence_control_set_ptr->encode_context_ptr = (EncodeContext_t *)EB_NULL;
+        sequence_control_set_ptr->encode_context_ptr = (EncodeContext *)EB_NULL;
     }
 
     sequence_control_set_ptr->conformance_window_flag = 0;
@@ -97,6 +97,7 @@ EbErrorType eb_sequence_control_set_ctor(
     sequence_control_set_ptr->max_ref_count = 1;
     sequence_control_set_ptr->intra_period_length = 0;
     sequence_control_set_ptr->intra_refresh_type = 0;
+
 
     // LCU
     sequence_control_set_ptr->sb_sz = 64;
@@ -218,7 +219,6 @@ EbErrorType eb_sequence_control_set_ctor(
     sequence_control_set_ptr->extra_frames_to_ref_islice = 0;
     sequence_control_set_ptr->max_frame_window_to_ref_islice = 0;
 #endif
-
 #if ADP_STATS_PER_LAYER
     uint8_t temporal_layer_index;
     for (temporal_layer_index = 0; temporal_layer_index < 5; temporal_layer_index++) {
@@ -229,6 +229,9 @@ EbErrorType eb_sequence_control_set_ctor(
         sequence_control_set_ptr->pred_count[temporal_layer_index] = 0;
         sequence_control_set_ptr->pred1_nfl_count[temporal_layer_index] = 0;
     }
+#endif
+#if MRP_ME
+    sequence_control_set_ptr->reference_count = 4;
 #endif
 
     return EB_ErrorNone;
@@ -245,7 +248,7 @@ EbErrorType copy_sequence_control_set(
     uint32_t  writeCount = 0;
 
     dst->static_config = src->static_config;                            writeCount += sizeof(EbSvtAv1EncConfiguration);
-    dst->encode_context_ptr = src->encode_context_ptr;                        writeCount += sizeof(EncodeContext_t*);
+    dst->encode_context_ptr = src->encode_context_ptr;                        writeCount += sizeof(EncodeContext*);
     dst->sps_id = src->sps_id;                                   writeCount += sizeof(uint32_t);
     dst->vps_id = src->vps_id;                                   writeCount += sizeof(uint32_t);
     dst->profile_space = src->profile_space;                            writeCount += sizeof(uint32_t);
@@ -278,7 +281,7 @@ EbErrorType copy_sequence_control_set(
     dst->encoder_bit_depth = src->encoder_bit_depth;                      writeCount += sizeof(uint32_t);
     dst->subsampling_x = src->subsampling_x;                writeCount += sizeof(uint16_t);
     dst->subsampling_y = src->subsampling_y;                writeCount += sizeof(uint16_t);
-    dst->pred_struct_ptr = src->pred_struct_ptr;                           writeCount += sizeof(PredictionStructure_t*);
+    dst->pred_struct_ptr = src->pred_struct_ptr;                           writeCount += sizeof(PredictionStructure*);
     dst->intra_period_length = src->intra_period_length;                       writeCount += sizeof(int32_t);
     dst->intra_refresh_type = src->intra_refresh_type;                        writeCount += sizeof(uint32_t);
     dst->max_ref_count = src->max_ref_count;                             writeCount += sizeof(uint32_t);
@@ -329,7 +332,9 @@ EbErrorType copy_sequence_control_set(
     dst->right_padding = src->right_padding; writeCount += sizeof(int16_t);
     dst->top_padding = src->top_padding; writeCount += sizeof(int16_t);
     dst->bot_padding = src->bot_padding; writeCount += sizeof(int16_t);
-
+#if MRP_ME
+    dst->reference_count = src->reference_count; writeCount += sizeof(uint32_t);
+#endif
     for (uint8_t i = 0; i< MAX_HIERARCHICAL_LEVEL; i++) {
         dst->me_segment_column_count_array[i] = src->me_segment_column_count_array[i];
         dst->me_segment_row_count_array[i] = src->me_segment_row_count_array[i];
@@ -342,7 +347,6 @@ EbErrorType copy_sequence_control_set(
 
     dst->rest_segment_column_count = src->rest_segment_column_count;
     dst->rest_segment_row_count = src->rest_segment_row_count;
-
 #if BASE_LAYER_REF
     dst->extra_frames_to_ref_islice = src->extra_frames_to_ref_islice;
     dst->max_frame_window_to_ref_islice = src->max_frame_window_to_ref_islice;
@@ -403,7 +407,7 @@ extern EbErrorType sb_params_ctor(
 
     EbErrorType return_error = EB_ErrorNone;
 
-    EB_MALLOC(SbParams_t*, sequence_control_set_ptr->sb_params_array, sizeof(SbParams_t) * ((MAX_PICTURE_WIDTH_SIZE + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz) * ((MAX_PICTURE_HEIGHT_SIZE + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz), EB_N_PTR);
+    EB_MALLOC(SbParams*, sequence_control_set_ptr->sb_params_array, sizeof(SbParams) * ((MAX_PICTURE_WIDTH_SIZE + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz) * ((MAX_PICTURE_HEIGHT_SIZE + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz), EB_N_PTR);
     return return_error;
 }
 
@@ -416,7 +420,7 @@ extern EbErrorType sb_params_init(
     uint16_t    md_scan_block_index;
     uint8_t   pictureLcuWidth = (uint8_t)((sequence_control_set_ptr->luma_width + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz);
     uint8_t    pictureLcuHeight = (uint8_t)((sequence_control_set_ptr->luma_height + sequence_control_set_ptr->sb_sz - 1) / sequence_control_set_ptr->sb_sz);
-    EB_MALLOC(SbParams_t*, sequence_control_set_ptr->sb_params_array, sizeof(SbParams_t) * pictureLcuWidth * pictureLcuHeight, EB_N_PTR);
+    EB_MALLOC(SbParams*, sequence_control_set_ptr->sb_params_array, sizeof(SbParams) * pictureLcuWidth * pictureLcuHeight, EB_N_PTR);
 
     for (sb_index = 0; sb_index < pictureLcuWidth * pictureLcuHeight; ++sb_index) {
         sequence_control_set_ptr->sb_params_array[sb_index].horizontal_index = (uint8_t)(sb_index % pictureLcuWidth);
@@ -503,7 +507,7 @@ extern EbErrorType sb_params_init(
 
         for (rasterScanCuIndex = RASTER_SCAN_CU_INDEX_64x64; rasterScanCuIndex <= RASTER_SCAN_CU_INDEX_8x8_63; rasterScanCuIndex++) {
 
-            sequence_control_set_ptr->sb_params_array[sb_index].raster_scan_cu_validity[rasterScanCuIndex] = ((sequence_control_set_ptr->sb_params_array[sb_index].origin_x + RASTER_SCAN_CU_X[rasterScanCuIndex] + RASTER_SCAN_CU_SIZE[rasterScanCuIndex] > sequence_control_set_ptr->luma_width) || (sequence_control_set_ptr->sb_params_array[sb_index].origin_y + RASTER_SCAN_CU_Y[rasterScanCuIndex] + RASTER_SCAN_CU_SIZE[rasterScanCuIndex] > sequence_control_set_ptr->luma_height)) ?
+            sequence_control_set_ptr->sb_params_array[sb_index].raster_scan_cu_validity[rasterScanCuIndex] = ((sequence_control_set_ptr->sb_params_array[sb_index].origin_x + raster_scan_cu_x[rasterScanCuIndex] + raster_scan_cu_size[rasterScanCuIndex] > sequence_control_set_ptr->luma_width) || (sequence_control_set_ptr->sb_params_array[sb_index].origin_y + raster_scan_cu_y[rasterScanCuIndex] + raster_scan_cu_size[rasterScanCuIndex] > sequence_control_set_ptr->luma_height)) ?
                 EB_FALSE :
                 EB_TRUE;
         }
@@ -540,7 +544,7 @@ EbErrorType sb_geom_init(SequenceControlSet * sequence_control_set_ptr)
     uint16_t   pictureLcuWidth = (sequence_control_set_ptr->luma_width + sequence_control_set_ptr->sb_size_pix - 1) / sequence_control_set_ptr->sb_size_pix;
     uint16_t    pictureLcuHeight = (sequence_control_set_ptr->luma_height + sequence_control_set_ptr->sb_size_pix - 1) / sequence_control_set_ptr->sb_size_pix;
 
-    EB_MALLOC(SbGeom_t*, sequence_control_set_ptr->sb_geom, sizeof(SbGeom_t) * pictureLcuWidth * pictureLcuHeight, EB_N_PTR);
+    EB_MALLOC(SbGeom*, sequence_control_set_ptr->sb_geom, sizeof(SbGeom) * pictureLcuWidth * pictureLcuHeight, EB_N_PTR);
 
 
     for (sb_index = 0; sb_index < pictureLcuWidth * pictureLcuHeight; ++sb_index) {

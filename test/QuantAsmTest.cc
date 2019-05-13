@@ -40,18 +40,18 @@
 
 namespace QuantizeAsmTest {
 const int deterministic_seed = 0xa42b;
-extern "C" void av1_build_quantizer(aom_bit_depth_t bit_depth,
+extern "C" void av1_build_quantizer(AomBitDepth bit_depth,
                                     int32_t y_dc_delta_q, int32_t u_dc_delta_q,
                                     int32_t u_ac_delta_q, int32_t v_dc_delta_q,
                                     int32_t v_ac_delta_q, Quants *const quants,
                                     Dequants *const deq);
 
-using QuantizeFunc = void (*)(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
+using QuantizeFunc = void (*)(const TranLow *coeff_ptr, intptr_t n_coeffs,
                               int32_t skip_block, const int16_t *zbin_ptr,
                               const int16_t *round_ptr,
                               const int16_t *quant_ptr,
                               const int16_t *quant_shift_ptr,
-                              tran_low_t *qcoeff_ptr, tran_low_t *dqcoeff_ptr,
+                              TranLow *qcoeff_ptr, TranLow *dqcoeff_ptr,
                               const int16_t *dequant_ptr, uint16_t *eob_ptr,
                               const int16_t *scan, const int16_t *iscan);
 
@@ -85,7 +85,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
   protected:
     QuantizeTest()
         : tx_size_(static_cast<TxSize>(TEST_GET_PARAM(0))),
-          bd_(static_cast<aom_bit_depth_t>(TEST_GET_PARAM(1))) {
+          bd_(static_cast<AomBitDepth>(TEST_GET_PARAM(1))) {
         n_coeffs_ = av1_get_max_eob(tx_size_);
         coeff_min_ = -(1 << (7 + bd_));
         coeff_max_ = (1 << (7 + bd_)) - 1;
@@ -136,7 +136,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
      */
     void run_quantize(int q) {
         const int32_t skip_block = 0;
-        const SCAN_ORDER *const sc = &av1_scan_orders[tx_size_][DCT_DCT];
+        const ScanOrder *const sc = &av1_scan_orders[tx_size_][DCT_DCT];
         const int16_t *zbin = qtab_quants_.y_zbin[q];
         const int16_t *round = qtab_quants_.y_round[q];
         const int16_t *quant = qtab_quants_.y_quant[q];
@@ -191,7 +191,7 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
         ASSERT_EQ(eob_ref_, eob_test_) << "eobs mismatch, Q: " << q;
     }
 
-    void fill_coeff_const(int i_begin, int i_end, tran_low_t c) {
+    void fill_coeff_const(int i_begin, int i_end, TranLow c) {
         for (int i = i_begin; i < i_end; ++i) {
             coeff_in_[i] = c;
         }
@@ -206,21 +206,21 @@ class QuantizeTest : public ::testing::TestWithParam<QuantizeParam> {
     SVTRandom *rnd_;           /**< random int for 8bit and 10bit coeffs */
     Quants qtab_quants_;       /**< quant table */
     Dequants qtab_deq_;        /**< dequant table */
-    tran_low_t coeff_min_;     /**< min input coeff value */
-    tran_low_t coeff_max_;     /**< max input coeff value */
+    TranLow coeff_min_;     /**< min input coeff value */
+    TranLow coeff_max_;     /**< max input coeff value */
     QuantizeFunc quant_ref_;   /**< reference quantize function */
     QuantizeFunc quant_test_;  /**< test target quantize function */
     const TxSize tx_size_;     /**< input param tx_size */
-    const aom_bit_depth_t bd_; /**< input param 8bit or 10bit */
+    const AomBitDepth bd_; /**< input param 8bit or 10bit */
     int n_coeffs_;             /**< coeff number */
     uint16_t eob_ref_;         /**< output ref eob */
     uint16_t eob_test_;        /**< output test eob */
 
-    DECLARE_ALIGNED(32, tran_low_t, coeff_in_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, tran_low_t, qcoeff_ref_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, tran_low_t, dqcoeff_ref_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, tran_low_t, qcoeff_test_[MAX_TX_SQUARE]);
-    DECLARE_ALIGNED(32, tran_low_t, dqcoeff_test_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, TranLow, coeff_in_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, TranLow, qcoeff_ref_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, TranLow, dqcoeff_ref_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, TranLow, qcoeff_test_[MAX_TX_SQUARE]);
+    DECLARE_ALIGNED(32, TranLow, dqcoeff_test_[MAX_TX_SQUARE]);
 };
 
 /**

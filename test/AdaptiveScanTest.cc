@@ -62,8 +62,8 @@ TEST(AdaptiveScanTest, scan_tables_test) {
             if (!is_txfm_allowed((TxType)tx_type, (TxSize)tx_size))
                 continue;
 
-            TX_CLASS tx_class = tx_type_to_class[tx_type];
-            const SCAN_ORDER *scan_order = &av1_scan_orders[tx_size][tx_type];
+            TxClass tx_class = tx_type_to_class[tx_type];
+            const ScanOrder *scan_order = &av1_scan_orders[tx_size][tx_type];
             const int16_t *scan = scan_order->scan;
             const int16_t *iscan = scan_order->iscan;
             const int sum_xy = txb_width + txb_height - 1;

@@ -232,7 +232,7 @@ static int valid_obu_type(int obu_type) {
     return valid_type;
 }
 
-aom_codec_err_t read_obu_header(struct aom_read_bit_buffer *rb, int is_annexb,
+AomCodecErr read_obu_header(struct aom_read_bit_buffer *rb, int is_annexb,
                                 ObuHeader *header) {
     if (!rb || !header)
         return AOM_CODEC_INVALID_PARAM;
@@ -312,7 +312,7 @@ static int32_t high_kbps[1 << LEVEL_BITS] = {
 /* BitrateProfileFactor */
 static int bitrate_profile_factor[1 << PROFILE_BITS] = {1, 2, 3, 0, 0, 0, 0, 0};
 
-static int64_t max_level_bitrate(BITSTREAM_PROFILE seq_profile,
+static int64_t max_level_bitrate(BitstreamProfile seq_profile,
                                  int seq_level_idx, int seq_tier) {
     int64_t bitrate;
 
@@ -344,7 +344,7 @@ static void av1_read_bitdepth(SequenceHeader *cm,
     }
 }
 
-static aom_codec_err_t aom_get_num_layers_from_operating_point_idc(
+static AomCodecErr aom_get_num_layers_from_operating_point_idc(
     int operating_point_idc, unsigned int *number_spatial_layers,
     unsigned int *number_temporal_layers) {
     // derive number of spatial/temporal layers from operating_point_idc
@@ -621,7 +621,7 @@ uint32_t read_sequence_header_obu(SequenceHeader *seq_params,
     const uint32_t saved_bit_offset = rb->bit_offset;
 
     seq_params->profile =
-        (BITSTREAM_PROFILE)aom_rb_read_literal(rb, PROFILE_BITS);
+        (BitstreamProfile)aom_rb_read_literal(rb, PROFILE_BITS);
     if (seq_params->profile > PROFILE_2) {
         seq_params->error = AOM_CODEC_UNSUP_BITSTREAM;
         return 0;
@@ -790,7 +790,7 @@ int parse_sequence_header_from_file(const char *ivf_file) {
     while (ivf_read_frame(f, &stream_buf, &frame_sz, &buf_sz, &pts) == 0) {
         printf("ivf frame count: %d\n", frame_cnt++);
         uint8_t *frame_buf = stream_buf;
-        aom_codec_err_t err = AOM_CODEC_OK;
+        AomCodecErr err = AOM_CODEC_OK;
         do {
             // one ivf frame may contain multiple obus
             ObuHeader ou = {0};
