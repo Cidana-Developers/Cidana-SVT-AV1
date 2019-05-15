@@ -40,8 +40,9 @@ TEST_P(SvtAv1E2ESimpleTest, run_smoking_test) {
     close_test();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
-                        ::testing::ValuesIn(video_src_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ESimpleTest,
+    ::testing::ValuesIn(generate_vector_from_config("video_src.cfg")));
 
 /**
  * @brief SVT-AV1 encoder simple E2E test with save compressed data in file
@@ -72,8 +73,9 @@ TEST_P(SvtAv1E2ESimpleFileTest, run_smoking_with_output_test) {
     close_test();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleFileTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ESimpleFileTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
  * @brief SVT-AV1 encoder E2E test with save the reconstruction frames in
@@ -113,8 +115,9 @@ TEST_P(SvtAv1E2EReconFileTest, run_recon_collect_test) {
     close_test();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconFileTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EReconFileTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
  * @brief SVT-AV1 encoder E2E test with save the reconstruction frames in
@@ -155,8 +158,9 @@ TEST_P(SvtAv1E2EReconBufferTest, run_recon_collect_test) {
     close_test();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EReconBufferTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
  * @brief SVT-AV1 encoder E2E test with comparing the reconstruction frame with
@@ -205,5 +209,6 @@ TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
     close_test();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
-                        ::testing::ValuesIn(comformance_test_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EConformanceTest,
+    ::testing::ValuesIn(generate_vector_from_config("comformance_test.cfg")));

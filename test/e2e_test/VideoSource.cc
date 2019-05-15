@@ -195,7 +195,7 @@ VideoFileSource::~VideoFileSource() {
  *
  * @return     The vectors path.
  */
-std::string VideoFileSource::get_vector_path() {
+std::string VideoFileSource::get_vector_dir() {
     const char *const path = getenv("SVT_AV1_TEST_VECTOR_PATH");
     if (path == nullptr) {
 #ifdef _WIN32
@@ -464,7 +464,7 @@ EbErrorType VideoFileSource::open_source(const uint32_t init_pos,
     EbErrorType return_error = EB_ErrorNone;
     if (file_handle_ != nullptr)
         return EB_ErrorNone;
-    std::string full_path = get_vector_path() + "/" + file_name_.c_str();
+    std::string full_path = get_vector_dir() + "/" + file_name_.c_str();
 
     file_handle_ = fopen(full_path.c_str(), "rb");
     if (file_handle_ == nullptr) {
