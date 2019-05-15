@@ -1,13 +1,19 @@
 /*
- * Copyright (c) 2018, Alliance for Open Media. All rights reserved
- *
- * This source code is subject to the terms of the BSD 2 Clause License and
- * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
- * was not distributed with this source code in the LICENSE file, you can
- * obtain it at www.aomedia.org/license/software. If the Alliance for Open
- * Media Patent License 1.0 was not distributed with this source code in the
- * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
+ * Copyright(c) 2019 Netflix, Inc.
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
+/******************************************************************************
+ * @file intrapred_dr_test.cc
+ *
+ * @brief Unit test for intra directional prediction :
+ * - av1_highbd_dr_prediction_z{1, 2, 3}_avx2
+ * - av1_dr_prediction_z{1, 2, 3}_avx2
+ *
+ * @author Cidana-Wenyao
+ *
+ ******************************************************************************/
+
 #include "gtest/gtest.h"
 
 #include "aom_dsp_rtcd.h"
@@ -80,152 +86,35 @@ const int kZ1Start = 0;
 const int kZ2Start = 90;
 const int kZ3Start = 180;
 
-const TxSize kTxSize[] = {TX_4X4,
-                          TX_8X8,
-                          TX_16X16,
-                          TX_32X32,
-                          TX_64X64,
-                          TX_4X8,
-                          TX_8X4,
-                          TX_8X16,
-                          TX_16X8,
-                          TX_16X32,
-                          TX_32X16,
-                          TX_32X64,
-                          TX_64X32,
-                          TX_4X16,
-                          TX_16X4,
-                          TX_8X32,
-                          TX_32X8,
-                          TX_16X64,
-                          TX_64X16};
-
-const char *const kTxSizeStrings[] = {"TX_4X4",
-                                      "TX_8X8",
-                                      "TX_16X16",
-                                      "TX_32X32",
-                                      "TX_64X64",
-                                      "TX_4X8",
-                                      "TX_8X4",
-                                      "TX_8X16",
-                                      "TX_16X8",
-                                      "TX_16X32",
-                                      "TX_32X16",
-                                      "TX_32X64",
-                                      "TX_64X32",
-                                      "TX_4X16",
-                                      "TX_16X4",
-                                      "TX_8X32",
-                                      "TX_32X8",
-                                      "TX_16X64",
-                                      "TX_64X16"};
-
 using svt_av1_test_tool::SVTRandom;
-
-typedef void (*DrPred_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                           const uint16_t *above, const uint16_t *left,
-                           int upsample_above, int upsample_left, int dx,
-                           int dy, int bd);
-
-typedef void (*DrPred)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint8_t *above, const uint8_t *left,
-                       int upsample_above, int upsample_left, int dx, int dy,
-                       int bd);
 
 typedef void (*Z1_Lbd)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
                        const uint8_t *above, const uint8_t *left,
                        int upsample_above, int dx, int dy);
-template <Z1_Lbd fn>
-void z1_wrapper(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                const uint8_t *above, const uint8_t *left, int upsample_above,
-                int /*upsample_left*/, int dx, int dy, int /*bd*/) {
-    fn(dst, stride, bw, bh, above, left, upsample_above, dx, dy);
-}
 
 typedef void (*Z2_Lbd)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
                        const uint8_t *above, const uint8_t *left,
                        int upsample_above, int upsample_left, int dx, int dy);
-template <Z2_Lbd fn>
-void z2_wrapper(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                const uint8_t *above, const uint8_t *left, int upsample_above,
-                int upsample_left, int dx, int dy, int /*bd*/) {
-    fn(dst, stride, bw, bh, above, left, upsample_above, upsample_left, dx, dy);
-}
 
 typedef void (*Z3_Lbd)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
                        const uint8_t *above, const uint8_t *left,
                        int upsample_left, int dx, int dy);
-template <Z3_Lbd fn>
-void z3_wrapper(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                const uint8_t *above, const uint8_t *left,
-                int /*upsample_above*/, int upsample_left, int dx, int dy,
-                int /*bd*/) {
-    fn(dst, stride, bw, bh, above, left, upsample_left, dx, dy);
-}
 
 typedef void (*Z1_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
                        const uint16_t *above, const uint16_t *left,
                        int upsample_above, int dx, int dy, int bd);
-template <Z1_Hbd fn>
-void z1_wrapper_hbd(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                    const uint16_t *above, const uint16_t *left,
-                    int upsample_above, int /*upsample_left*/, int dx, int dy,
-                    int bd) {
-    fn(dst, stride, bw, bh, above, left, upsample_above, dx, dy, bd);
-}
 
 typedef void (*Z2_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
                        const uint16_t *above, const uint16_t *left,
                        int upsample_above, int upsample_left, int dx, int dy,
                        int bd);
-template <Z2_Hbd fn>
-void z2_wrapper_hbd(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                    const uint16_t *above, const uint16_t *left,
-                    int upsample_above, int upsample_left, int dx, int dy,
-                    int bd) {
-    fn(dst,
-       stride,
-       bw,
-       bh,
-       above,
-       left,
-       upsample_above,
-       upsample_left,
-       dx,
-       dy,
-       bd);
-}
-
 typedef void (*Z3_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
                        const uint16_t *above, const uint16_t *left,
                        int upsample_left, int dx, int dy, int bd);
-template <Z3_Hbd fn>
-void z3_wrapper_hbd(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                    const uint16_t *above, const uint16_t *left,
-                    int /*upsample_above*/, int upsample_left, int dx, int dy,
-                    int bd) {
-    fn(dst, stride, bw, bh, above, left, upsample_left, dx, dy, bd);
-}
-
-template <typename FuncType>
-struct DrPredFunc {
-    DrPredFunc(FuncType pred = NULL, FuncType tst = NULL,
-               int bit_depth_value = 0, int start_angle_value = 0)
-        : ref_fn(pred),
-          tst_fn(tst),
-          bit_depth(bit_depth_value),
-          start_angle(start_angle_value) {
-    }
-
-    FuncType ref_fn;
-    FuncType tst_fn;
-    int bit_depth;
-    int start_angle;
-};
 
 template <typename Pixel, typename FuncType>
-class DrPredTest : public ::testing::TestWithParam<DrPredFunc<FuncType>> {
-  protected:
+class DrPredTest {
+  public:
     static const int kMaxNumTests = 100000;
     static const int kIterations = 10;
     static const int kDstStride = 64;
@@ -239,94 +128,75 @@ class DrPredTest : public ::testing::TestWithParam<DrPredFunc<FuncType>> {
           bw_(0),
           bh_(0),
           dx_(1),
-          dy_(1),
-          bd_(8),
-          txsize_(TX_4X4) {
-        params_ = this->GetParam();
-        start_angle_ = params_.start_angle;
-        stop_angle_ = start_angle_ + 90;
-
+          dy_(1) {
         dst_ref_ = &dst_ref_data_[0];
         dst_tst_ = &dst_tst_data_[0];
         dst_stride_ = kDstStride;
         above_ = &above_data_[kOffset];
         left_ = &left_data_[kOffset];
 
-        SVTRandom rnd(0, (1 << 8) - 1);
-        for (int i = 0; i < kBufSize; ++i) {
-            above_data_[i] = rnd.random();
-            left_data_[i] = rnd.random();
-        }
-
-        for (int i = 0; i < kDstSize; ++i) {
-            dst_ref_[i] = 0;
-        }
     }
 
     virtual ~DrPredTest() {
     }
 
-    void Predict(bool speedtest, int tx) {
-        const int kNumTests = speedtest ? kMaxNumTests : 1;
-        for (int k = 0; k < kNumTests; ++k) {
-            params_.ref_fn(dst_ref_,
-                           dst_stride_,
-                           bw_,
-                           bh_,
-                           above_,
-                           left_,
-                           upsample_above_,
-                           upsample_left_,
-                           dx_,
-                           dy_,
-                           bd_);
+    void RunAllTest() {
+        for (int angle = start_angle_; angle < stop_angle_; ++angle) {
+            dx_ = get_dx(angle);
+            dy_ = get_dy(angle);
+            if (dx_ & dy_)
+                RunTest();
         }
-        if (params_.tst_fn) {
-            for (int k = 0; k < kNumTests; ++k) {
-                params_.tst_fn(dst_tst_,
-                               dst_stride_,
-                               bw_,
-                               bh_,
-                               above_,
-                               left_,
-                               upsample_above_,
-                               upsample_left_,
-                               dx_,
-                               dy_,
-                               bd_);
+    }
+
+  protected:
+    virtual void Predict(){};
+
+    void prepare_neighbor_pixel(SVTRandom &rnd, int cnt) {
+        if (cnt == 0) {
+            for (int i = 0; i < kBufSize; ++i)
+                above_data_[i] = left_data_[i] = (1 << bd_) - 1;
+        } else {
+            for (int i = 0; i < kBufSize; ++i) {
+                above_data_[i] = rnd.random();
+                left_data_[i] = rnd.random();
             }
         }
     }
 
-    void RunTest(bool speedtest) {
-        for (int i = 0; i < kBufSize; ++i) {
-            above_data_[i] = left_data_[i] = (1 << bd_) - 1;
+    void clear_output_pixel() {
+        for (int i = 0; i < kDstSize; ++i) {
+            dst_ref_[i] = 0;
         }
 
-        for (int tx = 0; tx < TX_SIZES_ALL; ++tx) {
-            if (params_.tst_fn == NULL) {
-                for (int i = 0; i < kDstSize; ++i) {
-                    dst_tst_[i] = (1 << bd_) - 1;
-                }
-            } else {
-                for (int i = 0; i < kDstSize; ++i) {
-                    dst_tst_[i] = 0;
-                }
-            }
+        for (int i = 0; i < kDstSize; ++i) {
+            dst_tst_[i] = 0;
+        }
+    }
 
-            bw_ = tx_size_wide[kTxSize[tx]];
-            bh_ = tx_size_high[kTxSize[tx]];
+    void RunTest() {
+        SVTRandom rnd(0, (1 << bd_) - 1);
+        for (int cnt = 0; cnt < kIterations; ++cnt) {
+            prepare_neighbor_pixel(rnd, cnt);
+            for (int tx = 0; tx < TX_SIZES_ALL; ++tx) {
+                // clear the output for each tx
+                clear_output_pixel();
 
-            Predict(speedtest, tx);
+                // TODO(wenyao): loop upsample_above and upsample_left
 
-            for (int r = 0; r < bh_; ++r) {
-                for (int c = 0; c < bw_; ++c) {
-                    ASSERT_EQ(dst_ref_[r * dst_stride_ + c],
-                              dst_tst_[r * dst_stride_ + c])
-                        << bw_ << "x" << bh_ << " r: " << r << " c: " << c
-                        << " dx: " << dx_ << " dy: " << dy_
-                        << " upsample_above: " << upsample_above_
-                        << " upsample_left: " << upsample_left_;
+                bw_ = tx_size_wide[tx];
+                bh_ = tx_size_high[tx];
+                Predict();
+
+                for (int r = 0; r < bh_; ++r) {
+                    for (int c = 0; c < bw_; ++c) {
+                        ASSERT_EQ(dst_ref_[r * dst_stride_ + c],
+                                  dst_tst_[r * dst_stride_ + c])
+                            << bw_ << "x" << bh_ << " r: " << r << " c: " << c
+                            << " dx: " << dx_ << " dy: " << dy_
+                            << " upsample_above: " << upsample_above_
+                            << " upsample_left: " << upsample_left_;
+                    }
                 }
             }
         }
@@ -336,7 +206,6 @@ class DrPredTest : public ::testing::TestWithParam<DrPredFunc<FuncType>> {
     Pixel dst_tst_data_[kDstSize];
 
     Pixel left_data_[kBufSize];
-    Pixel dummy_data_[kBufSize];
     Pixel above_data_[kBufSize];
 
     Pixel *dst_ref_;
@@ -352,107 +221,245 @@ class DrPredTest : public ::testing::TestWithParam<DrPredFunc<FuncType>> {
     int dx_;
     int dy_;
     int bd_;
-    TxSize txsize_;
 
     int start_angle_;
     int stop_angle_;
 
-    DrPredFunc<FuncType> params_;
+    FuncType ref_fn;
+    FuncType tst_fn;
 };
 
-class LowbdDrPredTest : public DrPredTest<uint8_t, DrPred> {};
-
-TEST_P(LowbdDrPredTest, SaturatedValues) {
-    for (int iter = 0; iter < kIterations && !HasFatalFailure(); ++iter) {
-        upsample_above_ = iter & 1;
-        for (int angle = start_angle_; angle < stop_angle_; ++angle) {
-            dx_ = get_dx(angle);
-            dy_ = get_dy(angle);
-            if (dx_ && dy_)
-                RunTest(false);
-        }
+class LowbdZ1PredTest : public DrPredTest<uint8_t, Z1_Lbd> {
+  public:
+    LowbdZ1PredTest() {
+        start_angle_ = kZ1Start;
+        stop_angle_ = start_angle_ + 90;
+        ref_fn = av1_dr_prediction_z1_c;
+        tst_fn = av1_dr_prediction_z1_avx2;
+        bd_ = 8;
+        DrPredTest();
     }
-}
 
-TEST_P(LowbdDrPredTest, DISABLED_Speed) {
-    const int angles[] = {3, 45, 87};
-    for (upsample_above_ = 0; upsample_above_ < 2; ++upsample_above_) {
-        upsample_left_ = upsample_above_;
-        for (int i = 0; i < 3; ++i) {
-            dx_ = get_dx(angles[i] + start_angle_);
-            dy_ = get_dy(angles[i] + start_angle_);
-            printf(
-                "upsample_above: %d upsample_left: %d angle: %d "
-                "~~~~~~~~~~~~~~~\n",
-                upsample_above_,
-                upsample_left_,
-                angles[i] + start_angle_);
-            if (dx_ && dy_)
-                RunTest(true);
-        }
+  protected:
+    void Predict() override {
+        ref_fn(dst_ref_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               dx_,
+               dy_);
+        tst_fn(dst_tst_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               dx_,
+               dy_);
     }
-}
+};
 
-using std::make_tuple;
-
-INSTANTIATE_TEST_CASE_P(
-    C, LowbdDrPredTest,
-    ::testing::Values(DrPredFunc<DrPred>(&z1_wrapper<av1_dr_prediction_z1_c>,
-                                         &z1_wrapper<av1_dr_prediction_z1_avx2>,
-                                         AOM_BITS_8, kZ1Start),
-                      DrPredFunc<DrPred>(&z2_wrapper<av1_dr_prediction_z2_c>,
-                                         &z2_wrapper<av1_dr_prediction_z2_avx2>,
-                                         AOM_BITS_8, kZ2Start),
-                      DrPredFunc<DrPred>(&z3_wrapper<av1_dr_prediction_z3_c>,
-                                         &z3_wrapper<av1_dr_prediction_z3_avx2>,
-                                         AOM_BITS_8, kZ3Start)));
-
-class HighbdDrPredTest : public DrPredTest<uint16_t, DrPred_Hbd> {};
-
-TEST_P(HighbdDrPredTest, SaturatedValues) {
-    for (int iter = 0; iter < kIterations && !HasFatalFailure(); ++iter) {
-        upsample_above_ = iter & 1;
-        for (int angle = start_angle_; angle < stop_angle_; ++angle) {
-            dx_ = get_dx(angle);
-            dy_ = get_dy(angle);
-            if (dx_ && dy_)
-                RunTest(false);
-        }
+class LowbdZ2PredTest : public DrPredTest<uint8_t, Z2_Lbd> {
+  public:
+    LowbdZ2PredTest() {
+        start_angle_ = kZ2Start;
+        stop_angle_ = start_angle_ + 90;
+        ref_fn = av1_dr_prediction_z2_c;
+        tst_fn = av1_dr_prediction_z2_avx2;
+        bd_ = 8;
+        DrPredTest();
     }
-}
 
-TEST_P(HighbdDrPredTest, DISABLED_Speed) {
-    const int angles[] = {3, 45, 87};
-    for (upsample_above_ = 0; upsample_above_ < 2; ++upsample_above_) {
-        upsample_left_ = upsample_above_;
-        for (int i = 0; i < 3; ++i) {
-            dx_ = get_dx(angles[i] + start_angle_);
-            dy_ = get_dy(angles[i] + start_angle_);
-            printf(
-                "upsample_above: %d upsample_left: %d angle: %d "
-                "~~~~~~~~~~~~~~~\n",
-                upsample_above_,
-                upsample_left_,
-                angles[i] + start_angle_);
-            if (dx_ && dy_)
-                RunTest(true);
-        }
+  protected:
+    void Predict() override {
+        ref_fn(dst_ref_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               upsample_left_,
+               dx_,
+               dy_);
+        tst_fn(dst_tst_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               upsample_left_,
+               dx_,
+               dy_);
     }
-}
+};
 
-INSTANTIATE_TEST_CASE_P(
-    C, HighbdDrPredTest,
-    ::testing::Values(DrPredFunc<DrPred_Hbd>(
-                          &z1_wrapper_hbd<av1_highbd_dr_prediction_z1_c>,
-                          &z1_wrapper_hbd<av1_highbd_dr_prediction_z1_avx2>,
-                          AOM_BITS_10, kZ1Start),
-                      DrPredFunc<DrPred_Hbd>(
-                          &z2_wrapper_hbd<av1_highbd_dr_prediction_z2_c>,
-                          &z2_wrapper_hbd<av1_highbd_dr_prediction_z2_avx2>,
-                          AOM_BITS_10, kZ2Start),
-                      DrPredFunc<DrPred_Hbd>(
-                          &z3_wrapper_hbd<av1_highbd_dr_prediction_z3_c>,
-                          &z3_wrapper_hbd<av1_highbd_dr_prediction_z3_avx2>,
-                          AOM_BITS_10, kZ3Start)));
+class LowbdZ3PredTest : public DrPredTest<uint8_t, Z3_Lbd> {
+  public:
+    LowbdZ3PredTest() {
+        start_angle_ = kZ3Start;
+        stop_angle_ = start_angle_ + 90;
+        ref_fn = av1_dr_prediction_z3_c;
+        tst_fn = av1_dr_prediction_z3_avx2;
+        bd_ = 8;
+
+        DrPredTest();
+    };
+
+  protected:
+    void Predict() override {
+        ref_fn(dst_ref_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_left_,
+               dx_,
+               dy_);
+        tst_fn(dst_tst_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_left_,
+               dx_,
+               dy_);
+    }
+};
+
+#define TEST_CLASS(tc_name, type_name)        \
+    TEST(tc_name, match_test) {               \
+        type_name *dr_test = new type_name(); \
+        dr_test->RunAllTest();                \
+        delete dr_test;                       \
+    }
+
+TEST_CLASS(LowbdDrZ1Test, LowbdZ1PredTest)
+TEST_CLASS(LowbdDrZ2Test, LowbdZ2PredTest)
+TEST_CLASS(LowbdDrZ3Test, LowbdZ3PredTest)
+
+class HighbdZ1PredTest : public DrPredTest<uint16_t, Z1_Hbd> {
+  public:
+    HighbdZ1PredTest() {
+        start_angle_ = kZ1Start;
+        stop_angle_ = start_angle_ + 90;
+        ref_fn = av1_highbd_dr_prediction_z1_c;
+        tst_fn = av1_highbd_dr_prediction_z1_avx2;
+        bd_ = 10;
+
+        DrPredTest();
+    };
+
+  protected:
+    void Predict() override {
+        ref_fn(dst_ref_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               dx_,
+               dy_,
+               bd_);
+        tst_fn(dst_tst_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               dx_,
+               dy_,
+               bd_);
+    }
+};
+
+class HighbdZ2PredTest : public DrPredTest<uint16_t, Z2_Hbd> {
+  public:
+    HighbdZ2PredTest() {
+        start_angle_ = kZ2Start;
+        stop_angle_ = start_angle_ + 90;
+        ref_fn = av1_highbd_dr_prediction_z2_c;
+        tst_fn = av1_highbd_dr_prediction_z2_avx2;
+        bd_ = 10;
+
+        DrPredTest();
+    };
+
+  protected:
+    void Predict() override {
+        ref_fn(dst_ref_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               upsample_left_,
+               dx_,
+               dy_,
+               bd_);
+        tst_fn(dst_tst_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_above_,
+               upsample_left_,
+               dx_,
+               dy_,
+               bd_);
+    }
+};
+
+class HighbdZ3PredTest : public DrPredTest<uint16_t, Z3_Hbd> {
+  public:
+    HighbdZ3PredTest() {
+        start_angle_ = kZ3Start;
+        stop_angle_ = start_angle_ + 90;
+        ref_fn = av1_highbd_dr_prediction_z3_c;
+        tst_fn = av1_highbd_dr_prediction_z3_avx2;
+        bd_ = 10;
+
+        DrPredTest();
+    };
+
+  protected:
+    void Predict() override {
+        ref_fn(dst_ref_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_left_,
+               dx_,
+               dy_,
+               bd_);
+        tst_fn(dst_tst_,
+               dst_stride_,
+               bw_,
+               bh_,
+               above_,
+               left_,
+               upsample_left_,
+               dx_,
+               dy_,
+               bd_);
+    }
+};
+
+TEST_CLASS(HighbdDrZ1Test, HighbdZ1PredTest)
+TEST_CLASS(HighbdDrZ2Test, HighbdZ2PredTest)
+TEST_CLASS(HighbdDrZ3Test, HighbdZ3PredTest)
 
 }  // namespace

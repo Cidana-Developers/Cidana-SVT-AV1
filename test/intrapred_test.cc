@@ -1,13 +1,18 @@
 /*
- * Copyright (c) 2016, Alliance for Open Media. All rights reserved
- *
- * This source code is subject to the terms of the BSD 2 Clause License and
- * the Alliance for Open Media Patent License 1.0. If the BSD 2 Clause License
- * was not distributed with this source code in the LICENSE file, you can
- * obtain it at www.aomedia.org/license/software. If the Alliance for Open
- * Media Patent License 1.0 was not distributed with this source code in the
- * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
+ * Copyright(c) 2019 Netflix, Inc.
+ * SPDX - License - Identifier: BSD - 2 - Clause - Patent
  */
+
+/******************************************************************************
+ * @file intrapred_dr_test.cc
+ *
+ * @brief Unit test for intra {h, v}_pred, dc_pred, smooth_{h, v}_pred :
+ * - av1_highbd_dr_prediction_z{1, 2, 3}_avx2
+ * - av1_dr_prediction_z{1, 2, 3}_avx2
+ *
+ * @author Cidana-Wenyao
+ *
+ ******************************************************************************/
 
 #include <string>
 
@@ -49,37 +54,43 @@ struct IntraPredFunc {
 template <typename FuncType, typename Pixel>
 class AV1IntraPredTest
     : public ::testing::TestWithParam<IntraPredFunc<FuncType>> {
-  public:
-    void RunTest(Pixel *left_col, Pixel *above_data, Pixel *dst,
-                 Pixel *ref_dst) {
-        SVTRandom rnd(0, (1 << params_.bit_depth) - 1);
-        const int block_width = params_.block_width;
-        const int block_height = params_.block_height;
-        above_row_ = above_data + 16;
-        left_col_ = left_col;
-        dst_ = dst;
-        ref_dst_ = ref_dst;
-        int error_count = 0;
-        for (int i = 0; i < count_test_block; ++i) {
-            // Fill edges with random data, try first with saturated values.
-            for (int x = -1; x <= block_width * 2; x++) {
-                if (i == 0) {
-                    above_row_[x] = mask_;
-                } else {
-                    above_row_[x] = rnd.random();
-                }
-            }
-            for (int y = 0; y < block_height; y++) {
-                if (i == 0) {
-                    left_col_[y] = mask_;
-                } else {
-                    left_col_[y] = rnd.random();
-                }
-            }
-            Predict();
-            CheckPrediction(i, &error_count);
+  protected:
+    void prepare_data(SVTRandom &rnd, int cnt) {
+        if (cnt == 0) {
+            for (int x = -1; x <= bw_ * 2; x++)
+                above_row_[x] = (1 << params_.bit_depth) - 1;
+
+            for (int y = 0; y < bh_; y++)
+                left_col_[y] = (1 << params_.bit_depth) - 1;
+        } else {
+            for (int x = -1; x <= bw_ * 2; x++)
+                above_row_[x] = rnd.random();
+
+            for (int y = 0; y < bh_; y++)
+                left_col_[y] = rnd.random();
         }
-        ASSERT_EQ(0, error_count);
+        memset(dst_tst_data_, 0, sizeof(dst_tst_data_));
+        memset(dst_ref_data_, 0, sizeof(dst_ref_data_));
+    }
+
+  public:
+    void RunTest() {
+        SVTRandom rnd(0, (1 << params_.bit_depth) - 1);
+        for (int i = 0; i < count_test_block; ++i) {
+            // prepare the neighbor pixels
+            prepare_data(rnd, i);
+
+            Predict();
+
+            for (int y = 0; y < bh_; y++) {
+                for (int x = 0; x < bw_; x++) {
+                    ASSERT_EQ(dst_ref_[x + y * stride_],
+                              dst_tst_[x + y * stride_])
+                        << " Failed on loop " << i << " location: x = " << x
+                        << " y = " << y;
+                }
+            }
+        }
     }
 
   protected:
@@ -87,34 +98,28 @@ class AV1IntraPredTest
         params_ = this->GetParam();
         stride_ = params_.block_width * 3;
         mask_ = (1 << params_.bit_depth) - 1;
+        above_row_ = above_row_data_ + 16;
+        left_col_ = left_col_data_;
+        dst_tst_ = dst_tst_data_;
+        dst_ref_ = dst_ref_data_;
+        bw_ = params_.block_width;
+        bh_ = params_.block_height;
     }
 
     virtual void Predict() = 0;
 
-    void CheckPrediction(int test_case_number, int *error_count) const {
-        // For each pixel ensure that the calculated value is the same as
-        // reference.
-        const int block_width = params_.block_width;
-        const int block_height = params_.block_height;
-        for (int y = 0; y < block_height; y++) {
-            for (int x = 0; x < block_width; x++) {
-                *error_count +=
-                    ref_dst_[x + y * stride_] != dst_[x + y * stride_];
-                if (*error_count == 1) {
-                    ASSERT_EQ(ref_dst_[x + y * stride_], dst_[x + y * stride_])
-                        << " Failed on Test Case Number " << test_case_number
-                        << " location: x = " << x << " y = " << y;
-                }
-            }
-        }
-    }
-
     Pixel *above_row_;
     Pixel *left_col_;
-    Pixel *dst_;
-    Pixel *ref_dst_;
+    Pixel *dst_tst_;
+    Pixel *dst_ref_;
     ptrdiff_t stride_;
+    int bw_;  // block width
+    int bh_;  // block height
     int mask_;
+    DECLARE_ALIGNED(16, Pixel, left_col_data_[2 * 64]);
+    DECLARE_ALIGNED(16, Pixel, above_row_data_[2 * 64 + 64]);
+    DECLARE_ALIGNED(16, Pixel, dst_tst_data_[3 * 64 * 64]);
+    DECLARE_ALIGNED(16, Pixel, dst_ref_data_[3 * 64 * 64]);
 
     IntraPredFunc<FuncType> params_;
 };
@@ -123,42 +128,28 @@ class HighbdIntraPredTest : public AV1IntraPredTest<HighbdIntraPred, uint16_t> {
   protected:
     void Predict() {
         const int bit_depth = params_.bit_depth;
-        params_.ref_fn(ref_dst_, stride_, above_row_, left_col_, bit_depth);
-        params_.pred_fn(dst_, stride_, above_row_, left_col_, bit_depth);
+        params_.ref_fn(dst_ref_, stride_, above_row_, left_col_, bit_depth);
+        params_.pred_fn(dst_tst_, stride_, above_row_, left_col_, bit_depth);
     }
 };
 
 class LowbdIntraPredTest : public AV1IntraPredTest<IntraPred, uint8_t> {
   protected:
     void Predict() {
-        params_.ref_fn(ref_dst_, stride_, above_row_, left_col_);
-        params_.pred_fn(dst_, stride_, above_row_, left_col_);
+        params_.ref_fn(dst_ref_, stride_, above_row_, left_col_);
+        params_.pred_fn(dst_tst_, stride_, above_row_, left_col_);
     }
 };
 
 // Suppress an unitialized warning. Once there are implementations to test then
 // this can be restored.
-TEST_P(HighbdIntraPredTest, Bitexact) {
-    // max block size is 64
-    DECLARE_ALIGNED(16, uint16_t, left_col[2 * 64]);
-    DECLARE_ALIGNED(16, uint16_t, above_data[2 * 64 + 64]);
-    DECLARE_ALIGNED(16, uint16_t, dst[3 * 64 * 64]);
-    DECLARE_ALIGNED(16, uint16_t, ref_dst[3 * 64 * 64]);
-    av1_zero(left_col);
-    av1_zero(above_data);
-    RunTest(left_col, above_data, dst, ref_dst);
+TEST_P(HighbdIntraPredTest, match_test) {
+    RunTest();
 }
 
 // Same issue as above but for arm.
-TEST_P(LowbdIntraPredTest, Bitexact) {
-    // max block size is 32
-    DECLARE_ALIGNED(16, uint8_t, left_col[2 * 64]);
-    DECLARE_ALIGNED(16, uint8_t, above_data[2 * 64 + 64]);
-    DECLARE_ALIGNED(16, uint8_t, dst[3 * 64 * 64]);
-    DECLARE_ALIGNED(16, uint8_t, ref_dst[3 * 64 * 64]);
-    av1_zero(left_col);
-    av1_zero(above_data);
-    RunTest(left_col, above_data, dst, ref_dst);
+TEST_P(LowbdIntraPredTest, match_test) {
+    RunTest();
 }
 
 // -----------------------------------------------------------------------------
