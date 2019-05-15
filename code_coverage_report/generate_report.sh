@@ -54,7 +54,7 @@ fi
 ./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EMultiInstParallelTest*.*
 #./SvtAv1E2ETests --gtest_filter=*/SvtAv1E2EParam*.*
 
-
+# test
 # capture
 lcov --capture --base-directory $SOURCE_DIR --directory . --output-file svt_av1_test.info
 
