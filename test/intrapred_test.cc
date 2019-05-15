@@ -152,10 +152,10 @@ TEST_P(HighbdIntraPredTest, Bitexact) {
 // Same issue as above but for arm.
 TEST_P(LowbdIntraPredTest, Bitexact) {
     // max block size is 32
-    DECLARE_ALIGNED(16, uint8_t, left_col[2 * 32]);
-    DECLARE_ALIGNED(16, uint8_t, above_data[2 * 32 + 32]);
-    DECLARE_ALIGNED(16, uint8_t, dst[3 * 32 * 32]);
-    DECLARE_ALIGNED(16, uint8_t, ref_dst[3 * 32 * 32]);
+    DECLARE_ALIGNED(16, uint8_t, left_col[2 * 64]);
+    DECLARE_ALIGNED(16, uint8_t, above_data[2 * 64 + 64]);
+    DECLARE_ALIGNED(16, uint8_t, dst[3 * 64 * 64]);
+    DECLARE_ALIGNED(16, uint8_t, ref_dst[3 * 64 * 64]);
     av1_zero(left_col);
     av1_zero(above_data);
     RunTest(left_col, above_data, dst, ref_dst);
