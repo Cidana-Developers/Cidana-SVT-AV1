@@ -56,19 +56,18 @@ typedef std::tuple<std::string,      /**< file name */
 static inline const std::vector<TestVideoVector> generate_vector_from_config(
     const char* config_file) {
     std::vector<TestVideoVector> values;
-    std::string file_name;
-    file_name = svt_av1_video_source::VideoFileSource::get_vector_path();
-    file_name = file_name + '/' + config_file;
+    std::string cfg_fn =
+        svt_av1_video_source::VideoFileSource::get_vector_dir();
+    cfg_fn = cfg_fn + '/' + config_file;
 
-    FILE* file_handle;
-    file_handle = fopen(file_name.c_str(), "rt");
+    FILE* file_handle = fopen(cfg_fn.c_str(), "rt");
     if (file_handle != nullptr) {
-        static char line[1024];
+        char line[1024] = {0};
         while (fgets(line, 1024, file_handle) != nullptr) {
             if (line[0] == '#' || line[0] == '\r' ||
                 line[0] == '\n')  // skip comment line and empty line
                 continue;
-            static char vector_file[1024];
+            char vector_fn[1024] = {0};
             uint32_t y4m = 0;
             TestVectorFormat file_type;
             char color_fmt[10];
@@ -82,7 +81,7 @@ static inline const std::vector<TestVideoVector> generate_vector_from_config(
 
             sscanf(line,
                    "%s %d %s %d %d %d %d %d %d",
-                   vector_file,
+                   vector_fn,
                    &y4m,
                    color_fmt,
                    &w,
@@ -98,7 +97,7 @@ static inline const std::vector<TestVideoVector> generate_vector_from_config(
             } else if (strcmp(color_fmt, "420p10") == 0) {
                 color_fmt_type = IMG_FMT_420P10_PACKED;
             }
-            values.push_back(TestVideoVector(vector_file,
+            values.push_back(TestVideoVector(vector_fn,
                                              file_type,
                                              color_fmt_type,
                                              w,
@@ -108,6 +107,7 @@ static inline const std::vector<TestVideoVector> generate_vector_from_config(
                                              start_frame,
                                              frame_count));
         }
+        fclose(file_handle);
     }
     return values;
 }
