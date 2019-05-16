@@ -72,7 +72,7 @@ class BitstreamWriterTest : public ::testing::Test {
 
             for (int bit_gen_method = 0; bit_gen_method < 3; ++bit_gen_method) {
                 const int buffer_size = 10000;
-                aom_writer bw;
+                AomWriter bw;
                 uint8_t bw_buffer[buffer_size];
                 uint8_t test_bits[total_bits];
 
@@ -179,7 +179,7 @@ TEST(Entropy_BitstreamWriter, write_literal_extreme_int) {
 
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
-    aom_writer bw;
+    AomWriter bw;
 
     aom_start_encode(&bw, stream_buffer);
     aom_write_literal(&bw, max_int, 32);
@@ -195,7 +195,7 @@ TEST(Entropy_BitstreamWriter, write_literal_extreme_int) {
 }
 
 TEST(Entropy_BitstreamWriter, write_symbol_no_update) {
-    aom_writer bw = {0};
+    AomWriter bw = {0};
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
 
@@ -231,7 +231,7 @@ TEST(Entropy_BitstreamWriter, write_symbol_no_update) {
 }
 
 TEST(Entropy_BitstreamWriter, write_symbol_with_update) {
-    aom_writer bw = {0};
+    AomWriter bw = {0};
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
     bw.allow_update_cdf = 1;

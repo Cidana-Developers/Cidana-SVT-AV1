@@ -18,3 +18,4 @@ Bin
 build
 test/vectors/
 test/docs/
+.vscode

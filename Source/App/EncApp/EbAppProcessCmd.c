@@ -35,10 +35,10 @@ extern volatile int32_t keepRunning;
 ***************************************/
 void LogErrorOutput(
     FILE                     *error_log_file,
-    uint32_t                  errorCode)
+    uint32_t                  error_code)
 {
 
-    switch (errorCode) {
+    switch (error_code) {
 
         // EB_ENC_AMVP_ERRORS:
     case EB_ENC_AMVP_ERROR1:
@@ -195,7 +195,7 @@ void LogErrorOutput(
         break;
 
     case EB_ENC_EC_ERROR2:
-        fprintf(error_log_file, "Error: CopyRbspBitstreamToPayload: output buffer too small!\n");
+        fprintf(error_log_file, "Error: copy_rbsp_bitstream_to_payload: output buffer too small!\n");
         break;
 
     case EB_ENC_EC_ERROR3:
@@ -432,7 +432,7 @@ void LogErrorOutput(
         break;
 
     case EB_ENC_PM_ERROR1:
-        fprintf(error_log_file, "Error: EbPictureManager: dependentCount underflow!\n");
+        fprintf(error_log_file, "Error: EbPictureManager: dependent_count underflow!\n");
         break;
 
     case EB_ENC_PM_ERROR10:
@@ -444,7 +444,7 @@ void LogErrorOutput(
         break;
 
     case EB_ENC_PM_ERROR3:
-        fprintf(error_log_file, "Error: PictureManagerProcess: The dependentCount underflow detected!\n");
+        fprintf(error_log_file, "Error: PictureManagerProcess: The dependent_count underflow detected!\n");
         break;
 
     case EB_ENC_PM_ERROR4:
@@ -894,7 +894,7 @@ void ReadInputFrames(
             inputPtr->cb_ext = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize + 2 * chroma8bitSize + luma2bitSize;
             inputPtr->cr_ext = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + luma8bitSize + 2 * chroma8bitSize + luma2bitSize + chroma2bitSize;
 
-            headerPtr->n_filled_len = luma8bitSize + luma2bitSize + 2 * (chroma8bitSize + chroma2bitSize);
+            headerPtr->n_filled_len = (uint32_t)(luma8bitSize + luma2bitSize + 2 * (chroma8bitSize + chroma2bitSize));
         } else {
             //Normal unpacked mode:yuv420p10le yuv422p10le yuv444p10le
             const size_t lumaSize = (input_padded_width * input_padded_height) << is16bit;
@@ -910,7 +910,7 @@ void ReadInputFrames(
             inputPtr->cb = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + lumaSize;
             inputPtr->cr = config->sequence_buffer[config->processed_frame_count % config->buffered_input] + lumaSize+ chromaSize;
 
-            headerPtr->n_filled_len = lumaSize + 2 * chromaSize;
+            headerPtr->n_filled_len = (uint32_t)(lumaSize + 2 * chromaSize);
         }
     }
 
@@ -981,7 +981,7 @@ AppExitConditionType ProcessInputBuffer(
     const int64_t frames_to_be_encoded = config->frames_to_be_encoded;
     int64_t totalBytesToProcessCount;
     int64_t remainingByteCount;
-    uint32_t compressed10bitFrameSize = (input_padded_width*input_padded_height) + 2 * ((input_padded_width*input_padded_width) >> (3 - color_format));
+    uint32_t compressed10bitFrameSize = (uint32_t)((input_padded_width*input_padded_height) + 2 * ((input_padded_width*input_padded_width) >> (3 - color_format)));
     compressed10bitFrameSize += compressed10bitFrameSize / 4;
 
     if (config->injector && config->processed_frame_count)

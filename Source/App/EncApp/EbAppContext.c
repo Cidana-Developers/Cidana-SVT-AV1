@@ -198,6 +198,7 @@ EbErrorType CopyConfigurationParameters(
     callback_data->eb_enc_parameters.number_hme_search_region_in_height = config->number_hme_search_region_in_height;
     callback_data->eb_enc_parameters.hme_level0_total_search_area_width = config->hme_level0_total_search_area_width;
     callback_data->eb_enc_parameters.hme_level0_total_search_area_height = config->hme_level0_total_search_area_height;
+    callback_data->eb_enc_parameters.screen_content_mode = (EbBool)config->screen_content_mode;
     callback_data->eb_enc_parameters.constrained_intra = (EbBool)config->constrained_intra;
     callback_data->eb_enc_parameters.channel_id = config->channel_id;
     callback_data->eb_enc_parameters.active_channel_count = config->active_channel_count;
@@ -338,13 +339,13 @@ EbErrorType AllocateOutputReconBuffers(
 {
 
     EbErrorType   return_error = EB_ErrorNone;
-    const size_t lumaSize =
+    const size_t luma_size =
         config->input_padded_width    *
         config->input_padded_height;
     // both u and v
-    const size_t chromaSize = lumaSize >> (3 - config->encoder_color_format);
+    const size_t chromaSize = luma_size >> (3 - config->encoder_color_format);
     const size_t tenBit = (config->encoder_bit_depth > 8);
-    const size_t frameSize = (lumaSize + 2 * chromaSize) << tenBit;
+    const size_t frameSize = (luma_size + 2 * chromaSize) << tenBit;
 
 // ... Recon Port
     EB_APP_MALLOC(EbBufferHeaderType*, callback_data->recon_buffer, sizeof(EbBufferHeaderType), EB_N_PTR, EB_ErrorInsufficientResources);
@@ -660,7 +661,7 @@ EbErrorType de_init_encoder(
 {
     EbErrorType return_error = EB_ErrorNone;
     int32_t              ptrIndex        = 0;
-    EbMemoryMapEntry*   memoryEntry     = (EbMemoryMapEntry*)0;
+    EbMemoryMapEntry*   memory_entry     = (EbMemoryMapEntry*)0;
 
     if (((EbComponentType*)(callback_data_ptr->svt_encoder_handle)) != NULL) {
             return_error = eb_deinit_encoder(callback_data_ptr->svt_encoder_handle);
@@ -673,10 +674,10 @@ EbErrorType de_init_encoder(
 
     // Loop through the ptr table and free all malloc'd pointers per channel
     for (ptrIndex = appMemoryMapIndexAllChannels[instance_index] - 1; ptrIndex >= 0; --ptrIndex) {
-        memoryEntry = &appMemoryMapAllChannels[instance_index][ptrIndex];
-        switch (memoryEntry->ptr_type) {
+        memory_entry = &appMemoryMapAllChannels[instance_index][ptrIndex];
+        switch (memory_entry->ptr_type) {
         case EB_N_PTR:
-            free(memoryEntry->ptr);
+            free(memory_entry->ptr);
             break;
         default:
             return_error = EB_ErrorMax;

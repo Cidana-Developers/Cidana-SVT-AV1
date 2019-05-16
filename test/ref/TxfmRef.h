@@ -58,16 +58,16 @@ void reference_dct_1d(const double *in, double *out, int size);
 // TODO(any): Copied from the old 'fadst4' (same as the new 'av1_fadst4_new'
 // function). Should be replaced by a proper reference function that takes
 // 'double' input & output.
-void fadst4_ref(const tran_low_t *input, tran_low_t *output);
+void fadst4_ref(const TranLow *input, TranLow *output);
 
 void reference_adst_1d(const double *in, double *out, int size);
 
 void reference_idtx_1d(const double *in, double *out, int size);
 
-void reference_txfm_1d(TX_TYPE_1D type, const double *in, double *out,
+void reference_txfm_1d(TxType1D type, const double *in, double *out,
                        int size);
 
-TX_TYPE_1D get_txfm1d_types(TxfmType txfm_type);
+TxType1D get_txfm1d_types(TxfmType txfm_type);
 
 // forward transform 2d reference
 void reference_txfm_2d(const double *in, double *out, TxType tx_type,

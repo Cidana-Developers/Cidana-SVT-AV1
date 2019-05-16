@@ -14,6 +14,13 @@ extern "C" {
     /****************************
      * UTILITY FUNCTIONS
      ****************************/
+#if RED_CU
+    typedef struct BlockList_s
+    {
+        uint8_t  list_size;
+        uint16_t blk_mds_table[3]; //stores a max of 3 redundant blocks
+    }BlockList_t;  
+#endif
 
     void build_blk_geom();
     typedef struct BlockGeom
@@ -27,6 +34,13 @@ extern "C" {
         uint16_t   sqi_mds;                     // index of the parent square in md  scan.
         uint8_t    totns;                       // max number of ns blocks within one partition 1..4 (N:1,H:2,V:2,HA:3,HB:3,VA:3,VB:3,H4:4,V4:4)
         uint8_t    nsi;                         // non square index within a partition  0..totns-1
+#if RED_CU
+        uint8_t        similar;                 // 1: means that this block is similar (same shape/location) to another
+        uint8_t        quadi;                   // parent square is in which quadrant 0..3
+        uint8_t        redund;                  // 1: means that this block is redundant to another
+        BlockList_t    redund_list;             // the list where the block is redundant 
+        BlockList_t    similar_list;       
+#endif
                    
                    
         uint8_t    bwidth;                      // block width
@@ -35,8 +49,8 @@ extern "C" {
         uint8_t    bheight_uv;                  // block height for Chroma 4:2:0
         uint8_t    bwidth_log2;                 // block width log2
         uint8_t    bheight_log2;                // block height log2
-        block_size bsize;                       // bloc size
-        block_size bsize_uv;                    // bloc size for Chroma 4:2:0
+        BlockSize bsize;                       // bloc size
+        BlockSize bsize_uv;                    // bloc size for Chroma 4:2:0
         uint16_t   txb_count;                   //4-2-1
         TxSize     txsize[MAX_TXB_COUNT];
         TxSize     txsize_uv[MAX_TXB_COUNT];
@@ -59,7 +73,7 @@ extern "C" {
 
     } BlockGeom;
 
-    static const block_size ss_size_lookup[BlockSizeS_ALL][2][2] = {
+    static const BlockSize ss_size_lookup[BlockSizeS_ALL][2][2] = {
         //  ss_x == 0    ss_x == 0        ss_x == 1      ss_x == 1
         //  ss_y == 0    ss_y == 1        ss_y == 0      ss_y == 1
         { { BLOCK_4X4, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
@@ -85,7 +99,7 @@ extern "C" {
         { { BLOCK_16X64, BLOCK_16X32 }, { BLOCK_INVALID, BLOCK_8X32 } },
         { { BLOCK_64X16, BLOCK_INVALID }, { BLOCK_32X16, BLOCK_32X8 } }
     };
-    static INLINE block_size get_plane_block_size(block_size bsize,
+    static INLINE BlockSize get_plane_block_size(BlockSize bsize,
         int32_t subsampling_x,
         int32_t subsampling_y) {
         if (bsize == BLOCK_INVALID) return BLOCK_INVALID;
@@ -278,15 +292,15 @@ extern "C" {
 #define MIN_HIERARCHICAL_LEVEL         2
     static const uint32_t mini_gop_offset[4] = { 1, 3, 7, 31 };
 
-    typedef struct MiniGopStats_s
+    typedef struct MiniGopStats
     {
         uint32_t  hierarchical_levels;
         uint32_t  start_index;
         uint32_t  end_index;
         uint32_t  lenght;
 
-    } MiniGopStats_t;
-    extern const MiniGopStats_t* get_mini_gop_stats(const uint32_t miniGopIndex);
+    } MiniGopStats;
+    extern const MiniGopStats* get_mini_gop_stats(const uint32_t mini_gop_index);
     typedef enum MiniGopIndex {
         L6_INDEX = 0,
         L5_0_INDEX = 1,

@@ -25,10 +25,6 @@ extern "C" {
 #define EB_BUFFERFLAG_SHOW_EXT      0x00000002  // signals that the packet contains a show existing frame at the end
 #define EB_BUFFERFLAG_HAS_TD        0x00000004  // signals that the packet contains a show existing frame at the end
 
-#if TILES
-#define EB_BUFFERFLAG_TG            0x00000004  // signals that the packet contains Tile Group header
-#endif
-
 // Will contain the EbEncApi which will live in the EncHandle class
 // Only modifiable during config-time.
 typedef struct EbSvtAv1EncConfiguration
@@ -162,7 +158,7 @@ typedef struct EbSvtAv1EncConfiguration
     * Default is 64. */
     uint32_t                 sb_sz;
 
-    /* Super block size
+    /* Super block size (mm-signal)
     *
     * Default is 128. */
     uint32_t                 super_block_size;
@@ -170,6 +166,23 @@ typedef struct EbSvtAv1EncConfiguration
     *
     * Default is 4. */
     uint32_t                 partition_depth;
+
+#if !MEMORY_FOOTPRINT_OPT_ME_MV
+    /* MRP (mm-signal; 0: MRP mode 0, 1: MRP mode 1)
+    *
+    * Default is 0. */
+    uint8_t                   mrp_mode;
+
+    /* CDF (mm-signal; 0: CDF update, 1: no CDF update)
+    *
+    * Default is 0. */
+    uint8_t                   cdf_mode;
+
+    /* NSQ present (mm-signal; 0: NSQ absent, 1: NSQ present)
+    *
+    * Default is 1. */
+    uint8_t                   nsq_present;
+#endif
 
     // Quantization
     /* Initial quantization parameter for the Intra pictures used under constant
@@ -283,7 +296,10 @@ typedef struct EbSvtAv1EncConfiguration
      *
      * Default is 0. */
     uint32_t                 min_qp_allowed;
-
+    /* Flag to signal the content being a screen sharing content type
+    *
+    * Default is 2. */
+    uint32_t                 screen_content_mode;
     // Tresholds
     /* Flag to signal that the input yuv is HDR10 BT2020 using SMPTE ST2048, requires
      *

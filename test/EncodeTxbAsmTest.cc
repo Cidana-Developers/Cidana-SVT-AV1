@@ -43,7 +43,7 @@ static INLINE uint8_t *set_levels(uint8_t *const levels_buf,
 }
 
 // test assembly code of av1_txb_init_levels
-using TxbInitLevelsFunc = void (*)(const tran_low_t *const coeff,
+using TxbInitLevelsFunc = void (*)(const TranLow *const coeff,
                                    const int width, const int height,
                                    uint8_t *const levels);
 using TxbInitLevelParam = std::tuple<TxbInitLevelsFunc, int>;
@@ -126,7 +126,7 @@ class EncodeTxbInitLevelTest
     SVTRandom *rnd_;
     uint8_t levels_buf_test_[TX_PAD_2D];
     uint8_t levels_buf_ref_[TX_PAD_2D];
-    tran_low_t input_coeff_[MAX_TX_SQUARE];
+    TranLow input_coeff_[MAX_TX_SQUARE];
 
     uint8_t *levels_test_;
     uint8_t *levels_ref_;

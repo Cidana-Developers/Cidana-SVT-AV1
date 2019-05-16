@@ -120,7 +120,7 @@ static INLINE int aom_daala_read(daala_reader *r, int prob) {
     return bit;
 }
 
-static INLINE int daala_read_symbol(daala_reader *r, const aom_cdf_prob *cdf,
+static INLINE int daala_read_symbol(daala_reader *r, const AomCdfProb *cdf,
                                     int nsymbs) {
     int symb;
     assert(cdf != nullptr);
@@ -181,14 +181,14 @@ static INLINE int aom_read_literal_(aom_reader *r, int bits) {
     return literal;
 }
 
-static INLINE int aom_read_cdf_(aom_reader *r, const aom_cdf_prob *cdf,
+static INLINE int aom_read_cdf_(aom_reader *r, const AomCdfProb *cdf,
                                 int nsymbs ACCT_STR_PARAM) {
     int ret;
     ret = daala_read_symbol(r, cdf, nsymbs);
     return ret;
 }
 
-static INLINE int aom_read_symbol_(aom_reader *r, aom_cdf_prob *cdf,
+static INLINE int aom_read_symbol_(aom_reader *r, AomCdfProb *cdf,
                                    int nsymbs ACCT_STR_PARAM) {
     int ret;
     ret = aom_read_cdf(r, cdf, nsymbs, ACCT_STR_NAME);
