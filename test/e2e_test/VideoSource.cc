@@ -96,7 +96,9 @@ EbErrorType VideoSource::init_frame_buffer() {
     case IMG_FMT_444: {
         chroma_size = luma_size;
     } break;
-    default: { chroma_size = luma_size >> 2; } break;
+    default: {
+        chroma_size = luma_size >> 2;
+    } break;
     }
 
     // Determine
@@ -485,23 +487,14 @@ EbErrorType VideoFileSource::open_source(const uint32_t init_pos,
         file_handle_ = nullptr;
         return EB_ErrorInsufficientResources;
     }
-    if (file_frames_ <= init_pos || init_pos + frame_count >= file_frames_) {
-        printf(
-            "setup of initial position(%u) and output frame count(%u) is out "
-            "of bound!\n",
-            init_pos,
-            frame_count);
-        fclose(file_handle_);
-        file_handle_ = nullptr;
-        return EB_ErrorInsufficientResources;
-    }
-    init_pos_ = init_pos;
+    if (init_pos_ < file_frames_)
+        init_pos_ = init_pos;
+    else
+        init_pos_ = init_pos_ % file_frames_;
     if (frame_count == 0)
         frame_count_ = file_frames_ - init_pos_;
     else
-        frame_count_ = (file_frames_ - init_pos_) > frame_count
-                           ? frame_count
-                           : (file_frames_ - init_pos_);
+        frame_count_ = frame_count;
 
     if (seek_to_frame(init_pos_) != EB_ErrorNone) {
         fclose(file_handle_);
@@ -566,6 +559,16 @@ EbSvtIOFormat *VideoFileSource::get_frame_by_index(const uint32_t index) {
 
 EbSvtIOFormat *VideoFileSource::get_next_frame() {
     // printf("Get Next Frame:%d\r\n", current_frame_index_ + 1);
+    if (current_frame_index_ + 1 >= frame_count_) {
+        return nullptr;
+    }
+    if (init_pos_ + (current_frame_index_ + 1) >= file_frames_ &&
+        current_frame_index_ != -1) {
+        // Seek to frame by index
+        if (seek_to_frame(current_frame_index_ + 1) != EB_ErrorNone)
+            return nullptr;
+    }
+
     frame_size_ = read_input_frame();
     if (frame_size_ == 0)
         return nullptr;
