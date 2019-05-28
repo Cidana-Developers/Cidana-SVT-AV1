@@ -23,45 +23,31 @@
 #include "random.h"
 namespace {
 using svt_av1_test_tool::SVTRandom;
+using std::get;
+using std::make_tuple;
+using std::tuple;
 
-const int count_test_block = 100000;
+const int count_test_block = 1000;
 
-typedef void (*HighbdIntraPred)(uint16_t *dst, ptrdiff_t stride,
-                                const uint16_t *above, const uint16_t *left,
-                                int bd);
-typedef void (*IntraPred)(uint8_t *dst, ptrdiff_t stride, const uint8_t *above,
-                          const uint8_t *left);
+using INTRAPRED_HBD = void (*)(uint16_t *dst, ptrdiff_t stride,
+                               const uint16_t *above, const uint16_t *left,
+                               int bd);
+using INTRAPRED_LBD = void (*)(uint8_t *dst, ptrdiff_t stride,
+                               const uint8_t *above, const uint8_t *left);
 
-template <typename FuncType>
-struct IntraPredFunc {
-    IntraPredFunc(FuncType pred = NULL, FuncType ref = NULL,
-                  int block_width_value = 0, int block_height_value = 0,
-                  int bit_depth_value = 0)
-        : pred_fn(pred),
-          ref_fn(ref),
-          block_width(block_width_value),
-          block_height(block_height_value),
-          bit_depth(bit_depth_value) {
-    }
+using LBD_PARAMS = tuple<INTRAPRED_LBD, INTRAPRED_LBD, int, int, int>;
+using HBD_PARAMS = tuple<INTRAPRED_HBD, INTRAPRED_HBD, int, int, int>;
 
-    FuncType pred_fn;
-    FuncType ref_fn;
-    int block_width;
-    int block_height;
-    int bit_depth;
-};
-
-template <typename FuncType, typename Pixel>
-class AV1IntraPredTest
-    : public ::testing::TestWithParam<IntraPredFunc<FuncType>> {
+template <typename FuncType, typename Pixel, typename TupleType>
+class AV1IntraPredTest : public ::testing::TestWithParam<TupleType> {
   protected:
     void prepare_data(SVTRandom &rnd, int cnt) {
         if (cnt == 0) {
             for (int x = -1; x <= bw_ * 2; x++)
-                above_row_[x] = (1 << params_.bit_depth) - 1;
+                above_row_[x] = (1 << bd_) - 1;
 
             for (int y = 0; y < bh_; y++)
-                left_col_[y] = (1 << params_.bit_depth) - 1;
+                left_col_[y] = (1 << bd_) - 1;
         } else {
             for (int x = -1; x <= bw_ * 2; x++)
                 above_row_[x] = rnd.random();
@@ -75,7 +61,7 @@ class AV1IntraPredTest
 
   public:
     void RunTest() {
-        SVTRandom rnd(0, (1 << params_.bit_depth) - 1);
+        SVTRandom rnd(0, (1 << bd_) - 1);
         for (int i = 0; i < count_test_block; ++i) {
             // prepare the neighbor pixels
             prepare_data(rnd, i);
@@ -94,16 +80,19 @@ class AV1IntraPredTest
     }
 
   protected:
-    virtual void SetUp() {
+    void SetUp() override {
         params_ = this->GetParam();
-        stride_ = params_.block_width * 3;
-        mask_ = (1 << params_.bit_depth) - 1;
+        tst_func_ = get<0>(params_);
+        ref_func_ = get<1>(params_);
+        bw_ = get<2>(params_);
+        bh_ = get<3>(params_);
+        bd_ = get<4>(params_);
+        stride_ = bw_ * 3;
+        mask_ = (1 << bd_) - 1;
         above_row_ = above_row_data_ + 16;
         left_col_ = left_col_data_;
         dst_tst_ = dst_tst_data_;
         dst_ref_ = dst_ref_data_;
-        bw_ = params_.block_width;
-        bh_ = params_.block_height;
     }
 
     virtual void Predict() = 0;
@@ -112,57 +101,59 @@ class AV1IntraPredTest
     Pixel *left_col_;
     Pixel *dst_tst_;
     Pixel *dst_ref_;
-    ptrdiff_t stride_;
-    int bw_;  // block width
-    int bh_;  // block height
-    int mask_;
     DECLARE_ALIGNED(16, Pixel, left_col_data_[2 * 64]);
     DECLARE_ALIGNED(16, Pixel, above_row_data_[2 * 64 + 64]);
     DECLARE_ALIGNED(16, Pixel, dst_tst_data_[3 * 64 * 64]);
     DECLARE_ALIGNED(16, Pixel, dst_ref_data_[3 * 64 * 64]);
 
-    IntraPredFunc<FuncType> params_;
+    ptrdiff_t stride_;
+    int bw_;  // block width
+    int bh_;  // block height
+    int mask_;
+    FuncType tst_func_;
+    FuncType ref_func_;
+    int bd_;
+
+    TupleType params_;
 };
 
-class HighbdIntraPredTest : public AV1IntraPredTest<HighbdIntraPred, uint16_t> {
+class HighbdIntraPredTest
+    : public AV1IntraPredTest<INTRAPRED_HBD, uint16_t, HBD_PARAMS> {
   protected:
     void Predict() {
-        const int bit_depth = params_.bit_depth;
-        params_.ref_fn(dst_ref_, stride_, above_row_, left_col_, bit_depth);
-        params_.pred_fn(dst_tst_, stride_, above_row_, left_col_, bit_depth);
+        const int bit_depth = bd_;
+        ref_func_(dst_ref_, stride_, above_row_, left_col_, bit_depth);
+        tst_func_(dst_tst_, stride_, above_row_, left_col_, bit_depth);
     }
 };
 
-class LowbdIntraPredTest : public AV1IntraPredTest<IntraPred, uint8_t> {
+class LowbdIntraPredTest
+    : public AV1IntraPredTest<INTRAPRED_LBD, uint8_t, LBD_PARAMS> {
   protected:
     void Predict() {
-        params_.ref_fn(dst_ref_, stride_, above_row_, left_col_);
-        params_.pred_fn(dst_tst_, stride_, above_row_, left_col_);
+        ref_func_(dst_ref_, stride_, above_row_, left_col_);
+        tst_func_(dst_tst_, stride_, above_row_, left_col_);
     }
 };
 
-// Suppress an unitialized warning. Once there are implementations to test then
-// this can be restored.
 TEST_P(HighbdIntraPredTest, match_test) {
     RunTest();
 }
 
-// Same issue as above but for arm.
 TEST_P(LowbdIntraPredTest, match_test) {
     RunTest();
 }
 
 // -----------------------------------------------------------------------------
 // High Bit Depth Tests
-#define highbd_entry(type, width, height, opt, bd)                 \
-    IntraPredFunc<HighbdIntraPred>(                                \
-        &aom_highbd_##type##_predictor_##width##x##height##_##opt, \
-        &aom_highbd_##type##_predictor_##width##x##height##_c,     \
-        width,                                                     \
-        height,                                                    \
-        bd)
+#define highbd_entry(type, width, height, opt, bd)                        \
+    make_tuple(&aom_highbd_##type##_predictor_##width##x##height##_##opt, \
+               &aom_highbd_##type##_predictor_##width##x##height##_c,     \
+               width,                                                     \
+               height,                                                    \
+               bd)
 
-const IntraPredFunc<HighbdIntraPred> HighbdIntraPredTestVectorAsm[] = {
+const HBD_PARAMS HighbdIntraPredTestVectorAsm[] = {
     highbd_entry(dc_128, 16, 16, avx2, 10),
     highbd_entry(dc_128, 16, 32, avx2, 10),
     highbd_entry(dc_128, 16, 4, avx2, 10),
@@ -335,21 +326,19 @@ const IntraPredFunc<HighbdIntraPred> HighbdIntraPredTestVectorAsm[] = {
     highbd_entry(v, 8, 8, sse2, 10),
 };
 
-INSTANTIATE_TEST_CASE_P(highbd_intra, HighbdIntraPredTest,
+INSTANTIATE_TEST_CASE_P(intrapred, HighbdIntraPredTest,
                         ::testing::ValuesIn(HighbdIntraPredTestVectorAsm));
 
 // ---------------------------------------------------------------------------
 // Low Bit Depth Tests
+#define lowbd_entry(type, width, height, opt)                      \
+    LBD_PARAMS(&aom_##type##_predictor_##width##x##height##_##opt, \
+               &aom_##type##_predictor_##width##x##height##_c,     \
+               width,                                              \
+               height,                                             \
+               8)
 
-#define lowbd_entry(type, width, height, opt)               \
-    IntraPredFunc<IntraPred>(                               \
-        &aom_##type##_predictor_##width##x##height##_##opt, \
-        &aom_##type##_predictor_##width##x##height##_c,     \
-        width,                                              \
-        height,                                             \
-        8)
-
-const IntraPredFunc<IntraPred> LowbdIntraPredTestVectorAsm[] = {
+const LBD_PARAMS LowbdIntraPredTestVectorAsm[] = {
     lowbd_entry(dc, 4, 4, sse2),          lowbd_entry(dc, 8, 8, sse2),
     lowbd_entry(dc, 16, 16, sse2),        lowbd_entry(dc, 32, 32, avx2),
     lowbd_entry(dc, 64, 64, avx2),        lowbd_entry(dc, 16, 32, sse2),
@@ -452,6 +441,6 @@ const IntraPredFunc<IntraPred> LowbdIntraPredTestVectorAsm[] = {
     lowbd_entry(paeth, 8, 4, ssse3),      lowbd_entry(paeth, 8, 8, ssse3),
 };
 
-INSTANTIATE_TEST_CASE_P(lowbd_intra, LowbdIntraPredTest,
+INSTANTIATE_TEST_CASE_P(intrapred, LowbdIntraPredTest,
                         ::testing::ValuesIn(LowbdIntraPredTestVectorAsm));
 }  // namespace
