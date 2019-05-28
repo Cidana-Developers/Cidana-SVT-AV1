@@ -15,12 +15,13 @@
  ******************************************************************************/
 
 #include "gtest/gtest.h"
-
 #include "aom_dsp_rtcd.h"
 #include "EbDefinitions.h"
 #include "random.h"
 
 namespace {
+using svt_av1_test_tool::SVTRandom;
+// copied from EbIntraPrediction.c
 const uint16_t dr_intra_derivative[90] = {
     // More evenly spread out angles and limited to 10-bit
     // Values that are 0 will never be used
@@ -82,59 +83,68 @@ static INLINE uint16_t get_dx(int32_t angle) {
     }
 }
 
-const int kZ1Start = 0;
-const int kZ2Start = 90;
-const int kZ3Start = 180;
+// define the function types
+using Z1_LBD = void (*)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
+                        const uint8_t *above, const uint8_t *left,
+                        int upsample_above, int dx, int dy);
 
-using svt_av1_test_tool::SVTRandom;
+using Z2_LBD = void (*)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
+                        const uint8_t *above, const uint8_t *left,
+                        int upsample_above, int upsample_left, int dx, int dy);
 
-typedef void (*Z1_Lbd)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint8_t *above, const uint8_t *left,
-                       int upsample_above, int dx, int dy);
+using Z3_LBD = void (*)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
+                        const uint8_t *above, const uint8_t *left,
+                        int upsample_left, int dx, int dy);
 
-typedef void (*Z2_Lbd)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint8_t *above, const uint8_t *left,
-                       int upsample_above, int upsample_left, int dx, int dy);
+using Z1_HBD = void (*)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
+                        const uint16_t *above, const uint16_t *left,
+                        int upsample_above, int dx, int dy, int bd);
 
-typedef void (*Z3_Lbd)(uint8_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint8_t *above, const uint8_t *left,
-                       int upsample_left, int dx, int dy);
-
-typedef void (*Z1_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint16_t *above, const uint16_t *left,
-                       int upsample_above, int dx, int dy, int bd);
-
-typedef void (*Z2_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint16_t *above, const uint16_t *left,
-                       int upsample_above, int upsample_left, int dx, int dy,
-                       int bd);
-typedef void (*Z3_Hbd)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
-                       const uint16_t *above, const uint16_t *left,
-                       int upsample_left, int dx, int dy, int bd);
-
+using Z2_HBD = void (*)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
+                        const uint16_t *above, const uint16_t *left,
+                        int upsample_above, int upsample_left, int dx, int dy,
+                        int bd);
+using Z3_HBD = void (*)(uint16_t *dst, ptrdiff_t stride, int bw, int bh,
+                        const uint16_t *above, const uint16_t *left,
+                        int upsample_left, int dx, int dy, int bd);
+/**
+ * @brief Unit test for intra directional prediction:
+ * - av1_highbd_dr_prediction_z{1, 2, 3}_avx2
+ * - av1_dr_prediction_z{1, 2, 3}_avx2
+ *
+ * Test strategy:
+ * Verify this assembly code by comparing with reference c implementation.
+ * Feed the same data and check test output and reference output.
+ * Define a templete class to handle the common process, and
+ * declare sub class to handle different bitdepth and function types.
+ *
+ * Expect result:
+ * Output from assemble functions should be the same with output from c.
+ *
+ * Test coverage:
+ * Test cases:
+ * Neighbor pixel buffer: Fill with random values
+ * TxSize: all the TxSize.
+ * BitDepth: 8bit and 10bit
+ *
+ */
 template <typename Pixel, typename FuncType>
 class DrPredTest {
   public:
-    static const int kMaxNumTests = 100000;
-    static const int kIterations = 10;
-    static const int kDstStride = 64;
-    static const int kDstSize = kDstStride * kDstStride;
-    static const int kOffset = 16;
-    static const int kBufSize = ((2 * MAX_TX_SIZE) << 1) + 16;
+    static const int num_tests = 10;
+    static const int pred_buf_size = MAX_TX_SQUARE;
+    static const int start_offset = 16;
+    static const int neighbor_buf_size = ((2 * MAX_TX_SIZE) << 1) + 16;
+    static const int z1_start_angle = 0;
+    static const int z2_start_angle = 90;
+    static const int z3_start_angle = 180;
 
-    DrPredTest()
-        : upsample_above_(0),
-          upsample_left_(0),
-          bw_(0),
-          bh_(0),
-          dx_(1),
-          dy_(1) {
-        dst_ref_ = &dst_ref_data_[0];
-        dst_tst_ = &dst_tst_data_[0];
-        dst_stride_ = kDstStride;
-        above_ = &above_data_[kOffset];
-        left_ = &left_data_[kOffset];
-
+    DrPredTest() {
+        start_angle_ = 0;
+        stop_angle_ = 0 + 90;
+        ref_func_ = tst_func_ = nullptr;
+        bd_ = 8;
+        common_init();
     }
 
     virtual ~DrPredTest() {
@@ -150,14 +160,26 @@ class DrPredTest {
     }
 
   protected:
-    virtual void Predict(){};
+    void common_init() {
+        upsample_above_ = upsample_left_ = 0;
+        bw_ = bh_ = 0;
+        dx_ = dy_ = 1;
+        dst_ref_ = &dst_ref_data_[0];
+        dst_tst_ = &dst_tst_data_[0];
+        dst_stride_ = MAX_TX_SIZE;
+        above_ = &above_data_[start_offset];
+        left_ = &left_data_[start_offset];
+    }
+
+    virtual void Predict() {
+    }
 
     void prepare_neighbor_pixel(SVTRandom &rnd, int cnt) {
         if (cnt == 0) {
-            for (int i = 0; i < kBufSize; ++i)
+            for (int i = 0; i < neighbor_buf_size; ++i)
                 above_data_[i] = left_data_[i] = (1 << bd_) - 1;
         } else {
-            for (int i = 0; i < kBufSize; ++i) {
+            for (int i = 0; i < neighbor_buf_size; ++i) {
                 above_data_[i] = rnd.random();
                 left_data_[i] = rnd.random();
             }
@@ -165,48 +187,53 @@ class DrPredTest {
     }
 
     void clear_output_pixel() {
-        for (int i = 0; i < kDstSize; ++i) {
+        for (int i = 0; i < pred_buf_size; ++i) {
             dst_ref_[i] = 0;
         }
 
-        for (int i = 0; i < kDstSize; ++i) {
+        for (int i = 0; i < pred_buf_size; ++i) {
             dst_tst_[i] = 0;
         }
     }
 
     void RunTest() {
         SVTRandom rnd(0, (1 << bd_) - 1);
-        for (int cnt = 0; cnt < kIterations; ++cnt) {
+        for (int cnt = 0; cnt < num_tests; ++cnt) {
             prepare_neighbor_pixel(rnd, cnt);
             for (int tx = 0; tx < TX_SIZES_ALL; ++tx) {
-                // clear the output for each tx
-                clear_output_pixel();
+                for (int c = 0; c < 4; ++c) {
+                    // TODO(wenyao): check why some test cases fails
+                    // when one of them is 1.
+                    upsample_above_ = 0;  // c & 0x1;
+                    upsample_left_ = 0;   // (c & 0x2) >> 1;
 
-                // TODO(wenyao): loop upsample_above and upsample_left
+                    // clear the output for each tx
+                    clear_output_pixel();
+                    bw_ = tx_size_wide[tx];
+                    bh_ = tx_size_high[tx];
+                    Predict();
 
-                bw_ = tx_size_wide[tx];
-                bh_ = tx_size_high[tx];
-                Predict();
-
-                for (int r = 0; r < bh_; ++r) {
-                    for (int c = 0; c < bw_; ++c) {
-                        ASSERT_EQ(dst_ref_[r * dst_stride_ + c],
-                                  dst_tst_[r * dst_stride_ + c])
-                            << bw_ << "x" << bh_ << " r: " << r << " c: " << c
-                            << " dx: " << dx_ << " dy: " << dy_
-                            << " upsample_above: " << upsample_above_
-                            << " upsample_left: " << upsample_left_;
+                    for (int r = 0; r < bh_; ++r) {
+                        for (int c = 0; c < bw_; ++c) {
+                            ASSERT_EQ(dst_ref_[r * dst_stride_ + c],
+                                      dst_tst_[r * dst_stride_ + c])
+                                << bw_ << "x" << bh_ << " r: " << r
+                                << " c: " << c << " dx: " << dx_
+                                << " dy: " << dy_
+                                << " upsample_above: " << upsample_above_
+                                << " upsample_left: " << upsample_left_;
+                        }
                     }
                 }
             }
         }
     }
 
-    Pixel dst_ref_data_[kDstSize];
-    Pixel dst_tst_data_[kDstSize];
+    Pixel dst_ref_data_[pred_buf_size];
+    Pixel dst_tst_data_[pred_buf_size];
 
-    Pixel left_data_[kBufSize];
-    Pixel above_data_[kBufSize];
+    Pixel left_data_[neighbor_buf_size];
+    Pixel above_data_[neighbor_buf_size];
 
     Pixel *dst_ref_;
     Pixel *dst_tst_;
@@ -225,112 +252,114 @@ class DrPredTest {
     int start_angle_;
     int stop_angle_;
 
-    FuncType ref_fn;
-    FuncType tst_fn;
+    FuncType ref_func_;
+    FuncType tst_func_;
 };
 
-class LowbdZ1PredTest : public DrPredTest<uint8_t, Z1_Lbd> {
+class LowbdZ1PredTest : public DrPredTest<uint8_t, Z1_LBD> {
   public:
     LowbdZ1PredTest() {
-        start_angle_ = kZ1Start;
+        start_angle_ = z1_start_angle;
         stop_angle_ = start_angle_ + 90;
-        ref_fn = av1_dr_prediction_z1_c;
-        tst_fn = av1_dr_prediction_z1_avx2;
+        ref_func_ = av1_dr_prediction_z1_c;
+        tst_func_ = av1_dr_prediction_z1_avx2;
         bd_ = 8;
-        DrPredTest();
+
+        common_init();
     }
 
   protected:
     void Predict() override {
-        ref_fn(dst_ref_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               dx_,
-               dy_);
-        tst_fn(dst_tst_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               dx_,
-               dy_);
+        ref_func_(dst_ref_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  dx_,
+                  dy_);
+        tst_func_(dst_tst_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  dx_,
+                  dy_);
     }
 };
 
-class LowbdZ2PredTest : public DrPredTest<uint8_t, Z2_Lbd> {
+class LowbdZ2PredTest : public DrPredTest<uint8_t, Z2_LBD> {
   public:
     LowbdZ2PredTest() {
-        start_angle_ = kZ2Start;
+        start_angle_ = z2_start_angle;
         stop_angle_ = start_angle_ + 90;
-        ref_fn = av1_dr_prediction_z2_c;
-        tst_fn = av1_dr_prediction_z2_avx2;
+        ref_func_ = av1_dr_prediction_z2_c;
+        tst_func_ = av1_dr_prediction_z2_avx2;
         bd_ = 8;
-        DrPredTest();
+
+        common_init();
     }
 
   protected:
     void Predict() override {
-        ref_fn(dst_ref_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               upsample_left_,
-               dx_,
-               dy_);
-        tst_fn(dst_tst_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               upsample_left_,
-               dx_,
-               dy_);
+        ref_func_(dst_ref_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  upsample_left_,
+                  dx_,
+                  dy_);
+        tst_func_(dst_tst_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  upsample_left_,
+                  dx_,
+                  dy_);
     }
 };
 
-class LowbdZ3PredTest : public DrPredTest<uint8_t, Z3_Lbd> {
+class LowbdZ3PredTest : public DrPredTest<uint8_t, Z3_LBD> {
   public:
     LowbdZ3PredTest() {
-        start_angle_ = kZ3Start;
+        start_angle_ = z3_start_angle;
         stop_angle_ = start_angle_ + 90;
-        ref_fn = av1_dr_prediction_z3_c;
-        tst_fn = av1_dr_prediction_z3_avx2;
+        ref_func_ = av1_dr_prediction_z3_c;
+        tst_func_ = av1_dr_prediction_z3_avx2;
         bd_ = 8;
 
-        DrPredTest();
-    };
+        common_init();
+    }
 
   protected:
     void Predict() override {
-        ref_fn(dst_ref_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_left_,
-               dx_,
-               dy_);
-        tst_fn(dst_tst_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_left_,
-               dx_,
-               dy_);
+        ref_func_(dst_ref_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_left_,
+                  dx_,
+                  dy_);
+        tst_func_(dst_tst_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_left_,
+                  dx_,
+                  dy_);
     }
 };
 
@@ -345,116 +374,116 @@ TEST_CLASS(LowbdDrZ1Test, LowbdZ1PredTest)
 TEST_CLASS(LowbdDrZ2Test, LowbdZ2PredTest)
 TEST_CLASS(LowbdDrZ3Test, LowbdZ3PredTest)
 
-class HighbdZ1PredTest : public DrPredTest<uint16_t, Z1_Hbd> {
+class HighbdZ1PredTest : public DrPredTest<uint16_t, Z1_HBD> {
   public:
     HighbdZ1PredTest() {
-        start_angle_ = kZ1Start;
+        start_angle_ = z1_start_angle;
         stop_angle_ = start_angle_ + 90;
-        ref_fn = av1_highbd_dr_prediction_z1_c;
-        tst_fn = av1_highbd_dr_prediction_z1_avx2;
+        ref_func_ = av1_highbd_dr_prediction_z1_c;
+        tst_func_ = av1_highbd_dr_prediction_z1_avx2;
         bd_ = 10;
 
-        DrPredTest();
-    };
+        common_init();
+    }
 
   protected:
     void Predict() override {
-        ref_fn(dst_ref_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               dx_,
-               dy_,
-               bd_);
-        tst_fn(dst_tst_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               dx_,
-               dy_,
-               bd_);
+        ref_func_(dst_ref_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  dx_,
+                  dy_,
+                  bd_);
+        tst_func_(dst_tst_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  dx_,
+                  dy_,
+                  bd_);
     }
 };
 
-class HighbdZ2PredTest : public DrPredTest<uint16_t, Z2_Hbd> {
+class HighbdZ2PredTest : public DrPredTest<uint16_t, Z2_HBD> {
   public:
     HighbdZ2PredTest() {
-        start_angle_ = kZ2Start;
+        start_angle_ = z2_start_angle;
         stop_angle_ = start_angle_ + 90;
-        ref_fn = av1_highbd_dr_prediction_z2_c;
-        tst_fn = av1_highbd_dr_prediction_z2_avx2;
+        ref_func_ = av1_highbd_dr_prediction_z2_c;
+        tst_func_ = av1_highbd_dr_prediction_z2_avx2;
         bd_ = 10;
 
-        DrPredTest();
-    };
+        common_init();
+    }
 
   protected:
     void Predict() override {
-        ref_fn(dst_ref_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               upsample_left_,
-               dx_,
-               dy_,
-               bd_);
-        tst_fn(dst_tst_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_above_,
-               upsample_left_,
-               dx_,
-               dy_,
-               bd_);
+        ref_func_(dst_ref_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  upsample_left_,
+                  dx_,
+                  dy_,
+                  bd_);
+        tst_func_(dst_tst_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_above_,
+                  upsample_left_,
+                  dx_,
+                  dy_,
+                  bd_);
     }
 };
 
-class HighbdZ3PredTest : public DrPredTest<uint16_t, Z3_Hbd> {
+class HighbdZ3PredTest : public DrPredTest<uint16_t, Z3_HBD> {
   public:
     HighbdZ3PredTest() {
-        start_angle_ = kZ3Start;
+        start_angle_ = z3_start_angle;
         stop_angle_ = start_angle_ + 90;
-        ref_fn = av1_highbd_dr_prediction_z3_c;
-        tst_fn = av1_highbd_dr_prediction_z3_avx2;
+        ref_func_ = av1_highbd_dr_prediction_z3_c;
+        tst_func_ = av1_highbd_dr_prediction_z3_avx2;
         bd_ = 10;
 
-        DrPredTest();
-    };
+        common_init();
+    }
 
   protected:
     void Predict() override {
-        ref_fn(dst_ref_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_left_,
-               dx_,
-               dy_,
-               bd_);
-        tst_fn(dst_tst_,
-               dst_stride_,
-               bw_,
-               bh_,
-               above_,
-               left_,
-               upsample_left_,
-               dx_,
-               dy_,
-               bd_);
+        ref_func_(dst_ref_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_left_,
+                  dx_,
+                  dy_,
+                  bd_);
+        tst_func_(dst_tst_,
+                  dst_stride_,
+                  bw_,
+                  bh_,
+                  above_,
+                  left_,
+                  upsample_left_,
+                  dx_,
+                  dy_,
+                  bd_);
     }
 };
 
