@@ -151,8 +151,8 @@ INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
                         ::testing::ValuesIn(smoking_vectors));
 
 /**
- * @brief SVT-AV1 encoder E2E test with comparing the reconstruction frame with
- * output frame from decoder buffer list
+ * @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
+ * output frames from decoder buffer list
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
@@ -197,3 +197,35 @@ TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
                         ::testing::ValuesIn(comformance_test_vectors));
+
+/**
+ * @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
+ * output frames from decoder buffer list in longtime (3000 frames)
+ *
+ * Test strategy:
+ * Setup SVT-AV1 encoder with enc_mode 3, and encode the input YUV data
+ * frames. Collect the reconstruction frames and compared with reference decoder
+ * output
+ *
+ * Expect result:
+ * No error from encoding progress and reconstruction frame data is same as the
+ * output frame from reference decoder
+ *
+ * Test coverage:
+ * Longtime test vectors
+ */
+class SvtAv1E2ELongTimeConformanceTest : public SvtAv1E2EConformanceTest {
+  protected:
+    /** initialization for test */
+    void init_test() override {
+        av1enc_ctx_.enc_params.enc_mode = 3;
+        SvtAv1E2EConformanceTest::init_test();
+    }
+};
+
+TEST_P(SvtAv1E2ELongTimeConformanceTest, run_conformance_test) {
+    run_encode_process();
+}
+
+INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ELongTimeConformanceTest,
+                        ::testing::ValuesIn(longtime_comformance_test_vectors));

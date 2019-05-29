@@ -126,6 +126,18 @@ static const TestVideoVector partial_src_frame_vectors[] = {
                     200},
 };
 
+static const TestVideoVector longtime_comformance_test_vectors[] = {
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    1920,
+                    1080,
+                    8,
+                    false,
+                    0,
+                    3000},
+};
+
 /** MultiInstVector */
 typedef std::tuple<TestVideoVector, /**< video source */
                    uint32_t>        /**< instance number for test */
