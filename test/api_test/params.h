@@ -569,9 +569,9 @@ static const vector<EbBool> invalid_enable_hme_flag = {
 
 /* Flag to enable the use of non-swaure partitions
  *
- * Default is 1. */
+ * Default is EB_FALSE. */
 static const vector<EbBool> default_ext_block_flag = {
-    EB_TRUE,
+    EB_FALSE,
 };
 static const vector<EbBool> valid_ext_block_flag = {
     EB_FALSE,
@@ -747,10 +747,10 @@ static const vector<uint32_t> valid_min_qp_allowed = {
     32,
     50,
     56,
-    MAX_QP_VALUE,
+    MAX_QP_VALUE - 1,
 };
 static const vector<uint32_t> invalid_min_qp_allowed = {
-    (MAX_QP_VALUE + 1),
+    MAX_QP_VALUE,
 };
 
 // Tresholds
@@ -774,9 +774,9 @@ static const vector<uint32_t> invalid_high_dynamic_range_input = {
  * 1 = Main, allows bit depth of 8.
  * 2 = Main 10, allows bit depth of 8 to 10.
  *
- * Default is 2. */
+ * Default is 0. */
 static const vector<uint32_t> default_profile = {
-    PROFILE_2,
+    PROFILE_0,
 };
 static const vector<uint32_t> valid_profile = {
     PROFILE_0,
@@ -969,16 +969,9 @@ static const vector<int32_t> invalid_target_socket = {
  * ReconFile token (-o) and using the feature will affect the speed of encoder.
  *
  * Default is 0. */
-static const vector<uint32_t> default_recon_enabled = {
-    0,
-};
-static const vector<uint32_t> valid_recon_enabled = {
-    0,
-    1,
-};
-static const vector<uint32_t> invalid_recon_enabled = {
-    2,
-};
+static const vector<uint32_t> default_recon_enabled = {EB_FALSE};
+static const vector<uint32_t> valid_recon_enabled = {EB_FALSE, EB_TRUE};
+static const vector<uint32_t> invalid_recon_enabled = {/** none */};
 
 #if TILES
 /* Log 2 Tile Rows and colums . 0 means no tiling,1 means that we split the
