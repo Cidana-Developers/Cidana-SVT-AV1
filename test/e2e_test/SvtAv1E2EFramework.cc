@@ -15,6 +15,7 @@
 #include "EbSvtAv1Enc.h"
 #include "Y4mVideoSource.h"
 #include "YuvVideoSource.h"
+#include "DummyVideoSource.h"
 #include "gtest/gtest.h"
 #include "EbDefinitions.h"
 #include "RefDecoder.h"
@@ -198,6 +199,12 @@ VideoSource *SvtAv1E2ETestBase::prepare_video_src(
                                        std::get<5>(vector),
                                        std::get<6>(vector));
         break;
+    case DUMMY_SOURCE:
+        video_src = new DummyVideoSource(std::get<2>(vector),
+                                         std::get<3>(vector),
+                                         std::get<4>(vector),
+                                         std::get<5>(vector),
+                                         std::get<6>(vector));
     default: assert(0); break;
     }
     return video_src;
@@ -416,9 +423,9 @@ void SvtAv1E2ETestFramework::write_output_header() {
     header[1] = 'K';
     header[2] = 'I';
     header[3] = 'F';
-    mem_put_le16(header + 4, 0);                                // version
-    mem_put_le16(header + 6, 32);                               // header size
-    mem_put_le32(header + 8, AV1_FOURCC);                       // fourcc
+    mem_put_le16(header + 4, 0);           // version
+    mem_put_le16(header + 6, 32);          // header size
+    mem_put_le32(header + 8, AV1_FOURCC);  // fourcc
     mem_put_le16(header + 12, av1enc_ctx_.enc_params.source_width);   // width
     mem_put_le16(header + 14, av1enc_ctx_.enc_params.source_height);  // height
     if (av1enc_ctx_.enc_params.frame_rate_denominator != 0 &&
@@ -430,7 +437,7 @@ void SvtAv1E2ETestFramework::write_output_header() {
     } else {
         mem_put_le32(header + 16,
                      (av1enc_ctx_.enc_params.frame_rate >> 16) * 1000);  // rate
-        mem_put_le32(header + 20, 1000);                           // scale
+        mem_put_le32(header + 20, 1000);  // scale
     }
     mem_put_le32(header + 24, 0);  // length
     mem_put_le32(header + 28, 0);  // unused
