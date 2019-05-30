@@ -27,7 +27,8 @@ namespace svt_av1_e2e_test_vector {
 /** TestVectorFormat is enumerate type of input video file format */
 typedef enum TestVectorFormat {
     YUV_VIDEO_FILE,
-    Y4M_VIDEO_FILE
+    Y4M_VIDEO_FILE,
+    DUMMY_SOURCE
 } TestVectorFormat;
 
 /** TestVideoVector is tuple of test params in a test case */
@@ -82,6 +83,8 @@ static const TestVideoVector comformance_test_vectors[] = {
                     false,
                     0,
                     0},
+    TestVideoVector{
+        "color_bar", DUMMY_SOURCE, IMG_FMT_420, 640, 480, 8, false, 0, 0},
 };
 
 static const TestVideoVector smoking_vectors[] = {

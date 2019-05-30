@@ -82,15 +82,18 @@ EbErrorType VideoSource::init_frame_buffer() {
     // Determine size of each plane
     uint32_t luma_size = width_with_padding_ * height_with_padding_;
     uint32_t chroma_size = 0;
+    uint32_t chroma_stride = width_with_padding_;
 
     switch (image_format_) {
     case IMG_FMT_420P10_PACKED:
     case IMG_FMT_420: {
         chroma_size = luma_size >> 2;
+        chroma_stride = chroma_stride >> 2;
     } break;
     case IMG_FMT_422P10_PACKED:
     case IMG_FMT_422: {
         chroma_size = luma_size >> 1;
+        chroma_stride = chroma_stride >> 1;
     } break;
     case IMG_FMT_444P10_PACKED:
     case IMG_FMT_444: {
@@ -116,9 +119,9 @@ EbErrorType VideoSource::init_frame_buffer() {
     frame_buffer_->origin_y = 0;
 
     // SVT-AV1 use pixel size as stride?
-    frame_buffer_->y_stride = luma_size;
-    frame_buffer_->cb_stride = chroma_size;
-    frame_buffer_->cr_stride = chroma_size;
+    frame_buffer_->y_stride = width_with_padding_;
+    frame_buffer_->cb_stride = chroma_stride;
+    frame_buffer_->cr_stride = chroma_stride;
 
     if (is_10bit_mode() && !svt_compressed_2bit_plane_) {
         luma_size *= 2;
