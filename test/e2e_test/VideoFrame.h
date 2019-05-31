@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define INVALID_QP (0xFF);
+#define INVALID_QP (0xFF)
 
 /** VideoColorFormat defines the format of YUV video */
 typedef enum VideoColorFormat {

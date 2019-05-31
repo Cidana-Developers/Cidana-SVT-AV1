@@ -165,7 +165,7 @@ class RefDecoder {
      * @param width  width of source video frame
      * @param height  height of source video frame
      */
-    void set_resolution(const uint64_t width, const uint32_t height);
+    void set_resolution(const uint32_t width, const uint32_t height);
 
   private:
     /** Tool of translation from AOM image info to a video frame

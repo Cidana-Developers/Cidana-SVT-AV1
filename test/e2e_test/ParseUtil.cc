@@ -1031,7 +1031,7 @@ int parse_sequence_header_from_file(const char *ivf_file) {
     return 0;
 }
 
-/** @brief SPSFeatureTest is test for sequence parser
+/** @brief SPSFeatureTest targets to test for sequence parser
  * SPSFeatureTest.sequence_header_test is a test case to verify the parser can
  * get the sequence header correctly.
  *

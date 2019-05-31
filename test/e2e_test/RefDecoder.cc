@@ -20,7 +20,7 @@
 #include "RefDecoder.h"
 #include "ParseUtil.h"
 
-/** from aom/commen/blockd.h */
+/** from aom/common/blockd.h */
 typedef enum {
     KEY_FRAME = 0,
     INTER_FRAME = 1,
@@ -30,7 +30,7 @@ typedef enum {
 } FRAME_TYPE;
 
 /** count intra period length from the frame serialization */
-static std::string get_intra_period_length(std::vector<int> frame_type_vec) {
+static std::string get_intra_period_length(std::vector<int>& frame_type_vec) {
     int period_max = 0;
     int period = 0;
     for (int frame_type : frame_type_vec) {
@@ -463,7 +463,7 @@ std::string RefDecoder::get_item(const std::string& name,
     return item_value;
 }
 
-void RefDecoder::set_resolution(const uint64_t width, const uint32_t height) {
+void RefDecoder::set_resolution(const uint32_t width, const uint32_t height) {
     video_param_.width = width;
     video_param_.height = height;
 }
