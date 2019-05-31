@@ -164,9 +164,8 @@ static int32_t equation_system_solve(aom_equation_system_t *eqns) {
     free(b);
     free(A);
 
-    if (ret == 0) {
+    if (ret == 0)
         return 0;
-    }
     return 1;
 }
 /*
@@ -175,9 +174,8 @@ static void equation_system_add(aom_equation_system_t *dest,
   const int32_t n = dest->n;
   int32_t i, j;
   for (i = 0; i < n; ++i) {
-    for (j = 0; j < n; ++j) {
+    for (j = 0; j < n; ++j)
       dest->A[i * n + j] += src->A[i * n + j];
-    }
     dest->b[i] += src->b[i];
   }
 }
@@ -212,7 +210,6 @@ static void noise_strength_solver_copy(aom_noise_strength_solver_t *dest,
     dest->total = src->total;
 }
 
-
 // Return the number of coefficients required for the given parameters
 static int32_t num_coeffs(const aom_noise_model_params_t params) {
     const int32_t n = 2 * params.lag + 1;
@@ -241,9 +238,8 @@ static void set_chroma_coefficient_fallback_soln(aom_equation_system_t *eqns) {
     // Set all of the AR coefficients to zero, but try to solve for correlation
     // with the luma channel
     memset(eqns->x, 0, sizeof(*eqns->x) * eqns->n);
-    if (fabs(eqns->A[last * eqns->n + last]) > kTolerance) {
+    if (fabs(eqns->A[last * eqns->n + last]) > kTolerance)
         eqns->x[last] = eqns->b[last] / eqns->A[last * eqns->n + last];
-    }
 }
 
 int32_t aom_noise_strength_lut_init(aom_noise_strength_lut_t *lut, int32_t num_points) {
@@ -411,10 +407,8 @@ int32_t aom_noise_strength_solver_fit_piecewise(
         lut->points[i][0] = aom_noise_strength_solver_get_center(solver, i);
         lut->points[i][1] = solver->eqns.x[i];
     }
-    if (max_output_points < 0) {
+    if (max_output_points < 0)
         max_output_points = solver->num_bins;
-    }
-
     double *residual = malloc(solver->num_bins * sizeof(*residual));
     ASSERT(residual != NULL);
     memset(residual, 0, sizeof(*residual) * solver->num_bins);
@@ -426,17 +420,14 @@ int32_t aom_noise_strength_solver_fit_piecewise(
     while (lut->num_points > 2) {
         int32_t min_index = 1;
         for (int32_t j = 1; j < lut->num_points - 1; ++j) {
-            if (residual[j] < residual[min_index]) {
+            if (residual[j] < residual[min_index])
                 min_index = j;
-            }
         }
         const double dx =
             lut->points[min_index + 1][0] - lut->points[min_index - 1][0];
         const double avg_residual = residual[min_index] / dx;
-        if (lut->num_points <= max_output_points && avg_residual > kTolerance) {
+        if (lut->num_points <= max_output_points && avg_residual > kTolerance)
             break;
-        }
-
         const int32_t num_remaining = lut->num_points - min_index - 1;
         memmove(lut->points + min_index, lut->points + min_index + 1,
             sizeof(lut->points[0]) * num_remaining);
@@ -491,9 +482,8 @@ int32_t aom_flat_block_finder_init(aom_flat_block_finder_t *block_finder,
             A[kLowPolyNumParams * row + 2] = 1;
 
             for (i = 0; i < kLowPolyNumParams; ++i) {
-                for (j = 0; j < kLowPolyNumParams; ++j) {
+                for (j = 0; j < kLowPolyNumParams; ++j)
                     eqns.A[kLowPolyNumParams * i + j] += coords[i] * coords[j];
-                }
             }
         }
     }
@@ -504,9 +494,8 @@ int32_t aom_flat_block_finder_init(aom_flat_block_finder_t *block_finder,
         eqns.b[i] = 1;
         equation_system_solve(&eqns);
 
-        for (j = 0; j < kLowPolyNumParams; ++j) {
+        for (j = 0; j < kLowPolyNumParams; ++j)
             AtA_inv[j * kLowPolyNumParams + i] = eqns.x[j];
-        }
     }
     equation_system_free(&eqns);
     return 1;
@@ -557,9 +546,8 @@ void aom_flat_block_finder_extract_block(
         kLowPolyNumParams, 1);
     multiply_mat(A, plane_coords, plane, n, kLowPolyNumParams, 1);
 
-    for (i = 0; i < n; ++i) {
+    for (i = 0; i < n; ++i)
         block[i] -= plane[i];
-    }
 }
 
 typedef struct {
@@ -639,7 +627,7 @@ int32_t aom_flat_block_finder_run(const aom_flat_block_finder_t *block_finder,
             }
             mean /= (block_size - 2) * (block_size - 2);
 
-            // Normalize gradients by block_size.
+            // Normalize gradients by BlockSize.
             Gxx /= ((block_size - 2) * (block_size - 2));
             Gxy /= ((block_size - 2) * (block_size - 2));
             Gyy /= ((block_size - 2) * (block_size - 2));
@@ -837,9 +825,8 @@ static int32_t add_block_observations(
         const int32_t y_o = by * (block_size >> sub_log2[1]);
         for (int32_t bx = 0; bx < num_blocks_w; ++bx) {
             const int32_t x_o = bx * (block_size >> sub_log2[0]);
-            if (!flat_blocks[by * num_blocks_w + bx]) {
+            if (!flat_blocks[by * num_blocks_w + bx])
                 continue;
-            }
             int32_t y_start =
                 (by > 0 && flat_blocks[(by - 1) * num_blocks_w + bx]) ? 0 : lag;
             int32_t x_start =
@@ -900,9 +887,8 @@ static void add_noise_std_observations(
         const int32_t y_o = by * (block_size >> sub_log2[1]);
         for (int32_t bx = 0; bx < num_blocks_w; ++bx) {
             const int32_t x_o = bx * (block_size >> sub_log2[0]);
-            if (!flat_blocks[by * num_blocks_w + bx]) {
+            if (!flat_blocks[by * num_blocks_w + bx])
                 continue;
-            }
             const int32_t num_samples_h =
                 AOMMIN((h >> sub_log2[1]) - by * (block_size >> sub_log2[1]),
                     block_size >> sub_log2[1]);
@@ -976,9 +962,8 @@ static int32_t is_noise_model_different(aom_noise_model_t *const noise_model) {
     double total_weight = 0;
     for (int32_t j = 0; j < latest_eqns->n; ++j) {
       double weight = 0;
-      for (int32_t i = 0; i < latest_eqns->n; ++i) {
+      for (int32_t i = 0; i < latest_eqns->n; ++i)
         weight += latest_eqns->A[i * latest_eqns->n + j];
-      }
       weight = sqrt(weight);
       diff += weight * fabs(latest_eqns->x[j] - combined_eqns->x[j]);
       total_weight += weight;
@@ -1002,9 +987,8 @@ static int32_t ar_equation_system_solve(aom_noise_state_t *state, int32_t is_chr
     // overall variance (this works for least squares or Yule-Walker formulation).
     double var = 0;
     const int32_t n = state->eqns.n;
-    for (int32_t i = 0; i < (state->eqns.n - is_chroma); ++i) {
+    for (int32_t i = 0; i < (state->eqns.n - is_chroma); ++i)
         var += state->eqns.A[i * n + i] / state->num_observations;
-    }
     var /= (n - is_chroma);
 
     // Keep track of E(Y^2) = <b, x> + E(X^2)
@@ -1015,9 +999,8 @@ static int32_t ar_equation_system_solve(aom_noise_state_t *state, int32_t is_chr
     double sum_covar = 0;
     for (int32_t i = 0; i < state->eqns.n - is_chroma; ++i) {
         double bi = state->eqns.b[i];
-        if (is_chroma) {
+        if (is_chroma)
             bi -= state->eqns.A[i * n + (n - 1)] * state->eqns.x[n - 1];
-        }
         sum_covar += (bi * state->eqns.x[i]) / state->num_observations;
     }
     // Now, get an estimate of the variance of uncorrelated noise signal and use
@@ -1038,12 +1021,12 @@ aom_noise_status_t aom_noise_model_update(
     int32_t i = 0, channel = 0;
 
     if (block_size <= 1) {
-        fprintf(stderr, "block_size = %d must be > 1\n", block_size);
+        fprintf(stderr, "BlockSize = %d must be > 1\n", block_size);
         return AOM_NOISE_STATUS_INVALID_ARGUMENT;
     }
 
     if (block_size < noise_model->params.lag * 2 + 1) {
-        fprintf(stderr, "block_size = %d must be >= %d\n", block_size,
+        fprintf(stderr, "BlockSize = %d must be >= %d\n", block_size,
             noise_model->params.lag * 2 + 1);
         return AOM_NOISE_STATUS_INVALID_ARGUMENT;
     }
@@ -1057,9 +1040,8 @@ aom_noise_status_t aom_noise_model_update(
 
     // Check that we have enough flat blocks
     for (i = 0; i < num_blocks_h * num_blocks_w; ++i) {
-        if (flat_blocks[i]) {
+        if (flat_blocks[i])
             num_blocks++;
-        }
     }
 
     if (num_blocks <= 1) {
@@ -1143,7 +1125,6 @@ aom_noise_status_t aom_noise_model_update(
     }
 
     return AOM_NOISE_STATUS_OK;
-
 }
 
 void aom_noise_model_save_latest(aom_noise_model_t *noise_model) {
@@ -1246,9 +1227,8 @@ int32_t aom_noise_model_get_grain_parameters(aom_noise_model_t *const noise_mode
         double average_strength = 0, total_weight = 0;
         for (int32_t i = 0; i < solver->eqns.n; ++i) {
             double w = 0;
-            for (int32_t j = 0; j < solver->eqns.n; ++j) {
+            for (int32_t j = 0; j < solver->eqns.n; ++j)
                 w += solver->eqns.A[i * solver->eqns.n + j];
-            }
             w = sqrt(w);
             average_strength += solver->eqns.x[i] * w;
             total_weight += w;
@@ -1257,9 +1237,8 @@ int32_t aom_noise_model_get_grain_parameters(aom_noise_model_t *const noise_mode
             average_strength = 1;
         else
             average_strength /= total_weight;
-        if (c == 0) {
+        if (c == 0)
             avg_luma_strength = average_strength;
-        }
         else {
             y_corr[c - 1] = avg_luma_strength * eqns->x[n_coeff] / average_strength;
             max_coeff = AOMMAX(max_coeff, y_corr[c - 1]);
@@ -1306,9 +1285,8 @@ int32_t aom_noise_model_get_grain_parameters(aom_noise_model_t *const noise_mode
 }
 
 static void pointwise_multiply(const float *a, float *b, int32_t n) {
-    for (int32_t i = 0; i < n; ++i) {
+    for (int32_t i = 0; i < n; ++i)
         b[i] *= a[i];
-    }
 }
 
 static float *get_half_cos_window(int32_t block_size) {
@@ -1422,9 +1400,8 @@ int32_t aom_wiener_denoise_2d(const uint8_t *const data[3], uint8_t *denoised[3]
         struct aom_noise_tx_t *tx =
             (c > 0 && chroma_sub[0] > 0) ? tx_chroma : tx_full;
         if (!data[c] || !denoised[c]) continue;
-        if (c > 0 && chroma_sub[0] != 0) {
+        if (c > 0 && chroma_sub[0] != 0)
             block_finder = &block_finder_chroma;
-        }
         memset(result, 0, sizeof(*result) * result_stride * result_height);
         // Do overlapped block processing (half overlapped). The block rows can
         // easily be done in parallel
@@ -1517,19 +1494,17 @@ struct aom_denoise_and_model_t {
     uint8_t *denoised[3];
     uint8_t *flat_blocks;
     uint16_t *packed[3];
-    EbPictureBufferDesc_t *denoised_pic;
-    EbPictureBufferDesc_t *packed_pic;
+    EbPictureBufferDesc *denoised_pic;
+    EbPictureBufferDesc *packed_pic;
 
     aom_flat_block_finder_t flat_block_finder;
     aom_noise_model_t noise_model;
 };
 
-
 EbErrorType aom_denoise_and_model_alloc(struct aom_denoise_and_model_t **ctx,
     int32_t bit_depth,
     int32_t block_size,
     float noise_level) {
-    
     ASSERT(ctx != NULL);
     EB_MALLOC(struct aom_denoise_and_model_t*, (*ctx), sizeof(struct aom_denoise_and_model_t), EB_N_PTR);
 
@@ -1558,7 +1533,6 @@ EbErrorType aom_denoise_and_model_alloc(struct aom_denoise_and_model_t **ctx,
 
 EbErrorType denoise_and_model_ctor(EbPtr *object_dbl_ptr,
     EbPtr object_init_data_ptr) {
-
     struct aom_denoise_and_model_t *object_ptr = 0;
     denoise_and_model_init_data_t *init_data_ptr = (denoise_and_model_init_data_t*)object_init_data_ptr;
     EbErrorType return_error = EB_ErrorNone;
@@ -1610,8 +1584,7 @@ void aom_denoise_and_model_free(struct aom_denoise_and_model_t *ctx, int32_t use
 }
 
 static int32_t denoise_and_model_realloc_if_necessary(struct aom_denoise_and_model_t *ctx,
-    EbPictureBufferDesc_t *sd, int32_t use_highbd) {
-
+    EbPictureBufferDesc *sd, int32_t use_highbd) {
     int32_t chroma_sub_log2[2] = { 1, 1 };  //todo: send chroma subsampling
 
     const int32_t block_size = ctx->block_size;
@@ -1651,22 +1624,21 @@ static int32_t denoise_and_model_realloc_if_necessary(struct aom_denoise_and_mod
     return 1;
 }
 
-static void pack_2d_pic(EbPictureBufferDesc_t *inputPicture,
+static void pack_2d_pic(EbPictureBufferDesc *inputPicture,
     uint16_t *packed[3],
     EbAsm asm_type) {
-
-    const uint32_t inputLumaOffset = ((inputPicture->origin_y)      * inputPicture->stride_y) + (inputPicture->origin_x);
-    const uint32_t inputBitIncLumaOffset = ((inputPicture->origin_y)      * inputPicture->strideBitIncY) + (inputPicture->origin_x);
-    const uint32_t inputCbOffset = (((inputPicture->origin_y) >> 1) * inputPicture->strideCb) + ((inputPicture->origin_x) >> 1);
-    const uint32_t inputBitIncCbOffset = (((inputPicture->origin_y) >> 1) * inputPicture->strideBitIncCb) + ((inputPicture->origin_x) >> 1);
-    const uint32_t inputCrOffset = (((inputPicture->origin_y) >> 1) * inputPicture->strideCr) + ((inputPicture->origin_x) >> 1);
-    const uint32_t inputBitIncCrOffset = (((inputPicture->origin_y) >> 1) * inputPicture->strideBitIncCr) + ((inputPicture->origin_x) >> 1);
+    const uint32_t input_luma_offset = ((inputPicture->origin_y)      * inputPicture->stride_y) + (inputPicture->origin_x);
+    const uint32_t inputBitIncLumaOffset = ((inputPicture->origin_y)      * inputPicture->stride_bit_inc_y) + (inputPicture->origin_x);
+    const uint32_t input_cb_offset = (((inputPicture->origin_y) >> 1) * inputPicture->stride_cb) + ((inputPicture->origin_x) >> 1);
+    const uint32_t inputBitIncCbOffset = (((inputPicture->origin_y) >> 1) * inputPicture->stride_bit_inc_cb) + ((inputPicture->origin_x) >> 1);
+    const uint32_t input_cr_offset = (((inputPicture->origin_y) >> 1) * inputPicture->stride_cr) + ((inputPicture->origin_x) >> 1);
+    const uint32_t inputBitIncCrOffset = (((inputPicture->origin_y) >> 1) * inputPicture->stride_bit_inc_cr) + ((inputPicture->origin_x) >> 1);
 
     pack2d_src(
-        inputPicture->buffer_y + inputLumaOffset,
+        inputPicture->buffer_y + input_luma_offset,
         inputPicture->stride_y,
-        inputPicture->bufferBitIncY + inputBitIncLumaOffset,
-        inputPicture->strideBitIncY,
+        inputPicture->buffer_bit_inc_y + inputBitIncLumaOffset,
+        inputPicture->stride_bit_inc_y,
         (uint16_t *)packed[0],
         inputPicture->stride_y,
         inputPicture->width,
@@ -1674,35 +1646,33 @@ static void pack_2d_pic(EbPictureBufferDesc_t *inputPicture,
         asm_type);
 
     pack2d_src(
-        inputPicture->bufferCb + inputCbOffset,
-        inputPicture->strideCr,
-        inputPicture->bufferBitIncCb + inputBitIncCbOffset,
-        inputPicture->strideBitIncCr,
+        inputPicture->buffer_cb + input_cb_offset,
+        inputPicture->stride_cr,
+        inputPicture->buffer_bit_inc_cb + inputBitIncCbOffset,
+        inputPicture->stride_bit_inc_cr,
         (uint16_t *)packed[1],
-        inputPicture->strideCr,
+        inputPicture->stride_cr,
         inputPicture->width >> 1,
         inputPicture->height >> 1,
         asm_type);
 
     pack2d_src(
-        inputPicture->bufferCr + inputCrOffset,
-        inputPicture->strideCr,
-        inputPicture->bufferBitIncCr + inputBitIncCrOffset,
-        inputPicture->strideBitIncCr,
+        inputPicture->buffer_cr + input_cr_offset,
+        inputPicture->stride_cr,
+        inputPicture->buffer_bit_inc_cr + inputBitIncCrOffset,
+        inputPicture->stride_bit_inc_cr,
         (uint16_t *)packed[2],
-        inputPicture->strideCr,
+        inputPicture->stride_cr,
         inputPicture->width >> 1,
         inputPicture->height >> 1,
         asm_type);
-
 }
 
 static void unpack_2d_pic(uint8_t *packed[3],
-    EbPictureBufferDesc_t  *outputPicturePtr,
+    EbPictureBufferDesc  *outputPicturePtr,
     EbAsm asm_type) {
-
     uint32_t lumaBufferOffset = ((outputPicturePtr->origin_y)      * outputPicturePtr->stride_y) + (outputPicturePtr->origin_x);
-    uint32_t chromaBufferOffset = (((outputPicturePtr->origin_y) >> 1) * outputPicturePtr->strideCb) + ((outputPicturePtr->origin_x) >> 1);
+    uint32_t chromaBufferOffset = (((outputPicturePtr->origin_y) >> 1) * outputPicturePtr->stride_cb) + ((outputPicturePtr->origin_x) >> 1);
     uint16_t luma_width = (uint16_t)(outputPicturePtr->width);
     uint16_t chroma_width = luma_width >> 1;
     uint16_t luma_height = (uint16_t)(outputPicturePtr->height);
@@ -1713,46 +1683,44 @@ static void unpack_2d_pic(uint8_t *packed[3],
         outputPicturePtr->stride_y,
         outputPicturePtr->buffer_y + lumaBufferOffset,
         outputPicturePtr->stride_y,
-        outputPicturePtr->bufferBitIncY + lumaBufferOffset,
-        outputPicturePtr->strideBitIncY,
+        outputPicturePtr->buffer_bit_inc_y + lumaBufferOffset,
+        outputPicturePtr->stride_bit_inc_y,
         luma_width,
         luma_height,
         asm_type);
 
     un_pack2d(
         (uint16_t*)(packed[1]),
-        outputPicturePtr->strideCb,
-        outputPicturePtr->bufferCb + chromaBufferOffset,
-        outputPicturePtr->strideCb,
-        outputPicturePtr->bufferBitIncCb + chromaBufferOffset,
-        outputPicturePtr->strideBitIncCb,
+        outputPicturePtr->stride_cb,
+        outputPicturePtr->buffer_cb + chromaBufferOffset,
+        outputPicturePtr->stride_cb,
+        outputPicturePtr->buffer_bit_inc_cb + chromaBufferOffset,
+        outputPicturePtr->stride_bit_inc_cb,
         chroma_width,
         chroma_height,
         asm_type);
 
     un_pack2d(
         (uint16_t*)(packed[2]),
-        outputPicturePtr->strideCr,
-        outputPicturePtr->bufferCr + chromaBufferOffset,
-        outputPicturePtr->strideCr,
-        outputPicturePtr->bufferBitIncCr + chromaBufferOffset,
-        outputPicturePtr->strideBitIncCr,
+        outputPicturePtr->stride_cr,
+        outputPicturePtr->buffer_cr + chromaBufferOffset,
+        outputPicturePtr->stride_cr,
+        outputPicturePtr->buffer_bit_inc_cr + chromaBufferOffset,
+        outputPicturePtr->stride_bit_inc_cr,
         chroma_width,
         chroma_height,
         asm_type);
-
 }
 
 int32_t aom_denoise_and_model_run(struct aom_denoise_and_model_t *ctx,
-    EbPictureBufferDesc_t *sd,
+    EbPictureBufferDesc *sd,
     aom_film_grain_t *film_grain,
     int32_t use_highbd,
     EbAsm asm_type) {
-
     const int32_t block_size = ctx->block_size;
     uint8_t *raw_data[3];
     int32_t chroma_sub_log2[2] = { 1, 1 };  //todo: send chroma subsampling
-    int32_t strides[3] = { sd->stride_y, sd->strideCb, sd->strideCr };
+    int32_t strides[3] = { sd->stride_y, sd->stride_cb, sd->stride_cr };
 
     if (!denoise_and_model_realloc_if_necessary(ctx, sd, use_highbd)) {
         fprintf(stderr, "Unable to realloc buffers\n");
@@ -1761,9 +1729,9 @@ int32_t aom_denoise_and_model_run(struct aom_denoise_and_model_t *ctx,
 
     if (!use_highbd) {  // 8 bits input
         raw_data[0] = sd->buffer_y + sd->origin_y * sd->stride_y + sd->origin_x;
-        raw_data[1] = sd->bufferCb + sd->strideCb * (sd->origin_y >> chroma_sub_log2[0])
+        raw_data[1] = sd->buffer_cb + sd->stride_cb * (sd->origin_y >> chroma_sub_log2[0])
             + (sd->origin_x >> chroma_sub_log2[1]);
-        raw_data[2] = sd->bufferCr + sd->strideCr * (sd->origin_y >> chroma_sub_log2[0])
+        raw_data[2] = sd->buffer_cr + sd->stride_cr * (sd->origin_y >> chroma_sub_log2[0])
             + (sd->origin_x >> chroma_sub_log2[1]);
     }
     else {          // 10 bits input
@@ -1813,9 +1781,8 @@ int32_t aom_denoise_and_model_run(struct aom_denoise_and_model_t *ctx,
             memcpy(raw_data[2], ctx->denoised[2],
                 (strides[2] * (sd->height >> chroma_sub_log2[0])) << use_highbd);
         }
-        else {
+        else
             unpack_2d_pic(ctx->denoised, sd, asm_type);
-        }
     }
     aom_flat_block_finder_free(&ctx->flat_block_finder);
     aom_noise_model_free(&ctx->noise_model);

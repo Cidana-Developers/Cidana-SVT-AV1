@@ -16,7 +16,6 @@ void InitializeSamplesNeighboringReferencePicture16Bit(
     uint16_t   reconHeight,
     uint16_t   left_padding,
     uint16_t   top_padding) {
-
     uint16_t  *reconSamplesPtr;
     uint16_t   sampleCount;
 
@@ -30,15 +29,12 @@ void InitializeSamplesNeighboringReferencePicture16Bit(
 
     // 3. Zero out the left column
     reconSamplesPtr = (uint16_t*)reconSamplesBufferPtr + top_padding * stride + left_padding - 1;
-    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++) {
+    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++)
         reconSamplesPtr[sampleCount * stride] = 0;
-    }
-
     // 4. Zero out the right column
     reconSamplesPtr = (uint16_t*)reconSamplesBufferPtr + top_padding * stride + left_padding + reconWidth;
-    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++) {
+    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++)
         reconSamplesPtr[sampleCount * stride] = 0;
-    }
 }
 
 void InitializeSamplesNeighboringReferencePicture8Bit(
@@ -48,7 +44,6 @@ void InitializeSamplesNeighboringReferencePicture8Bit(
     uint16_t   reconHeight,
     uint16_t   left_padding,
     uint16_t   top_padding) {
-
     uint8_t   *reconSamplesPtr;
     uint16_t   sampleCount;
 
@@ -62,24 +57,19 @@ void InitializeSamplesNeighboringReferencePicture8Bit(
 
     // 3. Zero out the left column
     reconSamplesPtr = reconSamplesBufferPtr + top_padding * stride + left_padding - 1;
-    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++) {
+    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++)
         reconSamplesPtr[sampleCount * stride] = 0;
-    }
-
     // 4. Zero out the right column
     reconSamplesPtr = reconSamplesBufferPtr + top_padding * stride + left_padding + reconWidth;
-    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++) {
+    for (sampleCount = 0; sampleCount < reconHeight; sampleCount++)
         reconSamplesPtr[sampleCount * stride] = 0;
-    }
 }
 
 void InitializeSamplesNeighboringReferencePicture(
     EbReferenceObject              *referenceObject,
-    EbPictureBufferDescInitData_t    *pictureBufferDescInitDataPtr,
-    EB_BITDEPTH                       bit_depth) {
-
+    EbPictureBufferDescInitData    *pictureBufferDescInitDataPtr,
+    EbBitDepthEnum                       bit_depth) {
     if (bit_depth == EB_10BIT) {
-
         InitializeSamplesNeighboringReferencePicture16Bit(
             referenceObject->reference_picture16bit->buffer_y,
             referenceObject->reference_picture16bit->stride_y,
@@ -89,23 +79,22 @@ void InitializeSamplesNeighboringReferencePicture(
             pictureBufferDescInitDataPtr->top_padding);
 
         InitializeSamplesNeighboringReferencePicture16Bit(
-            referenceObject->reference_picture16bit->bufferCb,
-            referenceObject->reference_picture16bit->strideCb,
+            referenceObject->reference_picture16bit->buffer_cb,
+            referenceObject->reference_picture16bit->stride_cb,
             referenceObject->reference_picture16bit->width >> 1,
             referenceObject->reference_picture16bit->height >> 1,
             pictureBufferDescInitDataPtr->left_padding >> 1,
             pictureBufferDescInitDataPtr->top_padding >> 1);
 
         InitializeSamplesNeighboringReferencePicture16Bit(
-            referenceObject->reference_picture16bit->bufferCr,
-            referenceObject->reference_picture16bit->strideCr,
+            referenceObject->reference_picture16bit->buffer_cr,
+            referenceObject->reference_picture16bit->stride_cr,
             referenceObject->reference_picture16bit->width >> 1,
             referenceObject->reference_picture16bit->height >> 1,
             pictureBufferDescInitDataPtr->left_padding >> 1,
             pictureBufferDescInitDataPtr->top_padding >> 1);
     }
     else {
-
         InitializeSamplesNeighboringReferencePicture8Bit(
             referenceObject->reference_picture->buffer_y,
             referenceObject->reference_picture->stride_y,
@@ -115,23 +104,22 @@ void InitializeSamplesNeighboringReferencePicture(
             pictureBufferDescInitDataPtr->top_padding);
 
         InitializeSamplesNeighboringReferencePicture8Bit(
-            referenceObject->reference_picture->bufferCb,
-            referenceObject->reference_picture->strideCb,
+            referenceObject->reference_picture->buffer_cb,
+            referenceObject->reference_picture->stride_cb,
             referenceObject->reference_picture->width >> 1,
             referenceObject->reference_picture->height >> 1,
             pictureBufferDescInitDataPtr->left_padding >> 1,
             pictureBufferDescInitDataPtr->top_padding >> 1);
 
         InitializeSamplesNeighboringReferencePicture8Bit(
-            referenceObject->reference_picture->bufferCr,
-            referenceObject->reference_picture->strideCr,
+            referenceObject->reference_picture->buffer_cr,
+            referenceObject->reference_picture->stride_cr,
             referenceObject->reference_picture->width >> 1,
             referenceObject->reference_picture->height >> 1,
             pictureBufferDescInitDataPtr->left_padding >> 1,
             pictureBufferDescInitDataPtr->top_padding >> 1);
     }
 }
-
 
 /*****************************************
  * eb_picture_buffer_desc_ctor
@@ -143,19 +131,20 @@ EbErrorType eb_reference_object_ctor(
     EbPtr  *object_dbl_ptr,
     EbPtr   object_init_data_ptr)
 {
-
     EbReferenceObject              *referenceObject;
-    EbPictureBufferDescInitData_t    *pictureBufferDescInitDataPtr = (EbPictureBufferDescInitData_t*)object_init_data_ptr;
-    EbPictureBufferDescInitData_t    pictureBufferDescInitData16BitPtr = *pictureBufferDescInitDataPtr;
+    EbPictureBufferDescInitData    *pictureBufferDescInitDataPtr = (EbPictureBufferDescInitData*)object_init_data_ptr;
+    EbPictureBufferDescInitData    pictureBufferDescInitData16BitPtr = *pictureBufferDescInitDataPtr;
     EbErrorType return_error = EB_ErrorNone;
     EB_MALLOC(EbReferenceObject*, referenceObject, sizeof(EbReferenceObject), EB_N_PTR);
 
     *object_dbl_ptr = (EbPtr)referenceObject;
 
-
     //TODO:12bit
     if (pictureBufferDescInitData16BitPtr.bit_depth == EB_10BIT) {
-
+#if UNPACK_REF_POST_EP // constructor
+        // Hsan: set split_mode to 0 to construct the packed reference buffer (used @ EP)
+        pictureBufferDescInitData16BitPtr.split_mode = EB_FALSE;
+#endif
         return_error = eb_picture_buffer_desc_ctor(
             (EbPtr*)&(referenceObject->reference_picture16bit),
             (EbPtr)&pictureBufferDescInitData16BitPtr);
@@ -165,9 +154,19 @@ EbErrorType eb_reference_object_ctor(
             &pictureBufferDescInitData16BitPtr,
             pictureBufferDescInitData16BitPtr.bit_depth);
 
+#if UNPACK_REF_POST_EP // constructor
+        // Hsan: set split_mode to 1 to construct the unpacked reference buffer (used @ MD)
+        pictureBufferDescInitData16BitPtr.split_mode = EB_TRUE;
+        return_error = eb_picture_buffer_desc_ctor(
+            (EbPtr*)&(referenceObject->reference_picture),
+            (EbPtr)&pictureBufferDescInitData16BitPtr);
+#endif
     }
     else {
-
+#if UNPACK_REF_POST_EP // constructor
+        // Hsan: set split_mode to 0 to as 8BIT input
+        pictureBufferDescInitDataPtr->split_mode = EB_FALSE;
+#endif
         return_error = eb_picture_buffer_desc_ctor(
             (EbPtr*)&(referenceObject->reference_picture),
             (EbPtr)pictureBufferDescInitDataPtr);
@@ -177,28 +176,25 @@ EbErrorType eb_reference_object_ctor(
             pictureBufferDescInitDataPtr,
             pictureBufferDescInitData16BitPtr.bit_depth);
     }
-    if (return_error == EB_ErrorInsufficientResources) {
+    if (return_error == EB_ErrorInsufficientResources)
         return EB_ErrorInsufficientResources;
-    }
-
-
-
+#if !OPT_LOSSLESS_1
     // Allocate SB based TMVP map
-    EB_MALLOC(TmvpUnit_t *, referenceObject->tmvp_map, (sizeof(TmvpUnit_t) * (((pictureBufferDescInitDataPtr->maxWidth + (64 - 1)) >> 6) * ((pictureBufferDescInitDataPtr->maxHeight + (64 - 1)) >> 6))), EB_N_PTR);
+    EB_MALLOC(TmvpUnit *, referenceObject->tmvp_map, (sizeof(TmvpUnit) * (((pictureBufferDescInitDataPtr->max_width + (64 - 1)) >> 6) * ((pictureBufferDescInitDataPtr->max_height + (64 - 1)) >> 6))), EB_N_PTR);
 
     //RESTRICT THIS TO M4
     {
-        EbPictureBufferDescInitData_t bufDesc;
+        EbPictureBufferDescInitData bufDesc;
 
-        bufDesc.maxWidth = pictureBufferDescInitDataPtr->maxWidth;
-        bufDesc.maxHeight = pictureBufferDescInitDataPtr->maxHeight;
+        bufDesc.max_width = pictureBufferDescInitDataPtr->max_width;
+        bufDesc.max_height = pictureBufferDescInitDataPtr->max_height;
         bufDesc.bit_depth = EB_8BIT;
-        bufDesc.bufferEnableMask = PICTURE_BUFFER_DESC_FULL_MASK;
+        bufDesc.buffer_enable_mask = PICTURE_BUFFER_DESC_FULL_MASK;
         bufDesc.left_padding = pictureBufferDescInitDataPtr->left_padding;
         bufDesc.right_padding = pictureBufferDescInitDataPtr->right_padding;
         bufDesc.top_padding = pictureBufferDescInitDataPtr->top_padding;
         bufDesc.bot_padding = pictureBufferDescInitDataPtr->bot_padding;
-        bufDesc.splitMode = 0;
+        bufDesc.split_mode = 0;
         bufDesc.color_format = pictureBufferDescInitDataPtr->color_format;
 
         return_error = eb_picture_buffer_desc_ctor((EbPtr*)&(referenceObject->ref_den_src_picture),
@@ -206,7 +202,7 @@ EbErrorType eb_reference_object_ctor(
         if (return_error == EB_ErrorInsufficientResources)
             return EB_ErrorInsufficientResources;
     }
-
+#endif
     memset(&referenceObject->film_grain_params, 0, sizeof(referenceObject->film_grain_params));
 
     return EB_ErrorNone;
@@ -222,9 +218,8 @@ EbErrorType eb_pa_reference_object_ctor(
     EbPtr  *object_dbl_ptr,
     EbPtr   object_init_data_ptr)
 {
-
     EbPaReferenceObject               *paReferenceObject;
-    EbPictureBufferDescInitData_t       *pictureBufferDescInitDataPtr = (EbPictureBufferDescInitData_t*)object_init_data_ptr;
+    EbPictureBufferDescInitData       *pictureBufferDescInitDataPtr = (EbPictureBufferDescInitData*)object_init_data_ptr;
     EbErrorType return_error = EB_ErrorNone;
     EB_MALLOC(EbPaReferenceObject*, paReferenceObject, sizeof(EbPaReferenceObject), EB_N_PTR);
     *object_dbl_ptr = (EbPtr)paReferenceObject;
@@ -233,30 +228,21 @@ EbErrorType eb_pa_reference_object_ctor(
     return_error = eb_picture_buffer_desc_ctor(
         (EbPtr*) &(paReferenceObject->input_padded_picture_ptr),
         (EbPtr)pictureBufferDescInitDataPtr);
-    if (return_error == EB_ErrorInsufficientResources) {
+    if (return_error == EB_ErrorInsufficientResources)
         return EB_ErrorInsufficientResources;
-    }
-
     // Quarter Decim reference picture constructor
-    paReferenceObject->quarter_decimated_picture_ptr = (EbPictureBufferDesc_t*)EB_NULL;
+    paReferenceObject->quarter_decimated_picture_ptr = (EbPictureBufferDesc*)EB_NULL;
     return_error = eb_picture_buffer_desc_ctor(
         (EbPtr*) &(paReferenceObject->quarter_decimated_picture_ptr),
         (EbPtr)(pictureBufferDescInitDataPtr + 1));
-    if (return_error == EB_ErrorInsufficientResources) {
+    if (return_error == EB_ErrorInsufficientResources)
         return EB_ErrorInsufficientResources;
-    }
-
     // Sixteenth Decim reference picture constructor
-    paReferenceObject->sixteenth_decimated_picture_ptr = (EbPictureBufferDesc_t*)EB_NULL;
+    paReferenceObject->sixteenth_decimated_picture_ptr = (EbPictureBufferDesc*)EB_NULL;
     return_error = eb_picture_buffer_desc_ctor(
         (EbPtr*) &(paReferenceObject->sixteenth_decimated_picture_ptr),
         (EbPtr)(pictureBufferDescInitDataPtr + 2));
-    if (return_error == EB_ErrorInsufficientResources) {
+    if (return_error == EB_ErrorInsufficientResources)
         return EB_ErrorInsufficientResources;
-    }
-
     return EB_ErrorNone;
 }
-
-
-

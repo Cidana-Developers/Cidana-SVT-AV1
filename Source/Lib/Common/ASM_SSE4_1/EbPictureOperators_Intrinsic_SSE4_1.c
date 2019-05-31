@@ -6,7 +6,6 @@
 #include "EbPictureOperators_SSE4_1.h"
 #include "smmintrin.h"
 
-
 uint64_t compute8x8_satd_sse4(
     int16_t *diff)       // input parameter, diff samples Ptr
 {
@@ -39,7 +38,6 @@ uint64_t compute8x8_satd_sse4(
         s1 = _mm_hadd_epi16(s1, s8);
         m2[j][0] = _mm_extract_epi16(s1, 0);
         m2[j + 1][0] = _mm_extract_epi16(s1, 2);
-
 
         //m2[j][1]
         //diff[jj] + diff[jj + 4] + diff[jj + 2] + diff[jj + 6] - diff[jj + 1] - diff[jj + 5] - diff[jj + 3] - diff[jj + 7]
@@ -142,7 +140,6 @@ uint64_t compute8x8_satd_sse4(
     s10 = _mm_add_epi32(s10, s11);
     s10 = _mm_hadd_epi32(s10, s8);
     s10 = _mm_hadd_epi32(s10, s8);
-
 
     //m2[1][i] = m1[0][i] - m1[1][i]
     //m2[1][i] = m3[0][i] + m3[2][i] -(m3[1][i] + m3[3][i])
@@ -283,7 +280,6 @@ uint64_t compute8x8_satd_u8_sse4(
         m2[j][0] = _mm_extract_epi16(s1, 0);
         m2[j + 1][0] = _mm_extract_epi16(s1, 2);
 
-
         //m2[j][1]
         //diff[jj] + diff[jj + 4] + diff[jj + 2] + diff[jj + 6] - diff[jj + 1] - diff[jj + 5] - diff[jj + 3] - diff[jj + 7]
         //diff[jj] - diff[jj + 1] + diff[jj + 2] - diff[jj + 3] + diff[jj + 4] - diff[jj + 5] + diff[jj + 6] - diff[jj + 7]
@@ -388,7 +384,6 @@ uint64_t compute8x8_satd_u8_sse4(
     s10 = _mm_hadd_epi32(s10, s8);
     s10 = _mm_hadd_epi32(s10, s8);
 
-
     //m2[1][i] = m1[0][i] - m1[1][i]
     //m2[1][i] = m3[0][i] + m3[2][i] -(m3[1][i] + m3[3][i])
     //m2[1][i] = m2[0][i] + m2[4][i] + m2[2][i] + m2[6][i] -(m2[1][i] + m2[5][i] + m2[3][i] + m2[7][i])
@@ -491,131 +486,3 @@ uint64_t compute8x8_satd_u8_sse4(
 
     return satdBlock8x8;
 }
-
-uint64_t spatial_full_distortion_kernel4x4_ssse3_intrin(
-    uint8_t   *input,
-    uint32_t   input_stride,
-    uint8_t   *recon,
-    uint32_t   recon_stride,
-    uint32_t   area_width,
-    uint32_t   area_height)
-{
-    uint64_t  spatialDistortion = 0;
-    int32_t row_count;
-    __m128i sum = _mm_setzero_si128();
-
-    row_count = 4;
-    do
-    {
-        __m128i x0;
-        __m128i y0;
-        x0 = _mm_setr_epi32(*((uint32_t *)input), 0, 0, 0);
-        y0 = _mm_setr_epi32(*((uint32_t *)recon), 0, 0, 0);
-        input += input_stride;
-        recon += recon_stride;
-        x0 = _mm_sub_epi8(x0, y0);
-        x0 = _mm_sign_epi8(x0, x0);
-        x0 = _mm_unpacklo_epi8(x0, _mm_setzero_si128());
-        x0 = _mm_madd_epi16(x0, x0);
-        sum = _mm_add_epi32(sum, x0);
-    } while (--row_count);
-
-    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0xe1)); // 11100001
-    spatialDistortion = _mm_extract_epi32(sum, 0);
-
-    (void)area_width;
-    (void)area_height;
-    return spatialDistortion;
-
-};
-
-uint64_t spatial_full_distortion_kernel8x8_ssse3_intrin(
-    uint8_t   *input,
-    uint32_t   input_stride,
-    uint8_t   *recon,
-    uint32_t   recon_stride,
-    uint32_t   area_width,
-    uint32_t   area_height)
-{
-    uint64_t  spatialDistortion = 0;
-    int32_t row_count;
-    __m128i sum = _mm_setzero_si128();
-
-    row_count = 8;
-    do
-    {
-        __m128i x0;
-        __m128i y0;
-        x0 = _mm_loadl_epi64/*_mm_loadu_si128*/((__m128i *)(input + 0x00));
-        y0 = _mm_loadl_epi64((__m128i *)(recon + 0x00));
-        input += input_stride;
-        recon += recon_stride;
-        x0 = _mm_sub_epi8(x0, y0);
-        x0 = _mm_sign_epi8(x0, x0);
-        x0 = _mm_unpacklo_epi8(x0, _mm_setzero_si128());
-        x0 = _mm_madd_epi16(x0, x0);
-        sum = _mm_add_epi32(sum, x0);
-    } while (--row_count);
-
-    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4e)); // 01001110
-    sum = _mm_unpacklo_epi32(sum, sum);
-    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4e)); // 01001110
-    spatialDistortion = _mm_extract_epi32(sum, 0);
-
-    (void)area_width;
-    (void)area_height;
-    return spatialDistortion;
-
-};
-
-uint64_t spatial_full_distortion_kernel16_mx_n_ssse3_intrin(
-    uint8_t   *input,
-    uint32_t   input_stride,
-    uint8_t   *recon,
-    uint32_t   recon_stride,
-    uint32_t   area_width,
-    uint32_t   area_height)
-{
-    uint64_t  spatialDistortion = 0;
-    int32_t row_count, colCount;
-    __m128i sum = _mm_setzero_si128();
-    __m128i x0, y0, x0_L, x0_H;
-
-    colCount = area_width;
-    do
-    {
-        uint8_t *coeffTemp = input;
-        uint8_t *reconCoeffTemp = recon;
-
-        row_count = area_height;
-        do
-        {
-            x0 = _mm_loadu_si128((__m128i *)(coeffTemp + 0x00));
-            y0 = _mm_loadu_si128((__m128i *)(reconCoeffTemp + 0x00));
-            coeffTemp += input_stride;
-            reconCoeffTemp += recon_stride;
-            x0 = _mm_sub_epi8(x0, y0);
-            x0 = _mm_sign_epi8(x0, x0);
-
-            x0_L = _mm_unpacklo_epi8(x0, _mm_setzero_si128());
-            x0_H = _mm_unpackhi_epi8(x0, _mm_setzero_si128());
-
-            x0_L = _mm_madd_epi16(x0_L, x0_L);
-            x0_H = _mm_madd_epi16(x0_H, x0_H);
-
-            sum = _mm_add_epi32(sum, _mm_add_epi32(x0_L, x0_H));
-        } while (--row_count);
-
-        input += 16;
-        recon += 16;
-        colCount -= 16;
-    } while (colCount > 0);
-
-    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4e)); // 01001110
-    sum = _mm_unpacklo_epi32(sum, sum);
-    sum = _mm_add_epi32(sum, _mm_shuffle_epi32(sum, 0x4e)); // 01001110
-    spatialDistortion = _mm_extract_epi32(sum, 0);
-
-    return spatialDistortion;
-
-};

@@ -139,6 +139,12 @@ static const vector<uint32_t> invalid_hierarchical_levels = {
  * reference picture list 0 and the reference picture list 1 will contain the
  * same reference picture.
  *
+ * Following values are supported and defined in EbDefinitions.h
+ * #define EB_PRED_LOW_DELAY_P     0
+ * #define EB_PRED_LOW_DELAY_B     1
+ * #define EB_PRED_RANDOM_ACCESS   2
+ * #define EB_PRED_TOTAL_COUNT     3
+
  * In Random Access structure, the B/b pictures can refer to reference pictures
  * from both directions (past and future).
  *
@@ -147,16 +153,7 @@ static const vector<uint8_t> default_pred_structure = {
     2,
 };
 static const vector<uint8_t> valid_pred_structure = {
-    0,
-    1,
-    2,
-    3,
-    4,
-    10,
-    32,
-    100,
-    255,
-};
+    EB_PRED_LOW_DELAY_P, EB_PRED_LOW_DELAY_B, EB_PRED_RANDOM_ACCESS};
 static const vector<uint8_t> invalid_pred_structure = {
     // TODO: check for the invalid param ...
 };
@@ -383,10 +380,6 @@ static const vector<uint32_t> default_super_block_size = {
     128,
 };
 static const vector<uint32_t> valid_super_block_size = {
-    4,
-    8,
-    16,
-    32,
     64,
     MAX_SB_SIZE,
 };

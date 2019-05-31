@@ -10,7 +10,6 @@
 #include "EbDefinitions.h"
 #include "EbUtility.h"
 
-
 /**************************************
  * Rate Control Defines
  **************************************/
@@ -33,14 +32,14 @@
 #endif
 
  /**************************************
-  * The EB_BitFraction is used to define the bit fraction numbers
+  * The EbBitFraction is used to define the bit fraction numbers
   **************************************/
 typedef uint16_t EbBitNumber;
 
 /**************************************
  * Initial Rate Control Structure
  **************************************/
-typedef struct InitialRateControlTables 
+typedef struct InitialRateControlTables
 {
 #if RC
     EbBitNumber  sad_bits_array[MAX_TEMPORAL_LAYERS][NUMBER_OF_SAD_INTERVALS];
@@ -67,7 +66,5 @@ static const uint8_t ref_qp_list_table[] =
 extern EbErrorType rate_control_tables_ctor(
     RateControlTables *rate_control_tables_array
 );
-
-
 
 #endif //EbRateControlTables_h

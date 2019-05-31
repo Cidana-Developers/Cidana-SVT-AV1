@@ -36,7 +36,7 @@ void av1_jnt_convolve_x_avx2(const uint8_t *src, int32_t src_stride, uint8_t *ds
     InterpFilterParams *filter_params_y,
     const int32_t subpel_x_q4, const int32_t subpel_y_q4,
     ConvolveParams *conv_params) {
-    CONV_BUF_TYPE *dst = conv_params->dst;
+    ConvBufType *dst = conv_params->dst;
     int32_t dst_stride = conv_params->dst_stride;
     const int32_t bd = 8;
     int32_t i, j;
@@ -74,7 +74,7 @@ void av1_jnt_convolve_x_avx2(const uint8_t *src, int32_t src_stride, uint8_t *ds
 
     for (i = 0; i < h; i += 2) {
         const uint8_t *src_data = src_ptr + i * src_stride;
-        CONV_BUF_TYPE *dst_data = dst + i * dst_stride;
+        ConvBufType *dst_data = dst + i * dst_stride;
         for (j = 0; j < w; j += 8) {
             const __m256i data =
                 load_line2_avx2(&src_data[j], &src_data[j + src_stride]);
@@ -131,7 +131,7 @@ void av1_jnt_convolve_y_avx2(const uint8_t *src, int32_t src_stride, uint8_t *ds
     InterpFilterParams *filter_params_y,
     const int32_t subpel_x_q4, const int32_t subpel_y_q4,
     ConvolveParams *conv_params) {
-    CONV_BUF_TYPE *dst = conv_params->dst;
+    ConvBufType *dst = conv_params->dst;
     int32_t dst_stride = conv_params->dst_stride;
     const int32_t bd = 8;
     int32_t i, j;
@@ -312,7 +312,6 @@ void av1_jnt_convolve_y_avx2(const uint8_t *src, int32_t src_stride, uint8_t *ds
                     _mm_storeu_si128((__m128i *)(&dst0[i * dst_stride0 + j]), res_0);
                     _mm_storeu_si128(
                         (__m128i *)((&dst0[i * dst_stride0 + j + dst_stride0])), res_1);
-
                 }
                 else {
                     const __m128i res_lo_0 = _mm256_castsi256_si128(res_lo_unsigned);
@@ -347,7 +346,7 @@ void av1_jnt_convolve_2d_avx2(const uint8_t *src, int32_t src_stride, uint8_t *d
     InterpFilterParams *filter_params_y,
     const int32_t subpel_x_q4, const int32_t subpel_y_q4,
     ConvolveParams *conv_params) {
-    CONV_BUF_TYPE *dst = conv_params->dst;
+    ConvBufType *dst = conv_params->dst;
     int32_t dst_stride = conv_params->dst_stride;
     const int32_t bd = 8;
 
@@ -501,7 +500,6 @@ void av1_jnt_convolve_2d_avx2(const uint8_t *src, int32_t src_stride, uint8_t *d
                             _mm_cvtsi128_si32(res_0);
                         *(uint32_t *)(&dst0[i * dst_stride0 + j + dst_stride0]) =
                             _mm_cvtsi128_si32(res_1);
-
                     }
                     else {
                         const __m128i res_0 = _mm256_castsi256_si128(res_unsigned);
@@ -532,7 +530,7 @@ void av1_jnt_convolve_2d_copy_avx2(const uint8_t *src, int32_t src_stride,
     const int32_t subpel_x_q4, const int32_t subpel_y_q4,
     ConvolveParams *conv_params) {
     const int32_t bd = 8;
-    CONV_BUF_TYPE *dst = conv_params->dst;
+    ConvBufType *dst = conv_params->dst;
     int32_t dst_stride = conv_params->dst_stride;
     (void)filter_params_x;
     (void)filter_params_y;

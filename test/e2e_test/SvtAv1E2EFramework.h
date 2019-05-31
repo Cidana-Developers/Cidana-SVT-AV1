@@ -103,9 +103,9 @@ class SvtAv1E2ETestFramework
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
     static void trans_src_param(const VideoSource *source,
                                 EbSvtAv1EncConfiguration &config);
-    /** get reconstruction frame from encoder, it should call after send data
+    /** get reconstructed frame from encoder, it should call after send data
      * @param ctxt  context of encoder
-     * @param recon  video frame queue of reconstruction
+     * @param recon  video frame queue of reconstructed
      * @param is_eos  flag of recon frames is eos
      * into decoder */
     static void get_recon_frame(const SvtAv1Context &ctxt, FrameQueue *recon,
@@ -137,7 +137,7 @@ class SvtAv1E2ETestFramework
     SvtAv1Context av1enc_ctx_; /**< AV1 encoder context */
     uint32_t start_pos_;       /**< start position of video frame */
     uint32_t frames_to_test_;  /**< frame count for this test */
-    FrameQueue *recon_queue_;  /**< reconstruction frame collection */
+    FrameQueue *recon_queue_;  /**< reconstructed frame collection */
     RefDecoder *refer_dec_;    /**< reference decoder context */
     IvfFile *output_file_;     /**< file handle for save encoder output data */
     uint8_t obu_frame_header_size_; /**< size of obu frame header */

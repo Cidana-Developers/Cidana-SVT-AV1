@@ -46,7 +46,7 @@ void cfl_predict_lbd_avx2(const int16_t *pred_buf_q3,
         int32_t bit_depth,
         int32_t width,
         int32_t height) {
-
+    (void) bit_depth;
     if (width <= 16)
     {
         const __m128i alpha_sign = _mm_set1_epi16(alpha_q3);
@@ -134,12 +134,10 @@ void cfl_predict_hbd_avx2(
         do {
             __m128i res = predict_unclipped_ssse3(row, alpha_q12, alpha_sign, dc_q0);
             res = highbd_clamp_epi16_ssse3(res, zeros, max);
-            if (width == 4) {
+            if (width == 4)
                 _mm_storel_epi64((__m128i *)dst, res);
-            }
-            else {
+            else
                 _mm_storeu_si128((__m128i *)dst, res);
-            }
             dst += dst_stride;
         } while ((row += CFL_BUF_LINE_I128) < row_end);
     }
@@ -169,7 +167,6 @@ void cfl_predict_hbd_avx2(
         } while ((row += CFL_BUF_LINE_I256) < row_end);
     }
 }
-
 
 // Returns a vector where all the (32-bits) elements are the sum of all the
 // lanes in a.
@@ -221,10 +218,8 @@ static INLINE __m256i _mm256_addl_epi16(__m256i a) {
                     _mm_unpacklo_epi16(l1, zeros)));
             }
             else {
-                if (width == 8) {
-                    l0 = _mm_add_epi16(_mm_loadu_si128(src),
+                l0 = _mm_add_epi16(_mm_loadu_si128(src),
                         _mm_loadu_si128(src + CFL_BUF_LINE_I128));
-                }
                 sum = _mm_add_epi32(sum, _mm_add_epi32(_mm_unpacklo_epi16(l0, zeros),
                     _mm_unpackhi_epi16(l0, zeros)));
             }
@@ -240,9 +235,8 @@ static INLINE __m256i _mm256_addl_epi16(__m256i a) {
         src = (__m128i *)pred_buf_q3;
         __m128i *dst = (__m128i *)pred_buf_q3;
         do {
-            if (width == 4) {
+            if (width == 4)
                 _mm_storel_epi64(dst, _mm_sub_epi16(_mm_loadl_epi64(src), avg_epi16));
-            }
             else {
                 _mm_storeu_si128(dst, _mm_sub_epi16(_mm_loadu_si128(src), avg_epi16));
                 if (width > 8) {

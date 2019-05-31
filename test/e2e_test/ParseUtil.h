@@ -89,7 +89,7 @@ typedef struct SequenceHeader {
     uint8_t tier[MAX_NUM_OPERATING_POINTS];  // seq_tier in the spec. One bit: 0
 
     /* profile and levels */
-    BITSTREAM_PROFILE profile;
+    BitstreamProfile profile;
     uint8_t seq_level_idx;
     unsigned int number_temporal_layers;
     unsigned int number_spatial_layers;
@@ -100,7 +100,7 @@ typedef struct SequenceHeader {
     int frame_height_bits;
     int max_frame_width;
     int max_frame_height;
-    block_size sb_size;  // Size of the superblock used for this frame
+    BlockSize sb_size;  // Size of the superblock used for this frame
     int mib_size;        // Size of the superblock in units of MI blocks
     int mib_size_log2;   // Log 2 of above.
 
@@ -219,7 +219,7 @@ typedef struct {
 #define OBU_MAX_LENGTH_FIELD_SIZE 8
 int aom_uleb_decode(const uint8_t *buffer, size_t available, uint64_t *value,
                     size_t *length);
-aom_codec_err_t read_obu_header(struct aom_read_bit_buffer *rb, int is_annexb,
+AomCodecErr read_obu_header(struct aom_read_bit_buffer *rb, int is_annexb,
                                 ObuHeader *header);
 uint32_t read_sequence_header_obu(SequenceHeader *seq_params,
                                   struct aom_read_bit_buffer *rb);

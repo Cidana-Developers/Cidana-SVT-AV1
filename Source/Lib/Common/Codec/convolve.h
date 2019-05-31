@@ -64,11 +64,11 @@ extern "C" {
         } InterpFilterParams;*/
         //--filter.h
 
-    //typedef uint16_t CONV_BUF_TYPE;
+    //typedef uint16_t ConvBufType;
     //typedef struct ConvolveParams {
     //  int32_t ref;
     //  int32_t do_average;
-    //  CONV_BUF_TYPE *dst;
+    //  ConvBufType *dst;
     //  int32_t dst_stride;
     //  int32_t round_0;
     //  int32_t round_1;
@@ -111,10 +111,9 @@ extern "C" {
     struct AV1Common;
     struct scale_factors;
 
-
     static INLINE ConvolveParams get_conv_params_no_round(int32_t ref, int32_t do_average,
         int32_t plane,
-        CONV_BUF_TYPE *dst,
+        ConvBufType *dst,
         int32_t dst_stride,
         int32_t is_compound, int32_t bd) {
         (void)plane;
@@ -176,12 +175,10 @@ extern "C" {
         int32_t scaled, ConvolveParams *conv_params,
         const struct scale_factors *sf, int32_t bd);
 
-
     static INLINE const int16_t *av1_get_interp_filter_subpel_kernel(
         const InterpFilterParams filter_params, const int32_t subpel) {
         return filter_params.filter_ptr + filter_params.taps * subpel;
     }
-
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -12,9 +12,7 @@
 #include "EbDefinitions.h"
 #include <immintrin.h>
 
-
 #include "aom_dsp_rtcd.h"
-
 
 #ifdef __GNUC__
 #define LIKELY(v) __builtin_expect(v, 1)
@@ -23,7 +21,6 @@
 #define LIKELY(v) (v)
 #define UNLIKELY(v) (v)
 #endif
-
 
  // Note:
  // TranHigh is the datatype used for intermediate transform stages.
@@ -38,9 +35,8 @@ static INLINE void init_one_qp(const __m128i *p, __m256i *qp) {
 
 static INLINE void update_qp(__m256i *qp) {
     int32_t i;
-    for (i = 0; i < 5; ++i) {
+    for (i = 0; i < 5; ++i)
         qp[i] = _mm256_permute2x128_si256(qp[i], qp[i], 0x11);
-    }
 }
 
 static INLINE void init_qp(const int16_t *zbin_ptr, const int16_t *round_ptr,
@@ -78,8 +74,8 @@ static INLINE void mm256_mul_shift_epi32(const __m256i *x, const __m256i *y,
 }
 
 static INLINE void quantize(const __m256i *qp, __m256i *c,
-    const int16_t *iscan_ptr, tran_low_t *qcoeff,
-    tran_low_t *dqcoeff, __m256i *eob) {
+    const int16_t *iscan_ptr, TranLow *qcoeff,
+    TranLow *dqcoeff, __m256i *eob) {
     const __m256i abs = _mm256_abs_epi32(*c);
     const __m256i flag1 = _mm256_cmpgt_epi32(abs, qp[0]);
     __m256i flag2 = _mm256_cmpeq_epi32(abs, qp[0]);
@@ -124,17 +120,16 @@ static INLINE void quantize(const __m256i *qp, __m256i *c,
     }
 }
 
-void aom_highbd_quantize_b_avx2(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
+void aom_highbd_quantize_b_avx2(const TranLow *coeff_ptr, intptr_t n_coeffs,
     int32_t skip_block, const int16_t *zbin_ptr,
     const int16_t *round_ptr,
     const int16_t *quant_ptr,
     const int16_t *quant_shift_ptr,
-    tran_low_t *qcoeff_ptr, tran_low_t *dqcoeff_ptr,
+    TranLow *qcoeff_ptr, TranLow *dqcoeff_ptr,
     const int16_t *dequant_ptr, uint16_t *eob_ptr,
     const int16_t *scan, const int16_t *iscan) {
     (void)scan;
     const uint32_t step = 8;
-
 
     if (LIKELY(!skip_block)) {
         __m256i qp[5], coeff;
@@ -225,8 +220,8 @@ static INLINE void mm256_mul_shift_epi32_64X64(const __m256i *x, const __m256i *
 }
 
 static INLINE void quantize_64X64(const __m256i *qp, __m256i *c,
-    const int16_t *iscan_ptr, tran_low_t *qcoeff,
-    tran_low_t *dqcoeff, __m256i *eob) {
+    const int16_t *iscan_ptr, TranLow *qcoeff,
+    TranLow *dqcoeff, __m256i *eob) {
     const __m256i abs = _mm256_abs_epi32(*c);
     const __m256i flag1 = _mm256_cmpgt_epi32(abs, qp[0]);
     __m256i flag2 = _mm256_cmpeq_epi32(abs, qp[0]);
@@ -272,17 +267,16 @@ static INLINE void quantize_64X64(const __m256i *qp, __m256i *c,
     }
 }
 
-void aom_highbd_quantize_b_64x64_avx2(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
+void aom_highbd_quantize_b_64x64_avx2(const TranLow *coeff_ptr, intptr_t n_coeffs,
     int32_t skip_block, const int16_t *zbin_ptr,
     const int16_t *round_ptr,
     const int16_t *quant_ptr,
     const int16_t *quant_shift_ptr,
-    tran_low_t *qcoeff_ptr, tran_low_t *dqcoeff_ptr,
+    TranLow *qcoeff_ptr, TranLow *dqcoeff_ptr,
     const int16_t *dequant_ptr, uint16_t *eob_ptr,
     const int16_t *scan, const int16_t *iscan) {
     (void)scan;
     const uint32_t step = 8;
-
 
     if (LIKELY(!skip_block)) {
         __m256i qp[5], coeff;
@@ -372,8 +366,8 @@ static INLINE void mm256_mul_shift_epi32_32x32(const __m256i *x, const __m256i *
 }
 
 static INLINE void quantize_32x32(const __m256i *qp, __m256i *c,
-    const int16_t *iscan_ptr, tran_low_t *qcoeff,
-    tran_low_t *dqcoeff, __m256i *eob) {
+    const int16_t *iscan_ptr, TranLow *qcoeff,
+    TranLow *dqcoeff, __m256i *eob) {
     const __m256i abs = _mm256_abs_epi32(*c);
     const __m256i flag1 = _mm256_cmpgt_epi32(abs, qp[0]);
     __m256i flag2 = _mm256_cmpeq_epi32(abs, qp[0]);
@@ -419,17 +413,16 @@ static INLINE void quantize_32x32(const __m256i *qp, __m256i *c,
     }
 }
 
-void aom_highbd_quantize_b_32x32_avx2(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
+void aom_highbd_quantize_b_32x32_avx2(const TranLow *coeff_ptr, intptr_t n_coeffs,
     int skip_block, const int16_t *zbin_ptr,
     const int16_t *round_ptr,
     const int16_t *quant_ptr,
     const int16_t *quant_shift_ptr,
-    tran_low_t *qcoeff_ptr, tran_low_t *dqcoeff_ptr,
+    TranLow *qcoeff_ptr, TranLow *dqcoeff_ptr,
     const int16_t *dequant_ptr, uint16_t *eob_ptr,
     const int16_t *scan, const int16_t *iscan) {
     (void)scan;
     const unsigned int step = 8;
-
 
     if (LIKELY(!skip_block)) {
         __m256i qp[5], coeff;

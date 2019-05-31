@@ -16,8 +16,6 @@
 #include "EbCodingUnit.h"
 #include "EbUtility.h"
 
-
-
 //#include "av1/encoder/block.h"
 //#include "aom_dsp/variance.h"
 
@@ -48,40 +46,48 @@ typedef struct search_site {
   int offset;
 } search_site;
 
-typedef struct search_site_config {
+typedef struct SearchSiteConfig {
   search_site ss[8 * MAX_MVSEARCH_STEPS + 1];
   int ss_count;
   int searches_per_step;
-} search_site_config;
+} SearchSiteConfig;
 
 typedef struct {
   MV coord;
   int coord_offset;
 } search_neighbors;
 
+typedef unsigned int(*aom_sad_fn_t)(const uint8_t *a, int a_stride,
+                                    const uint8_t *b, int b_stride);
 
-void av1_init_dsmotion_compensation(search_site_config *cfg, int stride);
-void av1_init3smotion_compensation(search_site_config *cfg, int stride);
+typedef unsigned int(*aom_variance_fn_t)(const uint8_t *a, int a_stride,
+                                         const uint8_t *b, int b_stride,
+                                         unsigned int *sse);
 
+typedef void(*aom_sad_multi_d_fn_t)(const uint8_t *a, int a_stride,
+                                    const uint8_t *const b_array[],
+                                    int b_stride, unsigned int *sad_array);
+
+typedef struct aom_variance_vtable {
+    aom_sad_fn_t sdf;
+    aom_variance_fn_t vf;
+    aom_sad_multi_d_fn_t sdx4df;
+} aom_variance_fn_ptr_t;
+
+void av1_init_dsmotion_compensation(SearchSiteConfig *cfg, int stride);
+void av1_init3smotion_compensation(SearchSiteConfig *cfg, int stride);
 void av1_set_mv_search_range(MvLimits *mv_limits, const MV *mv);
+struct Av1Comp;
+struct SpeedFeatures;
 
-#if 1 //---CHKN
-
-
-struct AV1_COMP;
-struct SPEED_FEATURES;
-
-
-int av1_full_pixel_search(struct PictureControlSet_s *pcs, IntraBcContext /*MACROBLOCK*/ *x,
-                          block_size bsize, MV *mvp_full, int step_param,
+int av1_full_pixel_search(struct PictureControlSet *pcs, IntraBcContext /*MACROBLOCK*/ *x,
+                          BlockSize bsize, MV *mvp_full, int step_param,
                           int method, int run_mesh_search, int error_per_bit,
                           int *cost_list, const MV *ref_mv, int var_max, int rd,
                           int x_pos, int y_pos, int intra);
-
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif//----CHKN
 #endif  // AOM_AV1_ENCODER_MCOMP_H_

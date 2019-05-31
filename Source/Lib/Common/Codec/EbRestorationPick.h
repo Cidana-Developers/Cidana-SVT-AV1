@@ -18,8 +18,8 @@ extern "C" {
 #include "EbDefinitions.h"
 #include "EbPictureBufferDesc.h"
 
-    struct yv12_buffer_config;
-    struct AV1_COMP;
+    struct Yv12BufferConfig;
+    struct Av1Comp;
 
     static const uint8_t g_shuffle_stats_data[16] = {
         0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8,
@@ -34,9 +34,8 @@ extern "C" {
         int32_t v_start, int32_t v_end, int32_t stride) {
         uint64_t sum = 0;
         for (int32_t i = v_start; i < v_end; i++) {
-            for (int32_t j = h_start; j < h_end; j++) {
+            for (int32_t j = h_start; j < h_end; j++)
                 sum += src[i * stride + j];
-            }
         }
         uint64_t avg = sum / ((v_end - v_start) * (h_end - h_start));
         return (uint8_t)avg;
@@ -47,9 +46,8 @@ extern "C" {
         int32_t stride) {
         uint64_t sum = 0;
         for (int32_t i = v_start; i < v_end; i++) {
-            for (int32_t j = h_start; j < h_end; j++) {
+            for (int32_t j = h_start; j < h_end; j++)
                 sum += src[i * stride + j];
-            }
         }
         uint64_t avg = sum / ((v_end - v_start) * (h_end - h_start));
         return (uint16_t)avg;

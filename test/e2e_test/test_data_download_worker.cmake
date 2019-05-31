@@ -8,14 +8,14 @@
 # License 1.0 was not distributed with this source code in the PATENTS file, you
 # can obtain it at www.aomedia.org/license/patent.
 #
-include("${SVT_AV1_ROOT}/test_data_util.cmake")
+include("${SVT_AV1_E2E_ROOT}/test_data_util.cmake")
 
 # https://github.com/cheshirekow/cmake_format/issues/34
 # cmake-format: off
-if (NOT SVT_AV1_ROOT OR NOT SVT_AV1_TEST_FILE
+if (NOT SVT_AV1_E2E_ROOT OR NOT SVT_AV1_TEST_FILE
     OR NOT AVT_AV1_TEST_CHECKSUM)
   message(FATAL_ERROR
-          "SVT_AV1_ROOT, SVT_AV1_TEST_FILE and AVT_AV1_TEST_CHECKSUM must be
+          "SVT_AV1_E2E_ROOT, SVT_AV1_TEST_FILE and AVT_AV1_TEST_CHECKSUM must be
           defined.")
 endif ()
 # cmake-format: on
@@ -28,9 +28,9 @@ endif()
 
 if("${SVT_AV1_STORE_PATH}" STREQUAL "")
   message(WARNING
-            "Writing test data to ${SVT_AV1_ROOT}/../vectors/, set "
+            "Writing test data to ${SVT_AV1_E2E_ROOT}/../vectors/, set "
             "$SVT_AV1_TEST_VECTOR_PATH in your environment to avoid this warning.")
-  set(SVT_AV1_STORE_PATH "${SVT_AV1_ROOT}/../vectors/")
+  set(SVT_AV1_STORE_PATH "${SVT_AV1_E2E_ROOT}/../vectors/")
 endif()
 
 if(NOT EXISTS "${SVT_AV1_STORE_PATH}")

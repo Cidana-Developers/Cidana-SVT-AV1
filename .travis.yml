@@ -30,17 +30,19 @@ notifications:
 env:
   - build_type=release
 stages:
+  - name: style
   - name: test
+  - name: unittest
   - name: coveralls
-    if: branch = master
+    if: type != pull_request
   - name: valgrind
-    if: branch = master
+    if: type != pull_request
 before_install:
-  - "sudo chown -R travis: $HOME"
+  - "sudo chown -R travis: $HOME/.ccache"
   - export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig PATH="/usr/local/opt/ccache/libexec:$PATH"
   - cd $TRAVIS_BUILD_DIR
-  - wget -nc --no-check-certificate https://media.xiph.org/video/derf/y4m/akiyo_cif.y4m
-  - wget -nc --no-check-certificate https://media.xiph.org/video/derf/y4m/bus_cif.y4m
+  - wget -nc https://raw.githubusercontent.com/OpenVisualCloud/SVT-AV1-Resources/master/video.tar.gz || wget -nc http://randomderp.com/video.tar.gz
+  - tar xf video.tar.gz
   - mkdir -p $TRAVIS_BUILD_DIR/Build/linux/$build_type
 install:
   - pip install --user cpp-coveralls
@@ -72,19 +74,50 @@ script:
   - *base_script
   - SvtAv1EncApp -enc-mode 8 -w 720 -h 486 -fps 60 -i akiyo_cif.y4m -n 150 -b test1.ivf
 before_cache:
-  - "sudo chown -R travis: $HOME"
+  - "sudo chown -R travis: $HOME/.ccache"
 matrix:
   fast_finish: true
   allow_failures:
+    - stage: style   ### REMOVE ASAP ###
     - name: Valgrind
     - env: COVERALLS_PARALLEL=true build_type=debug CMAKE_EFLAGS="-DCOVERAGE=ON"
+    - name: Unit Tests Linux+gcc
+    - name: Unit Tests osx+clang
     # Exclude these because if the encoder can run with a release build, the commit is probably fine. Also required for fast_finish.
   exclude:
     - os: osx
       compiler: gcc # gcc = clang in macOS, unecessary duplicate
   include:
+    # Coding style check
+    - name: Style check
+      stage: style
+      addons: skip
+      before_install: skip
+      install: skip
+      script:
+        - git grep -I -n -P "\t|\r| $" -- . ':(exclude)third_party/**/*' && exit 1
+        - git grep -I -l -z "" -- . ':(exclude)third_party/**/*' | while IFS= read -r -d '' i; do
+              if [ -n "$(tail -c 1 "$i")" ]; then
+                  echo "No newline at end of $i";
+                  exit 1;
+              fi;
+          done
+        - git remote rm upstream 2> /dev/null || true
+        - git remote add upstream https://github.com/OpenVisualCloud/SVT-AV1.git
+        - git fetch -q upstream master
+        - for i in $(git rev-list HEAD ^upstream/master); do
+              echo "Checking commit message of $i";
+              msg="$(git log --format=%B -n 1 $i)";
+              if [ -n "$(echo "$msg" | awk "NR==2")" ]; then
+                  echo "Malformed commit message in $i, second line must be empty";
+                  exit 1;
+              fi;
+              if echo "$msg" | head -1 | grep -q '\.$'; then
+                  echo "Malformed commit message in $i, trailing period in subject line";
+                  exit 1;
+              fi;
+          done
     # FFmpeg interation build
-    # Might be unnecessary since it will be covered in debug builds. I'll leave it for reference.
     - name: FFmpeg patch
       stage: test
       compiler: gcc
@@ -137,3 +170,29 @@ matrix:
       script:
         - *base_script
         - valgrind -- SvtAv1EncApp -enc-mode 8 -w 720 -h 486 -fps 60 -i akiyo_cif.y4m -n 150 -b test1.ivf
+    - name: Unit Tests Linux+gcc
+      stage: unittest
+      os: linux
+      compiler: gcc
+      env: build_type=debug CMAKE_EFLAGS="-DBUILD_TESTING=ON" SVT_AV1_TEST_VECTOR_PATH=$TRAVIS_BUILD_DIR/test/vectors/
+      script:
+        - *base_script
+        - cd $TRAVIS_BUILD_DIR/Build/linux/$build_type
+        - make TestVectors
+        - cd $TRAVIS_BUILD_DIR
+        - SvtAv1UnitTests
+        - SvtAv1ApiTests
+        - SvtAv1E2ETests
+    - name: Unit Tests osx+clang
+      stage: unittest
+      os: osx
+      compiler: clang
+      env: build_type=debug CMAKE_EFLAGS="-DBUILD_TESTING=ON" SVT_AV1_TEST_VECTOR_PATH=$TRAVIS_BUILD_DIR/test/vectors/
+      script:
+        - *base_script
+        - cd $TRAVIS_BUILD_DIR/Build/linux/$build_type
+        - make TestVectors
+        - cd $TRAVIS_BUILD_DIR
+        - SvtAv1UnitTests
+        - SvtAv1ApiTests
+        - SvtAv1E2ETests

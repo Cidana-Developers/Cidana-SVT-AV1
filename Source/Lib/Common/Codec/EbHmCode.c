@@ -3,7 +3,7 @@
 * and contributor rights, including patent rights, and no such rights are
 * granted under this license.
 *
-* Copyright © 2010-2014, ITU/ISO/IEC
+* Copyright  2010-2014, ITU/ISO/IEC
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -35,10 +35,10 @@
 #include "EbUtility.h"
 
 /*******************************************
-* Compute4x4Satd
+* compute4x4_satd
 *   returns 4x4 Sum of Absolute Transformed Differences
 *******************************************/
-uint64_t Compute4x4Satd(
+uint64_t compute4x4_satd(
     int16_t *diff)       // input parameter, diff samples Ptr
 {
     uint64_t satdBlock4x4 = 0;
@@ -114,17 +114,14 @@ uint64_t Compute4x4Satd(
     d[14] = m[14] + m[15];
     d[15] = m[15] - m[14];
 
-    for (k = 0; k < 16; ++k) {
+    for (k = 0; k < 16; ++k)
         satdBlock4x4 += ABS(d[k]);
-    }
-
     satdBlock4x4 = ((satdBlock4x4 + 1) >> 1);
 
     return satdBlock4x4;
 }
 
-
-uint64_t Compute4x4Satd_U8(
+uint64_t compute4x4_satd_u8(
     uint8_t *src,       // input parameter, diff samples Ptr
     uint64_t *dc_value,
     uint32_t  src_stride)
@@ -202,13 +199,9 @@ uint64_t Compute4x4Satd_U8(
     d[14] = m[14] + m[15];
     d[15] = m[15] - m[14];
 
-    for (k = 0; k < 16; ++k) {
+    for (k = 0; k < 16; ++k)
         satdBlock4x4 += ABS(d[k]);
-    }
-
     satdBlock4x4 = ((satdBlock4x4 + 1) >> 1);
     *dc_value += d[0];
     return satdBlock4x4;
 }
-
-

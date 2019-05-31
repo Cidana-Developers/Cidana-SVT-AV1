@@ -12,15 +12,18 @@
 /**************************************
  * Process Results
  **************************************/
-typedef struct PictureDecisionResults_s
+typedef struct PictureDecisionResults
 {
     EbObjectWrapper   *picture_control_set_wrapper_ptr;
     uint32_t               segment_index;
-} PictureDecisionResults_t;
+#if ALTREF_FILTERING_SUPPORT
+    uint8_t           task_type; //0:ME   1:Temporal Filtering
+#endif
+} PictureDecisionResults;
 
-typedef struct PictureDecisionResultInitData_s {
+typedef struct PictureDecisionResultInitData {
     int32_t junk;
-} PictureDecisionResultInitData_t;
+} PictureDecisionResultInitData;
 
 /**************************************
  * Extern Function Declarations
@@ -28,6 +31,5 @@ typedef struct PictureDecisionResultInitData_s {
 extern EbErrorType picture_decision_result_ctor(
     EbPtr *object_dbl_ptr,
     EbPtr  object_init_data_ptr);
-
 
 #endif //EbPictureDecisionResults_h

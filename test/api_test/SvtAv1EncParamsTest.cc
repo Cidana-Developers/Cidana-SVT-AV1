@@ -28,7 +28,7 @@ namespace {
  * Feed default values, vaild values and invalid values of individual param
  * to the encoder and check if encoder return correctly.
  *
- * Expect result:
+ * Expected result:
  * For default value and valid values, encoder should return EB_ErrorNone.
  * For invalid value, encoder should return EB_ErrorBadParameter.
  *

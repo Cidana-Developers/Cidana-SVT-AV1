@@ -14,6 +14,13 @@ extern "C" {
     /****************************
      * UTILITY FUNCTIONS
      ****************************/
+#if RED_CU
+    typedef struct BlockList_s
+    {
+        uint8_t  list_size;
+        uint16_t blk_mds_table[3]; //stores a max of 3 redundant blocks
+    }BlockList_t;
+#endif
 
     void build_blk_geom();
     typedef struct BlockGeom
@@ -22,21 +29,40 @@ extern "C" {
         PART       shape;                       // P_N..P_V4 . P_S is not used.
         uint8_t    origin_x;                    // orgin x from topleft of sb
         uint8_t    origin_y;                    // orgin x from topleft of sb
-                   
+
         uint8_t    d1i;                         // index of the block in d1 dimension 0..24  (0 is parent square, 1 top half of H , ...., 24:last quarter of V4)
         uint16_t   sqi_mds;                     // index of the parent square in md  scan.
         uint8_t    totns;                       // max number of ns blocks within one partition 1..4 (N:1,H:2,V:2,HA:3,HB:3,VA:3,VB:3,H4:4,V4:4)
         uint8_t    nsi;                         // non square index within a partition  0..totns-1
-                   
-                   
+#if RED_CU
+        uint8_t        similar;                 // 1: means that this block is similar (same shape/location) to another
+        uint8_t        quadi;                   // parent square is in which quadrant 0..3
+        uint8_t        redund;                  // 1: means that this block is redundant to another
+        BlockList_t    redund_list;             // the list where the block is redundant
+        BlockList_t    similar_list;
+#endif
+
         uint8_t    bwidth;                      // block width
         uint8_t    bheight;                     // block height
         uint8_t    bwidth_uv;                   // block width for Chroma 4:2:0
         uint8_t    bheight_uv;                  // block height for Chroma 4:2:0
         uint8_t    bwidth_log2;                 // block width log2
         uint8_t    bheight_log2;                // block height log2
-        block_size bsize;                       // bloc size
-        block_size bsize_uv;                    // bloc size for Chroma 4:2:0
+        BlockSize bsize;                       // bloc size
+        BlockSize bsize_uv;                    // bloc size for Chroma 4:2:0
+#if ATB_SUPPORT
+        uint16_t   txb_count[MAX_VARTX_DEPTH + 1];                   //4-2-1
+        TxSize     txsize[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];
+        TxSize     txsize_uv[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];
+        uint16_t   tx_org_x[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];     //orgin is SB
+        uint16_t   tx_org_y[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];     //origin is SB
+        uint16_t   tx_boff_x[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];    //block offset , origin is block
+        uint16_t   tx_boff_y[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];    //block offset , origin is block
+        uint8_t    tx_width[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];     //tx_size_wide
+        uint8_t    tx_height[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];    //tx_size_wide
+        uint8_t    tx_width_uv[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT];  //tx_size_wide
+        uint8_t    tx_height_uv[MAX_VARTX_DEPTH + 1][MAX_TXB_COUNT]; //tx_size_wide
+#else
         uint16_t   txb_count;                   //4-2-1
         TxSize     txsize[MAX_TXB_COUNT];
         TxSize     txsize_uv[MAX_TXB_COUNT];
@@ -48,44 +74,42 @@ extern "C" {
         uint8_t    tx_height[MAX_TXB_COUNT];    //tx_size_wide
         uint8_t    tx_width_uv[MAX_TXB_COUNT];  //tx_size_wide
         uint8_t    tx_height_uv[MAX_TXB_COUNT]; //tx_size_wide
-                   
-                   
+#endif
+
         uint16_t   blkidx_mds;                  // block index in md scan
         uint16_t   blkidx_dps;                  // block index in depth scan
         int32_t    has_uv;
         int32_t    sq_size;
         int32_t    is_last_quadrant;            // only for square bloks, is this the fourth quadrant block?
-
-
     } BlockGeom;
 
-    static const block_size ss_size_lookup[BlockSizeS_ALL][2][2] = {
+    static const BlockSize ss_size_lookup[BlockSizeS_ALL][2][2] = {
         //  ss_x == 0    ss_x == 0        ss_x == 1      ss_x == 1
         //  ss_y == 0    ss_y == 1        ss_y == 0      ss_y == 1
         { { BLOCK_4X4, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
-        { { BLOCK_4X8, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
-        { { BLOCK_8X4, BLOCK_4X4 }, { BLOCK_4X4, BLOCK_4X4 } },
+        { { BLOCK_4X8, BLOCK_4X4 }, { BLOCK_INVALID, BLOCK_4X4 } },
+        { { BLOCK_8X4, BLOCK_INVALID}, { BLOCK_4X4, BLOCK_4X4 } },
         { { BLOCK_8X8, BLOCK_8X4 }, { BLOCK_4X8, BLOCK_4X4 } },
-        { { BLOCK_8X16, BLOCK_8X8 }, { BLOCK_4X16, BLOCK_4X8 } },
-        { { BLOCK_16X8, BLOCK_16X4 }, { BLOCK_8X8, BLOCK_8X4 } },
+        { { BLOCK_8X16, BLOCK_8X8 }, { BLOCK_INVALID, BLOCK_4X8 } },
+        { { BLOCK_16X8, BLOCK_INVALID}, { BLOCK_8X8, BLOCK_8X4 } },
         { { BLOCK_16X16, BLOCK_16X8 }, { BLOCK_8X16, BLOCK_8X8 } },
-        { { BLOCK_16X32, BLOCK_16X16 }, { BLOCK_8X32, BLOCK_8X16 } },
-        { { BLOCK_32X16, BLOCK_32X8 }, { BLOCK_16X16, BLOCK_16X8 } },
+        { { BLOCK_16X32, BLOCK_16X16 }, { BLOCK_INVALID, BLOCK_8X16 } },
+        { { BLOCK_32X16, BLOCK_INVALID}, { BLOCK_16X16, BLOCK_16X8 } },
         { { BLOCK_32X32, BLOCK_32X16 }, { BLOCK_16X32, BLOCK_16X16 } },
-        { { BLOCK_32X64, BLOCK_32X32 }, { BLOCK_16X64, BLOCK_16X32 } },
-        { { BLOCK_64X32, BLOCK_64X16 }, { BLOCK_32X32, BLOCK_32X16 } },
+        { { BLOCK_32X64, BLOCK_32X32 }, { BLOCK_INVALID, BLOCK_16X32 } },
+        { { BLOCK_64X32, BLOCK_INVALID}, { BLOCK_32X32, BLOCK_32X16 } },
         { { BLOCK_64X64, BLOCK_64X32 }, { BLOCK_32X64, BLOCK_32X32 } },
         { { BLOCK_64X128, BLOCK_64X64 }, { BLOCK_INVALID, BLOCK_32X64 } },
         { { BLOCK_128X64, BLOCK_INVALID }, { BLOCK_64X64, BLOCK_64X32 } },
         { { BLOCK_128X128, BLOCK_128X64 }, { BLOCK_64X128, BLOCK_64X64 } },
-        { { BLOCK_4X16, BLOCK_4X8 }, { BLOCK_4X16, BLOCK_4X8 } },
-        { { BLOCK_16X4, BLOCK_16X4 }, { BLOCK_8X4, BLOCK_8X4 } },
+        { { BLOCK_4X16, BLOCK_4X8 }, { BLOCK_INVALID, BLOCK_4X8 } },
+        { { BLOCK_16X4, BLOCK_INVALID}, { BLOCK_8X4, BLOCK_8X4 } },
         { { BLOCK_8X32, BLOCK_8X16 }, { BLOCK_INVALID, BLOCK_4X16 } },
         { { BLOCK_32X8, BLOCK_INVALID }, { BLOCK_16X8, BLOCK_16X4 } },
         { { BLOCK_16X64, BLOCK_16X32 }, { BLOCK_INVALID, BLOCK_8X32 } },
         { { BLOCK_64X16, BLOCK_INVALID }, { BLOCK_32X16, BLOCK_32X8 } }
     };
-    static INLINE block_size get_plane_block_size(block_size bsize,
+    static INLINE BlockSize get_plane_block_size(BlockSize bsize,
         int32_t subsampling_x,
         int32_t subsampling_y) {
         if (bsize == BLOCK_INVALID) return BLOCK_INVALID;
@@ -106,11 +130,7 @@ extern "C" {
         /*128x128*/{ 17 , 25,25,25, 5 ,1 }
     };
 
-
     const BlockGeom * get_blk_geom_mds(uint32_t bidx_mds);
-
-
-
 
     // CU Stats Helper Functions
     typedef struct CodedUnitStats
@@ -122,7 +142,6 @@ extern "C" {
         uint16_t  origin_y;
         uint8_t   cu_num_in_depth;
         uint8_t   parent32x32_index;
-
     } CodedUnitStats;
 
     // PU Stats Helper Functions
@@ -132,7 +151,6 @@ extern "C" {
         uint8_t  height;
         uint8_t  offset_x;
         uint8_t  offset_y;
-
     } PredictionUnitStats;
 
     // TU Stats Helper Functions
@@ -141,7 +159,6 @@ extern "C" {
         uint8_t  depth;
         uint8_t  offset_x;
         uint8_t  offset_y;
-
     } TransformUnitStats;
 
     extern uint64_t log2f_high_precision(uint64_t x, uint8_t precision);
@@ -187,7 +204,7 @@ extern "C" {
      //**************************************************
 #define MAX(x, y)                       ((x)>(y)?(x):(y))
 #define MIN(x, y)                       ((x)<(y)?(x):(y))
-#define MEDIAN(a,b,c)                   ((a)>(b)?(a)>©?(b)>©?(b):©:(a):(b)>©?(a)>©?(a):©:(b))
+#define MEDIAN(a,b,c)                   ((a)>(b)?(a)>?(b)>?(b)::(a):(b)>?(a)>?(a)::(b))
 #define CLIP3(min_val, max_val, a)        (((a)<(min_val)) ? (min_val) : (((a)>(max_val)) ? (max_val) :(a)))
 #define CLIP3EQ(min_val, max_val, a)        (((a)<=(min_val)) ? (min_val) : (((a)>=(max_val)) ? (max_val) :(a)))
 #define BITDEPTH_MIDRANGE_VALUE(precision)  (1 << ((precision) - 1))
@@ -260,7 +277,6 @@ extern "C" {
 #define MIN_SIGNED_VALUE       ~0 - ((signed) (~0u >> 1))
 #define MAX_SIGNED_VALUE       ((signed) (~0u >> 1))
 
-
 // Helper functions for EbLinkedListNode.
 
 // concatenate two linked list, and return the pointer to the new concatenated list
@@ -278,15 +294,14 @@ extern "C" {
 #define MIN_HIERARCHICAL_LEVEL         2
     static const uint32_t mini_gop_offset[4] = { 1, 3, 7, 31 };
 
-    typedef struct MiniGopStats_s
+    typedef struct MiniGopStats
     {
         uint32_t  hierarchical_levels;
         uint32_t  start_index;
         uint32_t  end_index;
         uint32_t  lenght;
-
-    } MiniGopStats_t;
-    extern const MiniGopStats_t* get_mini_gop_stats(const uint32_t miniGopIndex);
+    } MiniGopStats;
+    extern const MiniGopStats* get_mini_gop_stats(const uint32_t mini_gop_index);
     typedef enum MiniGopIndex {
         L6_INDEX = 0,
         L5_0_INDEX = 1,

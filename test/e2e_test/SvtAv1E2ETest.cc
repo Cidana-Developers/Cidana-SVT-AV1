@@ -24,10 +24,11 @@ using namespace svt_av1_e2e_test_vector;
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames
+ * frames.
  *
- * Expect result:
- * No error from encoding progress and output compressed data exist
+ * Expected result:
+ * No error is reported in encoding progress. The output compressed data
+ * is complete.
  *
  * Test coverage:
  * All test vectors
@@ -38,19 +39,20 @@ TEST_P(SvtAv1E2ESimpleTest, run_smoking_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
-                        ::testing::ValuesIn(video_src_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ESimpleTest,
+    ::testing::ValuesIn(generate_vector_from_config("video_src.cfg")));
 
 /**
  * @brief SVT-AV1 encoder simple E2E test with save compressed data in file
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames. Save the compressed data into IVF file
+ * frames. Save the compressed data into IVF file.
  *
- * Expect result:
- * No error from encoding progress and output compressed data is saved into IVF
- * file
+ * Expected result:
+ * No error is reported in encoding progress. The output compressed data
+ * is saved into IVF file.
  *
  * Test coverage:
  * Smoking test vectors
@@ -68,100 +70,22 @@ TEST_P(SvtAv1E2ESimpleFileTest, run_smoking_with_output_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleFileTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ESimpleFileTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
- * @brief SVT-AV1 encoder E2E test with save the reconstruction frames in
- * file
+ * @brief SVT-AV1 encoder E2E test with comparing the reconstructed frame with
+ * output frame from decoder buffer list
  *
  * Test strategy:
  * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames. Save the reconstruction frame data in file
+ * frames. Collect the reconstructed frames and compared them with reference
+ * decoder output.
  *
- * Expect result:
- * No error from encoding progress and reconstruction frame data saved in file.
- *
- * Test coverage:
- * Smoking test vectors
- */
-class SvtAv1E2EReconFileTest : public SvtAv1E2ETestFramework {
-  protected:
-    /** initialization for test */
-    void init_test() override {
-        // create recon sink before setup parameter of encoder
-        VideoFrameParam param;
-        memset(&param, 0, sizeof(param));
-        param.format = video_src_->get_image_format();
-        param.width = video_src_->get_width_with_padding();
-        param.height = video_src_->get_height_with_padding();
-        recon_queue_ = create_frame_queue(param, "enc_recon.rcs");
-        ASSERT_NE(recon_queue_, nullptr) << "can not create recon sink!!";
-        if (recon_queue_)
-            av1enc_ctx_.enc_params.recon_enabled = 1;
-        SvtAv1E2ETestFramework::init_test();
-    }
-};
-
-TEST_P(SvtAv1E2EReconFileTest, run_recon_collect_test) {
-    run_encode_process();
-}
-
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconFileTest,
-                        ::testing::ValuesIn(smoking_vectors));
-
-/**
- * @brief SVT-AV1 encoder E2E test with save the reconstruction frames in
- * buffer list
- *
- * Test strategy:
- * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames. Save the reconstruction frame data in buffer list
- *
- * Expect result:
- * No error from encoding progress and reconstruction frame data saved in
- * buffer.
- *
- * Test coverage:
- * Smoking test vectors
- */
-class SvtAv1E2EReconBufferTest : public SvtAv1E2ETestFramework {
-  protected:
-    /** initialization for test */
-    void init_test() override {
-        // create recon sink before setup parameter of encoder
-        VideoFrameParam param;
-        memset(&param, 0, sizeof(param));
-        param.format = video_src_->get_image_format();
-        param.width = video_src_->get_width_with_padding();
-        param.height = video_src_->get_height_with_padding();
-        recon_queue_ = create_frame_queue(param);
-        ASSERT_NE(recon_queue_, nullptr) << "can not create recon sink!!";
-        if (recon_queue_)
-            av1enc_ctx_.enc_params.recon_enabled = 1;
-        SvtAv1E2ETestFramework::init_test();
-    }
-};
-
-TEST_P(SvtAv1E2EReconBufferTest, run_recon_collect_test) {
-    run_encode_process();
-}
-
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
-                        ::testing::ValuesIn(smoking_vectors));
-
-/**
- * @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
- * output frames from decoder buffer list
- *
- * Test strategy:
- * Setup SVT-AV1 encoder with default parameter, and encode the input YUV data
- * frames. Collect the reconstruction frames and compared with reference decoder
- * output
- *
- * Expect result:
- * No error from encoding progress and reconstruction frame data is same as the
- * output frame from reference decoder
+ * Expected result:
+ * No error is reported in encoding progress. The reconstructed frame
+ * data is same as the output frame from reference decoder.
  *
  * Test coverage:
  * All test vectors
@@ -195,37 +119,6 @@ TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
-                        ::testing::ValuesIn(comformance_test_vectors));
-
-/**
- * @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
- * output frames from decoder buffer list in longtime (3000 frames)
- *
- * Test strategy:
- * Setup SVT-AV1 encoder with enc_mode 3, and encode the input YUV data
- * frames. Collect the reconstruction frames and compared with reference decoder
- * output
- *
- * Expect result:
- * No error from encoding progress and reconstruction frame data is same as the
- * output frame from reference decoder
- *
- * Test coverage:
- * Longtime test vectors
- */
-class SvtAv1E2ELongTimeConformanceTest : public SvtAv1E2EConformanceTest {
-  protected:
-    /** initialization for test */
-    void init_test() override {
-        av1enc_ctx_.enc_params.enc_mode = 3;
-        SvtAv1E2EConformanceTest::init_test();
-    }
-};
-
-TEST_P(SvtAv1E2ELongTimeConformanceTest, run_conformance_test) {
-    run_encode_process();
-}
-
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ELongTimeConformanceTest,
-                        ::testing::ValuesIn(longtime_comformance_test_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EConformanceTest,
+    ::testing::ValuesIn(generate_vector_from_config("conformance_test.cfg")));

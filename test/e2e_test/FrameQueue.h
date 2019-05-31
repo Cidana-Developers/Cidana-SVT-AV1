@@ -6,7 +6,7 @@
 /******************************************************************************
  * @file FrameQueue.h
  *
- * @brief Defines a queue to collect reconstruction frames
+ * @brief Defines a queue to collect reconstructed frames
  *
  ******************************************************************************/
 
@@ -121,7 +121,7 @@ class ICompareQueue {
     virtual bool flush_video() = 0;
 };
 
-/** Interface of create a queue of reconstruction video frame with video
+/** Interface of create a queue of reconstructed video frame with video
  * parameters and the file path to store
  * @param param  the parameter of video frame
  * @param file_path  the file path to store the containers
@@ -132,7 +132,7 @@ class ICompareQueue {
 FrameQueue* create_frame_queue(const VideoFrameParam& param,
                                const char* file_path);
 
-/** Interface of create a queue of reconstruction video frame with video
+/** Interface of create a queue of reconstructed video frame with video
  * parameters
  * @param param  the parameter of video frame
  * @return

@@ -20,6 +20,9 @@
 /** @defgroup svt_av1_e2e_test_vector Test vectors for E2E test
  *  Defines the test vectors of E2E test, with file-type, width, height and
  * file-path
+ *  *** You need to get test vectors before run e2e test, we use CMaked
+ * generated makefile to download test vectors, you can use 'make TestVectors'
+ * to download them.
  *  @{
  */
 namespace svt_av1_e2e_test_vector {
@@ -42,119 +45,81 @@ typedef std::tuple<std::string,      /**< file name */
                    uint32_t> /**< frames to test, (0) means full-frames*/
     TestVideoVector;
 
-static const TestVideoVector video_src_vectors[] = {
-    TestVideoVector{"park_joy_90p_8_420.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420,
-                    160,
-                    90,
-                    8,
-                    false,
-                    0,
-                    0},
-    TestVideoVector{"park_joy_90p_10_420.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420P10_PACKED,
-                    160,
-                    90,
-                    10,
-                    false,
-                    0,
-                    0},
-};
+/**
+ * @brief      Generate test vectors from config file.
+ *
+ * @param[in]  config_file  The configuration file name. It will read tihs file
+ * from path which defined by system envrionment SVT_AV1_TEST_VECTOR_PATH.
+ *
+ * @return     A std::vector of test vectors.
+ */
+static inline const std::vector<TestVideoVector> generate_vector_from_config(
+    const char* config_file) {
+    std::vector<TestVideoVector> values;
+    std::string cfg_fn =
+        svt_av1_video_source::VideoFileSource::get_vector_dir();
+    cfg_fn = cfg_fn + '/' + config_file;
 
-static const TestVideoVector comformance_test_vectors[] = {
-    TestVideoVector{"kirland_640_480_30.yuv",
-                    YUV_VIDEO_FILE,
-                    IMG_FMT_420,
-                    640,
-                    480,
-                    8,
-                    false,
-                    0,
-                    0},
-    TestVideoVector{"niklas_640_480_30.yuv",
-                    YUV_VIDEO_FILE,
-                    IMG_FMT_420,
-                    640,
-                    480,
-                    8,
-                    false,
-                    0,
-                    0},
-};
+    FILE* file_handle = fopen(cfg_fn.c_str(), "rt");
+    if (file_handle != nullptr) {
+        char line[1024] = {0};
+        while (fgets(line, 1024, file_handle) != nullptr) {
+            if (line[0] == '#' || line[0] == '\r' ||
+                line[0] == '\n')  // skip comment line and empty line
+                continue;
+            char vector_fn[1024] = {0};
+            uint32_t y4m = 0;
+            TestVectorFormat file_type;
+            char color_fmt[10];
+            VideoColorFormat color_fmt_type;
+            uint32_t w;
+            uint32_t h;
+            uint32_t bit_depth;
+            uint32_t compressed_10bit;
+            uint32_t start_frame;
+            uint32_t frame_count;
 
-static const TestVideoVector smoking_vectors[] = {
-    TestVideoVector{"park_joy_90p_8_420.y4m",
-                    Y4M_VIDEO_FILE,
-                    IMG_FMT_420,
-                    160,
-                    90,
-                    8,
-                    false,
-                    0,
-                    0},
-};
+            sscanf(line,
+                   "%s %d %s %d %d %d %d %d %d",
+                   vector_fn,
+                   &y4m,
+                   color_fmt,
+                   &w,
+                   &h,
+                   &bit_depth,
+                   &compressed_10bit,
+                   &start_frame,
+                   &frame_count);
 
-static const TestVideoVector partial_src_frame_vectors[] = {
-    TestVideoVector{"kirland_640_480_30.yuv",
-                    YUV_VIDEO_FILE,
-                    IMG_FMT_420,
-                    640,
-                    480,
-                    8,
-                    false,
-                    100,
-                    100},
-    TestVideoVector{"kirland_640_480_30.yuv",
-                    YUV_VIDEO_FILE,
-                    IMG_FMT_420,
-                    640,
-                    480,
-                    8,
-                    false,
-                    100,
-                    0},
-    TestVideoVector{"kirland_640_480_30.yuv",
-                    YUV_VIDEO_FILE,
-                    IMG_FMT_420,
-                    640,
-                    480,
-                    8,
-                    false,
-                    0,
-                    200},
-};
-
-static const TestVideoVector longtime_comformance_test_vectors[] = {
-    TestVideoVector{"kirland_640_480_30.yuv",
-                    YUV_VIDEO_FILE,
-                    IMG_FMT_420,
-                    1920,
-                    1080,
-                    8,
-                    false,
-                    0,
-                    3000},
-};
+            file_type = y4m ? Y4M_VIDEO_FILE : YUV_VIDEO_FILE;
+            if (strcmp(color_fmt, "420") == 0) {
+                color_fmt_type = IMG_FMT_420;
+            } else if (strcmp(color_fmt, "420p10") == 0) {
+                color_fmt_type = IMG_FMT_420P10_PACKED;
+            }
+            values.push_back(TestVideoVector(vector_fn,
+                                             file_type,
+                                             color_fmt_type,
+                                             w,
+                                             h,
+                                             bit_depth,
+                                             compressed_10bit,
+                                             start_frame,
+                                             frame_count));
+        }
+        fclose(file_handle);
+    }
+    return values;
+}
 
 /** MultiInstVector */
+
 typedef std::tuple<TestVideoVector, /**< video source */
                    uint32_t>        /**< instance number for test */
     MultiInstVector;
 
 static const MultiInstVector multi_inst_vectors[] = {
-    MultiInstVector{TestVideoVector{"kirland_640_480_30.yuv",
-                                    YUV_VIDEO_FILE,
-                                    IMG_FMT_420,
-                                    640,
-                                    480,
-                                    8,
-                                    false,
-                                    0,
-                                    0},
-
-                    3},
+    MultiInstVector{generate_vector_from_config("smoking_test.cfg").at(0), 3},
 };
 
 }  // namespace svt_av1_e2e_test_vector

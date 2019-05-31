@@ -21,7 +21,7 @@ extern "C" {
         uint32_t  out_stride,
         uint32_t  width,
         uint32_t  height);
-                 
+
     extern void compressed_packmsb_avx2_intrin(
         uint8_t  *in8_bit_buffer,
         uint32_t  in8_stride,
@@ -146,7 +146,53 @@ extern "C" {
         uint32_t  area_width,
         uint32_t  area_height);
 
+    uint64_t spatial_full_distortion_kernel4x_n_avx2_intrin(
+        uint8_t   *input,
+        uint32_t   input_stride,
+        uint8_t   *recon,
+        uint32_t   recon_stride,
+        uint32_t   area_width,
+        uint32_t   area_height);
 
+    uint64_t spatial_full_distortion_kernel8x_n_avx2_intrin(
+        uint8_t   *input,
+        uint32_t   input_stride,
+        uint8_t   *recon,
+        uint32_t   recon_stride,
+        uint32_t   area_width,
+        uint32_t   area_height);
+
+    uint64_t spatial_full_distortion_kernel16x_n_avx2_intrin(
+        uint8_t   *input,
+        uint32_t   input_stride,
+        uint8_t   *recon,
+        uint32_t   recon_stride,
+        uint32_t   area_width,
+        uint32_t   area_height);
+
+    uint64_t spatial_full_distortion_kernel32x_n_avx2_intrin(
+        uint8_t   *input,
+        uint32_t   input_stride,
+        uint8_t   *recon,
+        uint32_t   recon_stride,
+        uint32_t   area_width,
+        uint32_t   area_height);
+
+    uint64_t spatial_full_distortion_kernel64x_n_avx2_intrin(
+        uint8_t   *input,
+        uint32_t   input_stride,
+        uint8_t   *recon,
+        uint32_t   recon_stride,
+        uint32_t   area_width,
+        uint32_t   area_height);
+
+    uint64_t spatial_full_distortion_kernel128x_n_avx2_intrin(
+        uint8_t   *input,
+        uint32_t   input_stride,
+        uint8_t   *recon,
+        uint32_t   recon_stride,
+        uint32_t   area_width,
+        uint32_t   area_height);
 #ifdef __cplusplus
 }
 #endif

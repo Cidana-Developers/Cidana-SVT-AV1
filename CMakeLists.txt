@@ -32,7 +32,7 @@ endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(CMAKE_C_FLAGS "-Wall -Wextra -Wformat -Wformat-security -mavx -fstack-protector-strong -fPIE -fPIC -D_FORTIFY_SOURCE=2 ")
-    set(CMAKE_C_FLAGS_RELEASE "-O2")
+    set(CMAKE_C_FLAGS_RELEASE "-O3")
     set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 	SET(CMAKE_EXE_LINKER_FLAGS "-z noexecstack -z relro -z now -pie ")
 	SET(CMAKE_SHARED_LINKER_FLAGS "-z noexecstack -z relro -z now -pie ")
@@ -55,6 +55,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(CMAKE_ASM_NASM_FLAGS_DEBUG "")
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
+option(BUILD_TESTING "" OFF)
 include(CTest)
 
 set(COVERAGE false CACHE BOOL "For use with coveralls and GTest")
@@ -74,6 +75,9 @@ endif()
 #endif()
 
 # Add Subdirectories
+if (BUILD_TESTING)
+    option(BUILD_SHARED_LIBS "Build shared libraries (DLLs)." ON)
+endif()
 add_subdirectory (Source/Lib/Common)
 add_subdirectory (Source/Lib/Encoder)
 add_subdirectory (Source/App/EncApp)

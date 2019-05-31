@@ -27,17 +27,17 @@
  * @brief SVT-AV1 encoder parameter coverage E2E test
  *
  * Test strategy:
- * Setup SVT-AV1 encoder with individual parameter in vaild value and run
- * the comformance test progress to check when the result can match the
- * output of refence decoder
+ * Setup SVT-AV1 encoder with individual parameter in vaild value and run the
+ * conformance test progress. Check whether the result can match the output of
+ * refence decoder.
  *
- * Expect result:
- * No error from encoding progress and the reconstruction frame is same as
- * the output frame from refence decoder
+ * Expected result:
+ * No error is reported in encoding progress. The reconstructed frame
+ * data is same as the output frame from reference decoder.
  *
  * Test coverage:
  * Almost all the encoder parameters except frame_rate_numerator and
- * frame_rate_denominator
+ * frame_rate_denominator.
  */
 
 using namespace svt_av1_e2e_test;
@@ -52,7 +52,7 @@ using namespace svt_av1_e2e_test_vector;
     INSTANTIATE_TEST_CASE_P(SVT_AV1, param_test, ::testing::ValuesIn(vectors));
 
 #define PARAM_TEST(param_test) \
-    PARAM_TEST_WITH_VECTOR(param_test, smoking_vectors)
+    PARAM_TEST_WITH_VECTOR(param_test, generate_vector_from_config("smoking_test.cfg"))
 
 #define PARAM_DEATHTEST_WITH_VECTOR(param_test, vectors) \
     TEST_P(param_test, run_paramter_conformance_test) {  \
@@ -61,7 +61,7 @@ using namespace svt_av1_e2e_test_vector;
     INSTANTIATE_TEST_CASE_P(SVT_AV1, param_test, ::testing::ValuesIn(vectors));
 
 #define PARAM_DEATHTEST(param_test) \
-    PARAM_DEATHTEST_WITH_VECTOR(param_test, smoking_vectors)
+    PARAM_DEATHTEST_WITH_VECTOR(param_test, generate_vector_from_config("smoking_test.cfg"))
 
 #define GET_PARAM GET_VALID_PARAM
 #define SIZE_PARAM SIZE_VALID_PARAM

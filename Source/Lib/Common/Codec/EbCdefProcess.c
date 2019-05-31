@@ -15,11 +15,11 @@
 */
 
 #include <stdlib.h>
+#include "aom_dsp_rtcd.h"
 #include "EbDefinitions.h"
 #include "EbCdefProcess.h"
 #include "EbEncDecResults.h"
-#include "EbEncDecTasks.h"
-#include "EbPictureDemuxResults.h"
+#include "EbThreads.h"
 #include "EbReferenceObject.h"
 
 #include "EbCdef.h"
@@ -33,29 +33,24 @@ void copy_sb16_16(uint16_t *dst, int32_t dstride, const uint16_t *src,
 void *aom_memalign(size_t align, size_t size);
 void aom_free(void *memblk);
 void *aom_malloc(size_t size);
-uint64_t compute_cdef_dist(uint16_t *dst, int32_t dstride, uint16_t *src,
-    cdef_list *dlist, int32_t cdef_count, block_size bsize,
-    int32_t coeff_shift, int32_t pli);
-int32_t sb_all_skip(PictureControlSet_t   *picture_control_set_ptr, const Av1Common *const cm, int32_t mi_row, int32_t mi_col);
-int32_t sb_compute_cdef_list(PictureControlSet_t   *picture_control_set_ptr, const Av1Common *const cm, int32_t mi_row, int32_t mi_col,
-    cdef_list *dlist, block_size bs);
+int32_t sb_all_skip(PictureControlSet   *picture_control_set_ptr, const Av1Common *const cm, int32_t mi_row, int32_t mi_col);
+int32_t sb_compute_cdef_list(PictureControlSet   *picture_control_set_ptr, const Av1Common *const cm, int32_t mi_row, int32_t mi_col,
+    cdef_list *dlist, BlockSize bs);
 void finish_cdef_search(
-    EncDecContext_t                *context_ptr,
+    EncDecContext                *context_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
-    PictureControlSet_t            *picture_control_set_ptr
+    PictureControlSet            *picture_control_set_ptr
     ,int32_t                         selected_strength_cnt[64]
-
    );
 void av1_cdef_frame16bit(
-    EncDecContext_t                *context_ptr,
+    EncDecContext                *context_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
-    PictureControlSet_t            *pCs);
+    PictureControlSet            *pCs);
 void av1_cdef_frame(
-    EncDecContext_t                *context_ptr,
+    EncDecContext                *context_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
-    PictureControlSet_t            *pCs);
+    PictureControlSet            *pCs);
 void av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, Av1Common *cm, int32_t after_cdef);
-
 
 /******************************************************
  * Cdef Context Constructor
@@ -67,11 +62,9 @@ EbErrorType cdef_context_ctor(
     EbBool                  is16bit,
     uint32_t                max_input_luma_width,
     uint32_t                max_input_luma_height){
-
     (void)is16bit;
     (void)max_input_luma_width;
     (void)max_input_luma_height;
-
 
     CdefContext_t *context_ptr;
     EB_MALLOC(CdefContext_t*, context_ptr, sizeof(CdefContext_t), EB_N_PTR);
@@ -81,18 +74,15 @@ EbErrorType cdef_context_ctor(
     context_ptr->cdef_input_fifo_ptr = cdef_input_fifo_ptr;
     context_ptr->cdef_output_fifo_ptr = cdef_output_fifo_ptr;
 
-
     return EB_ErrorNone;
 }
 
-
 void cdef_seg_search(
-    PictureControlSet_t            *picture_control_set_ptr,
+    PictureControlSet            *picture_control_set_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
     uint32_t                        segment_index)
 {
-
-    struct PictureParentControlSet_s     *pPcs = picture_control_set_ptr->parent_pcs_ptr;
+    struct PictureParentControlSet     *pPcs = picture_control_set_ptr->parent_pcs_ptr;
     Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
     uint32_t  x_seg_idx;
     uint32_t  y_seg_idx;
@@ -139,9 +129,7 @@ void cdef_seg_search(
     int32_t start_gi;
     int32_t end_gi;
 
-
     for (pli = 0; pli < num_planes; pli++) {
-
         int32_t subsampling_x = (pli == 0) ? 0 : 1;
         int32_t subsampling_y = (pli == 0) ? 0 : 1;
         xdec[pli] = subsampling_x;
@@ -155,14 +143,12 @@ void cdef_seg_search(
         src[pli] = picture_control_set_ptr->src[pli];
         ref_coeff[pli] = picture_control_set_ptr->ref_coeff[pli];
         stride[pli] = pli > 0 ? stride[pli] >> 1 : stride[pli];
-
     }
 
     in = inbuf + CDEF_VBORDER * CDEF_BSTRIDE + CDEF_HBORDER;
 
     for (fbr = y_b64_start_idx; fbr < y_b64_end_idx; ++fbr) {
         for (fbc = x_b64_start_idx; fbc < x_b64_end_idx; ++fbc) {
-
             int32_t nvb, nhb;
             int32_t gi;
             int32_t dirinit = 0;
@@ -170,7 +156,7 @@ void cdef_seg_search(
             nvb = AOMMIN(MI_SIZE_64X64, cm->mi_rows - MI_SIZE_64X64 * fbr);
             int32_t hb_step = 1; //these should be all time with 64x64 LCUs
             int32_t vb_step = 1;
-            block_size bs = BLOCK_64X64;
+            BlockSize bs = BLOCK_64X64;
             ModeInfo **mi = picture_control_set_ptr->mi_grid_base + MI_SIZE_64X64 * fbr * cm->mi_stride + MI_SIZE_64X64 * fbc;
             const MbModeInfo *mbmi = &mi[0]->mbmi;
 
@@ -199,7 +185,6 @@ void cdef_seg_search(
             cdef_count = sb_compute_cdef_list(picture_control_set_ptr, cm, fbr * MI_SIZE_64X64, fbc * MI_SIZE_64X64, dlist, bs);
 
             for (pli = 0; pli < num_planes; pli++) {
-
                 for (int i = 0; i < CDEF_INBUF_SIZE; i++)
                     inbuf[i] = CDEF_VERY_LARGE;
 
@@ -220,7 +205,6 @@ void cdef_seg_search(
                 end_gi = pPcs->use_ref_frame_cdef_strength ? AOMMIN(total_strengths, mid_gi + gi_step) : pPcs->cdef_filter_mode == 1 ? 8 : total_strengths;
 
                 for (gi = start_gi; gi < end_gi; gi++) {
-
                     int32_t threshold;
                     uint64_t curr_mse;
                     int32_t sec_strength;
@@ -239,36 +223,33 @@ void cdef_seg_search(
                         ref_coeff[pli] +
                         (fbr * MI_SIZE_64X64 << mi_high_l2[pli]) * stride[pli] +
                         (fbc * MI_SIZE_64X64 << mi_wide_l2[pli]),
-                        stride[pli], tmp_dst, dlist, cdef_count, (block_size)bsize[pli], coeff_shift,
+                        stride[pli], tmp_dst, dlist, cdef_count, (BlockSize)bsize[pli], coeff_shift,
                         pli);
 
                     if (pli < 2)
                         picture_control_set_ptr->mse_seg[pli][fbr*nhfb + fbc][gi] = curr_mse;
                     else
                         picture_control_set_ptr->mse_seg[1][fbr*nhfb + fbc][gi] += curr_mse;
-
                 }
 
                 //if (pPcs->picture_number == 15)
                 //    printf(" bs:%i count:%i  mse:%I64i\n", bs, cdef_count,picture_control_set_ptr->mse_seg[0][fbr*nhfb + fbc][4]);
-
             }
         }
     }
-
 }
 void cdef_seg_search16bit(
-    PictureControlSet_t            *picture_control_set_ptr,
+    PictureControlSet            *picture_control_set_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
     uint32_t                        segment_index)
 {
-    EbPictureBufferDesc_t *input_pic_ptr = picture_control_set_ptr->input_frame16bit;
-    EbPictureBufferDesc_t *recon_pic_ptr =
+    EbPictureBufferDesc *input_pic_ptr = picture_control_set_ptr->input_frame16bit;
+    EbPictureBufferDesc *recon_pic_ptr =
         (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE) ?
         ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->reference_picture16bit :
          picture_control_set_ptr->recon_picture16bit_ptr;
 
-    struct PictureParentControlSet_s     *pPcs = picture_control_set_ptr->parent_pcs_ptr;
+    struct PictureParentControlSet     *pPcs = picture_control_set_ptr->parent_pcs_ptr;
     Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
     uint32_t  x_seg_idx;
     uint32_t  y_seg_idx;
@@ -316,7 +297,6 @@ void cdef_seg_search16bit(
     int32_t end_gi;
 
     for (pli = 0; pli < num_planes; pli++) {
-
         int32_t subsampling_x = (pli == 0) ? 0 : 1;
         int32_t subsampling_y = (pli == 0) ? 0 : 1;
         xdec[pli] = subsampling_x;
@@ -329,16 +309,14 @@ void cdef_seg_search16bit(
 
         src[pli] = picture_control_set_ptr->src[pli];
         ref_coeff[pli] = picture_control_set_ptr->ref_coeff[pli];
-        stride_src[pli] = pli == 0 ? recon_pic_ptr->stride_y : (pli == 1 ? recon_pic_ptr->strideCb : recon_pic_ptr->strideCr);
-        stride_ref[pli] = pli == 0 ? input_pic_ptr->stride_y : (pli == 1 ? input_pic_ptr->strideCb : input_pic_ptr->strideCr);
-
+        stride_src[pli] = pli == 0 ? recon_pic_ptr->stride_y : (pli == 1 ? recon_pic_ptr->stride_cb : recon_pic_ptr->stride_cr);
+        stride_ref[pli] = pli == 0 ? input_pic_ptr->stride_y : (pli == 1 ? input_pic_ptr->stride_cb : input_pic_ptr->stride_cr);
     }
 
     in = inbuf + CDEF_VBORDER * CDEF_BSTRIDE + CDEF_HBORDER;
 
     for (fbr = y_b64_start_idx; fbr < y_b64_end_idx; ++fbr) {
         for (fbc = x_b64_start_idx; fbc < x_b64_end_idx; ++fbc) {
-
             int32_t nvb, nhb;
             int32_t gi;
             int32_t dirinit = 0;
@@ -346,7 +324,7 @@ void cdef_seg_search16bit(
             nvb = AOMMIN(MI_SIZE_64X64, cm->mi_rows - MI_SIZE_64X64 * fbr);
             int32_t hb_step = 1; //these should be all time with 64x64 LCUs
             int32_t vb_step = 1;
-            block_size bs = BLOCK_64X64;
+            BlockSize bs = BLOCK_64X64;
             ModeInfo **mi = picture_control_set_ptr->mi_grid_base + MI_SIZE_64X64 * fbr * cm->mi_stride + MI_SIZE_64X64 * fbc;
             const MbModeInfo *mbmi = &mi[0]->mbmi;
 
@@ -374,7 +352,6 @@ void cdef_seg_search16bit(
             cdef_count = sb_compute_cdef_list(picture_control_set_ptr, cm, fbr * MI_SIZE_64X64, fbc * MI_SIZE_64X64, dlist, bs);
 
             for (pli = 0; pli < num_planes; pli++) {
-
                 for (int i = 0; i < CDEF_INBUF_SIZE; i++)
                     inbuf[i] = CDEF_VERY_LARGE;
 
@@ -395,7 +372,6 @@ void cdef_seg_search16bit(
                 end_gi = pPcs->use_ref_frame_cdef_strength ? AOMMIN(total_strengths, mid_gi + gi_step) : pPcs->cdef_filter_mode == 1 ? 8 : total_strengths;
 
                 for (gi = start_gi; gi < end_gi; gi++) {
-
                     int32_t threshold;
                     uint64_t curr_mse;
                     int32_t sec_strength;
@@ -414,21 +390,18 @@ void cdef_seg_search16bit(
                         ref_coeff[pli] +
                         (fbr * MI_SIZE_64X64 << mi_high_l2[pli]) * stride_ref[pli] +
                         (fbc * MI_SIZE_64X64 << mi_wide_l2[pli]),
-                        stride_ref[pli], tmp_dst, dlist, cdef_count, (block_size)bsize[pli], coeff_shift,
+                        stride_ref[pli], tmp_dst, dlist, cdef_count, (BlockSize)bsize[pli], coeff_shift,
                         pli);
 
                     if (pli < 2)
                         picture_control_set_ptr->mse_seg[pli][fbr*nhfb + fbc][gi] = curr_mse;
                     else
                         picture_control_set_ptr->mse_seg[1][fbr*nhfb + fbc][gi] += curr_mse;
-
                 }
             }
         }
     }
-
 }
-
 
 /******************************************************
  * CDEF Kernel
@@ -437,29 +410,27 @@ void* cdef_kernel(void *input_ptr)
 {
     // Context & SCS & PCS
     CdefContext_t                            *context_ptr = (CdefContext_t*)input_ptr;
-    PictureControlSet_t                     *picture_control_set_ptr;
+    PictureControlSet                     *picture_control_set_ptr;
     SequenceControlSet                    *sequence_control_set_ptr;
 
     //// Input
     EbObjectWrapper                       *dlf_results_wrapper_ptr;
-    DlfResults_t                            *dlf_results_ptr;
+    DlfResults                            *dlf_results_ptr;
 
     //// Output
     EbObjectWrapper                       *cdef_results_wrapper_ptr;
-    CdefResults_t                           *cdef_results_ptr;
+    CdefResults                           *cdef_results_ptr;
 
     // SB Loop variables
 
-
     for (;;) {
-
         // Get DLF Results
         eb_get_full_object(
             context_ptr->cdef_input_fifo_ptr,
             &dlf_results_wrapper_ptr);
 
-        dlf_results_ptr = (DlfResults_t*)dlf_results_wrapper_ptr->object_ptr;
-        picture_control_set_ptr = (PictureControlSet_t*)dlf_results_ptr->picture_control_set_wrapper_ptr->object_ptr;
+        dlf_results_ptr = (DlfResults*)dlf_results_wrapper_ptr->object_ptr;
+        picture_control_set_ptr = (PictureControlSet*)dlf_results_ptr->picture_control_set_wrapper_ptr->object_ptr;
         sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
 
         EbBool  is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
@@ -469,7 +440,6 @@ void* cdef_kernel(void *input_ptr)
 
         if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->cdef_filter_mode)
         {
-
             if (is16bit)
                 cdef_seg_search16bit(
                     picture_control_set_ptr,
@@ -482,59 +452,44 @@ void* cdef_kernel(void *input_ptr)
                     dlf_results_ptr->segment_index);
         }
 
-
         //all seg based search is done. update total processed segments. if all done, finish the search and perfrom application.
         eb_block_on_mutex(picture_control_set_ptr->cdef_search_mutex);
 
         picture_control_set_ptr->tot_seg_searched_cdef++;
         if (picture_control_set_ptr->tot_seg_searched_cdef == picture_control_set_ptr->cdef_segments_total_count)
         {
-
-
            // printf("    CDEF all seg here  %i\n", picture_control_set_ptr->picture_number);
 
-
-
-#if CDEF_REF_ONLY
-        if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-#else
         if (sequence_control_set_ptr->enable_cdef && picture_control_set_ptr->parent_pcs_ptr->cdef_filter_mode) {
-#endif
                 finish_cdef_search(
                     0,
                     sequence_control_set_ptr,
-                    picture_control_set_ptr
-                    ,selected_strength_cnt
-                );
+                    picture_control_set_ptr,
+                    selected_strength_cnt);
 
-                if (is16bit)
-                    av1_cdef_frame16bit(
-                        0,
-                        sequence_control_set_ptr,
-                        picture_control_set_ptr);
-                else
-                    av1_cdef_frame(
-                        0,
-                        sequence_control_set_ptr,
-                        picture_control_set_ptr);
-
+#if CDEF_OFF_NON_REF
+                if (sequence_control_set_ptr->enable_restoration != 0 || picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag || sequence_control_set_ptr->static_config.recon_enabled){
+#endif
+                    if (is16bit)
+                        av1_cdef_frame16bit(
+                            0,
+                            sequence_control_set_ptr,
+                            picture_control_set_ptr);
+                    else
+                        av1_cdef_frame(
+                            0,
+                            sequence_control_set_ptr,
+                            picture_control_set_ptr);
+#if CDEF_OFF_NON_REF
+                }
+#endif
         }
         else {
-
-#if 1//CDEF_REF_ONLY || ICOPY
             picture_control_set_ptr->parent_pcs_ptr->cdef_bits = 0;
             picture_control_set_ptr->parent_pcs_ptr->cdef_strengths[0] = 0;
             picture_control_set_ptr->parent_pcs_ptr->nb_cdef_strengths = 1;
             picture_control_set_ptr->parent_pcs_ptr->cdef_uv_strengths[0] = 0;
-#else
-            picture_control_set_ptr->parent_pcs_ptr->cdef_bits = 0;
-
-            picture_control_set_ptr->parent_pcs_ptr->nb_cdef_strengths = 0;
-#endif
-
-
         }
-
 
         //restoration prep
 
@@ -552,10 +507,7 @@ void* cdef_kernel(void *input_ptr)
                 cm->frame_to_show->strides[1], RESTORATION_BORDER, RESTORATION_BORDER, is16bit);
             extend_frame(cm->frame_to_show->buffers[2], cm->frame_to_show->crop_widths[1], cm->frame_to_show->crop_heights[1],
                 cm->frame_to_show->strides[1], RESTORATION_BORDER, RESTORATION_BORDER, is16bit);
-
         }
-
-
 
         picture_control_set_ptr->rest_segments_column_count = sequence_control_set_ptr->rest_segment_column_count;
         picture_control_set_ptr->rest_segments_row_count =   sequence_control_set_ptr->rest_segment_row_count;
@@ -568,22 +520,17 @@ void* cdef_kernel(void *input_ptr)
             eb_get_empty_object(
                 context_ptr->cdef_output_fifo_ptr,
                 &cdef_results_wrapper_ptr);
-            cdef_results_ptr = (struct CdefResults_s*)cdef_results_wrapper_ptr->object_ptr;
+            cdef_results_ptr = (struct CdefResults*)cdef_results_wrapper_ptr->object_ptr;
             cdef_results_ptr->picture_control_set_wrapper_ptr = dlf_results_ptr->picture_control_set_wrapper_ptr;
             cdef_results_ptr->segment_index = segment_index;
             // Post Cdef Results
             eb_post_full_object(cdef_results_wrapper_ptr);
-
         }
-
-
         }
         eb_release_mutex(picture_control_set_ptr->cdef_search_mutex);
 
-
         // Release Dlf Results
         eb_release_object(dlf_results_wrapper_ptr);
-
     }
 
     return EB_NULL;

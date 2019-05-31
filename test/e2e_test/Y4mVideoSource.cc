@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "Y4mVideoSource.h"
+extern "C" {
+#include "EbAppInputy4m.h"
+}
 using namespace svt_av1_video_source;
 
 Y4MVideoSource::Y4MVideoSource(const std::string& file_name,
@@ -51,8 +54,6 @@ Y4MVideoSource::~Y4MVideoSource() {
     }
 
 EbErrorType Y4MVideoSource::parse_file_info() {
-    char buffer[10] = {0};
-    char first_char;
     if (file_handle_ == nullptr)
         return EB_ErrorBadParameter;
 
@@ -63,101 +64,24 @@ EbErrorType Y4MVideoSource::parse_file_info() {
     // Seek to begin
     fseek(file_handle_, 0, SEEK_SET);
 
-    // Check file header "YUV4MPEG2 "
-    if (9 != fread(buffer, 1, 9, file_handle_)) {
+    EbConfig cfg = {0};
+    cfg.input_file = file_handle_;
+    if (check_if_y4m(&cfg) != EB_TRUE)
         return EB_ErrorBadParameter;
-    }
+    read_y4m_header(&cfg);
 
-    if (0 != strcmp("YUV4MPEG2", buffer)) {
-        return EB_ErrorBadParameter;
-    }
+    width_ = cfg.source_width;
+    height_ = cfg.source_height;
+    bit_depth_ = cfg.encoder_bit_depth;
 
-    do {
-        if (1 != fread(&first_char, 1, 1, file_handle_))
-            break;
-        if (first_char == ' ')
-            continue;
-        switch (first_char) {
-        case 'W':  // Width
-        {
-            if (fscanf(file_handle_, "%d ", &width_) <= 0)
-                return EB_ErrorUndefined;
-            fseek(file_handle_, -1, SEEK_CUR);
-            width_with_padding_ = width_;
-            if (width_ % 8 != 0)
-                width_with_padding_ += 8 - width_ % 8;
-        } break;
-        case 'H':  // Height
-        {
-            if (fscanf(file_handle_, "%d ", &height_) <= 0)
-                return EB_ErrorUndefined;
-            fseek(file_handle_, -1, SEEK_CUR);
-            height_with_padding_ = height_;
-            if (height_ % 8 != 0)
-                height_with_padding_ += (8 - height_ % 8);
-        } break;
-        case 'F':  // Frame rate
-        {
-            uint32_t tmp1, tmp2;
-            if (fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2) <= 0)
-                return EB_ErrorUndefined;
-            fseek(file_handle_, -1, SEEK_CUR);
-        } break;
-        case 'I':  // Interlacing
-        {
-            char tmp;
-            if (fscanf(file_handle_, "%c ", &tmp) <= 0)
-                return EB_ErrorUndefined;
-            fseek(file_handle_, -1, SEEK_CUR);
-        } break;
-        case 'A':  // Pixel aspect ratio.
-        {
-            uint32_t tmp1, tmp2;
-            if (fscanf(file_handle_, "%d:%d ", &tmp1, &tmp2) <= 0)
-                return EB_ErrorUndefined;
-            fseek(file_handle_, -1, SEEK_CUR);
-        } break;
-        case 'C':  // Color space
-        {
-            char line[80] = {0};
-            int line_len = 0;
-            char c;
-            do {
-                line[line_len++] = c = (char)fgetc(file_handle_);
-            } while (c != ' ' && c != 0x0A && line_len < 80);
-            if (strncmp("420p10", line, 6) == 0) {
-                bit_depth_ = 10;
-                image_format_ = IMG_FMT_420P10_PACKED;
-            } else if (strncmp("422p10", line, 6) == 0) {
-                bit_depth_ = 10;
-                image_format_ = IMG_FMT_422P10_PACKED;
-            } else if (strncmp("444p10", line, 6) == 0) {
-                bit_depth_ = 10;
-                image_format_ = IMG_FMT_444P10_PACKED;
-            } else if (strncmp("420jpeg", line, 7) == 0 ||
-                       strncmp("420", line, 3) == 0) {
-                bit_depth_ = 8;
-                image_format_ = IMG_FMT_420;
-            } else if (strncmp("422", line, 3) == 0) {
-                bit_depth_ = 8;
-                image_format_ = IMG_FMT_422;
-            } else if (strncmp("444", line, 3) == 0) {
-                bit_depth_ = 8;
-                image_format_ = IMG_FMT_444;
-            } else {
-                printf("chroma format not supported\n");
-                return EB_ErrorBadParameter;
-            }
-            fseek(file_handle_, -1, SEEK_CUR);
-        } break;
-        case 'X':  // Comment
-        {
-            SKIP_TAG;
-            fseek(file_handle_, -1, SEEK_CUR);
-        } break;
-        default: break;
-        }
-    } while (!feof(file_handle_) && (first_char != 0xA));
+    // Workaround, check_if_y4m can not output color format
+    // and svt-av1 encoder support yuv420 color format only in current version,
+    // so use bit_depth to get iamge format.
+    if (bit_depth_ > 8) {
+        image_format_ = IMG_FMT_420P10_PACKED;
+    } else {
+        image_format_ = IMG_FMT_420;
+    }
 
     // Get header lenght
     header_length_ = ftell(file_handle_);
@@ -184,7 +108,7 @@ EbErrorType Y4MVideoSource::parse_file_info() {
     // Calculate frame count
     file_frames_ = (file_length_ - header_length_) / frame_length_;
 
-    printf("File len:%d; frame w:%d, h:%d, len:%d; frame count:%d\r\n",
+    printf("File len:%d; frame w:%d, h:%d, frame len:%d; frame count:%d\r\n",
            file_length_,
            width_,
            height_,

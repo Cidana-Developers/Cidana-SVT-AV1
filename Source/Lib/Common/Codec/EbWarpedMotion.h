@@ -46,7 +46,6 @@ extern "C" {
 
 #define WARPEDDIFF_PREC_BITS (WARPEDMODEL_PREC_BITS - WARPEDPIXEL_PREC_BITS)
 
-
 #define MAX_PARAMDIM 9
 #define LEAST_SQUARES_SAMPLES_MAX_BITS 3
 #define LEAST_SQUARES_SAMPLES_MAX (1 << LEAST_SQUARES_SAMPLES_MAX_BITS)
@@ -161,7 +160,7 @@ EbBool find_projection(
     int        np,
     int       *pts1,
     int       *pts2,
-    block_size bsize,
+    BlockSize bsize,
     int        mvy,
     int        mvx,
     EbWarpedMotionParams *wm_params,

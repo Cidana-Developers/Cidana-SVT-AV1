@@ -13,8 +13,8 @@ extern "C" {
 #include "stdint.h"
 #include "EbSvtAv1.h"
 
-#define  TILES    1
-
+#define TILES    1
+#define ALT_REF_OVERLAY_APP                         1
     //***HME***
 #define EB_HME_SEARCH_AREA_COLUMN_MAX_COUNT         2
 #define EB_HME_SEARCH_AREA_ROW_MAX_COUNT            2
@@ -23,11 +23,9 @@ extern "C" {
 
 #define EB_BUFFERFLAG_EOS           0x00000001  // signals the last packet of the stream
 #define EB_BUFFERFLAG_SHOW_EXT      0x00000002  // signals that the packet contains a show existing frame at the end
-#define EB_BUFFERFLAG_HAS_TD        0x00000004  // signals that the packet contains a show existing frame at the end
-
-#if TILES
-#define EB_BUFFERFLAG_TG            0x00000004  // signals that the packet contains Tile Group header
-#endif
+#define EB_BUFFERFLAG_HAS_TD        0x00000004  // signals that the packet contains a TD
+#define EB_BUFFERFLAG_IS_ALT_REF    0x00000008  // signals that the packet contains an ALT_REF frame
+#define EB_BUFFERFLAG_ERROR_MASK    0xFFFFFFF0  // mask for signalling error assuming top flags fit in 4 bits. To be changed, if more flags are added.
 
 // Will contain the EbEncApi which will live in the EncHandle class
 // Only modifiable during config-time.
@@ -162,7 +160,7 @@ typedef struct EbSvtAv1EncConfiguration
     * Default is 64. */
     uint32_t                 sb_sz;
 
-    /* Super block size
+    /* Super block size (mm-signal)
     *
     * Default is 128. */
     uint32_t                 super_block_size;
@@ -283,7 +281,10 @@ typedef struct EbSvtAv1EncConfiguration
      *
      * Default is 0. */
     uint32_t                 min_qp_allowed;
-
+    /* Flag to signal the content being a screen sharing content type
+    *
+    * Default is 2. */
+    uint32_t                 screen_content_mode;
     // Tresholds
     /* Flag to signal that the input yuv is HDR10 BT2020 using SMPTE ST2048, requires
      *
@@ -407,8 +408,13 @@ typedef struct EbSvtAv1EncConfiguration
 
     uint32_t                 ten_bit_format;
 
+    /* Variables to control the use of ALT-REF (temporally filtered frames)
+    */
+    EbBool                   enable_altrefs;
+    uint8_t                  altref_strength;
+    uint8_t                  altref_nframes;
+    EbBool                   enable_overlays;
 } EbSvtAv1EncConfiguration;
-
 
     /* STEP 1: Call the library to construct a Component Handle.
      *

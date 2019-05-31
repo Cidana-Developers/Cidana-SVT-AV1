@@ -11,7 +11,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <memory.h>
 #include <math.h>
 #include <assert.h>
 #include "EbWarpedMotion.h"
@@ -129,7 +128,6 @@ const int16_t warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   { 1, - 4,  13, 124, - 7, 1, 0, 0 }, { 1, - 4,  11, 125, - 6, 1, 0, 0 },
   { 1, - 3,   8, 126, - 5, 1, 0, 0 }, { 1, - 2,   6, 126, - 4, 1, 0, 0 },
   { 0, - 1,   4, 127, - 3, 1, 0, 0 }, { 0,   0,   2, 127, - 1, 0, 0, 0 },
-
   // [0, 1)
   { 0,  0,   0, 127,   1,   0,  0,  0}, { 0,  0,  -1, 127,   2,   0,  0,  0},
   { 0,  1,  -3, 127,   4,  -2,  1,  0}, { 0,  1,  -5, 127,   6,  -2,  1,  0},
@@ -163,7 +161,6 @@ const int16_t warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   {-1,  2,  -5,  13, 125,  -8,  3, -1}, {-1,  2,  -4,  11, 126,  -7,  2, -1},
   { 0,  1,  -3,   8, 126,  -6,  2,  0}, { 0,  1,  -2,   6, 127,  -5,  1,  0},
   { 0,  1,  -2,   4, 127,  -3,  1,  0}, { 0,  0,   0,   2, 127,  -1,  0,  0},
-
   // [1, 2)
   { 0, 0, 0,   1, 127,   0,   0, 0 }, { 0, 0, 0, - 1, 127,   2,   0, 0 },
   { 0, 0, 1, - 3, 127,   4, - 1, 0 }, { 0, 0, 1, - 4, 126,   6, - 2, 1 },
@@ -199,7 +196,6 @@ const int16_t warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   { 0, 0, 0, - 1,   4, 127, - 3, 1 }, { 0, 0, 0,   0,   2, 127, - 1, 0 },
   // dummy (replicate row index 191)
   { 0, 0, 0,   0,   2, 127, - 1, 0 },
-
 #elif WARPEDPIXEL_PREC_BITS == 5
   // [-1, 0)
   {0,   0, 127,   1,   0, 0, 0, 0}, {1,  -3, 127,   4,  -1, 0, 0, 0},
@@ -254,7 +250,6 @@ const int16_t warped_filter[WARPEDPIXEL_PREC_SHIFTS * 3 + 1][8] = {
   {0, 0, 1,  -3,   8, 126,  -5, 1}, {0, 0, 0,  -1,   4, 127,  -3, 1},
   // dummy (replicate row index 95)
   {0, 0, 0,  -1,   4, 127,  -3, 1},
-
 #endif  // WARPEDPIXEL_PREC_BITS == 6
 };
 
@@ -467,12 +462,10 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
           const int16_t *coeffs = warped_filter[offs];
 
           int32_t sum = 1 << offset_bits_vert;
-          for (int m = 0; m < 8; ++m) {
+          for (int m = 0; m < 8; ++m)
             sum += tmp[(k + m + 4) * 8 + (l + 4)] * coeffs[m];
-          }
-
           if (conv_params->is_compound) {
-            CONV_BUF_TYPE *p =
+            ConvBufType *p =
                 &conv_params
                      ->dst[(i - p_row + k + 4) * conv_params->dst_stride +
                            (j - p_col + l + 4)];
@@ -493,9 +486,8 @@ void av1_highbd_warp_affine_c(const int32_t *mat, const uint16_t *ref,
                       (1 << (offset_bits - conv_params->round_1 - 1));
               *dst16 =
                   clip_pixel_highbd(ROUND_POWER_OF_TWO(tmp32, round_bits), bd);
-            } else {
+            } else
               *p = sum;
-            }
           } else {
             uint16_t *p =
                 &pred[(i - p_row + k + 4) * p_stride + (j - p_col + l + 4)];
@@ -755,12 +747,10 @@ void av1_warp_affine_c(const int32_t *mat, const uint8_t *ref, int width,
           const int16_t *coeffs = warped_filter[offs];
 
           int32_t sum = 1 << offset_bits_vert;
-          for (int m = 0; m < 8; ++m) {
+          for (int m = 0; m < 8; ++m)
             sum += tmp[(k + m + 4) * 8 + (l + 4)] * coeffs[m];
-          }
-
           if (conv_params->is_compound) {
-            CONV_BUF_TYPE *p =
+            ConvBufType *p =
                 &conv_params
                      ->dst[(i - p_row + k + 4) * conv_params->dst_stride +
                            (j - p_col + l + 4)];
@@ -780,9 +770,8 @@ void av1_warp_affine_c(const int32_t *mat, const uint8_t *ref, int width,
               tmp32 = tmp32 - (1 << (offset_bits - conv_params->round_1)) -
                       (1 << (offset_bits - conv_params->round_1 - 1));
               *dst8 = clip_pixel(ROUND_POWER_OF_TWO(tmp32, round_bits));
-            } else {
+            } else
               *p = sum;
-            }
           } else {
             uint8_t *p =
                 &pred[(i - p_row + k + 4) * p_stride + (j - p_col + l + 4)];
@@ -1064,7 +1053,7 @@ static int32_t get_mult_shift_diag(int64_t Px, int16_t iDet, int shift) {
 #endif  // USE_LIMITED_PREC_MULT
 
 static int find_affine_int(int np, const int *pts1, const int *pts2,
-                           block_size bsize, int mvy, int mvx,
+                           BlockSize bsize, int mvy, int mvx,
                            EbWarpedMotionParams *wm, int mi_row, int mi_col) {
   int32_t A[2][2] = { { 0, 0 }, { 0, 0 } };
   int32_t Bx[2] = { 0, 0 };
@@ -1182,7 +1171,7 @@ EbBool find_projection(
     int np,
     int *pts1,
     int *pts2,
-    block_size bsize,
+    BlockSize bsize,
     int mvy,
     int mvx,
     EbWarpedMotionParams *wm_params,

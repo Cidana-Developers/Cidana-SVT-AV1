@@ -10,7 +10,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    // Weights are quadratic from '1' to '1 / block_size', scaled by
+    // Weights are quadratic from '1' to '1 / BlockSize', scaled by
     // 2^sm_weight_log2_scale.
     static const int32_t sm_weight_log2_scale = 8;
     // max(block_size_wide[BLOCK_LARGEST], block_size_high[BLOCK_LARGEST])
@@ -36,7 +36,7 @@ extern "C" {
         65, 61, 57, 54, 50, 47, 44, 41, 38, 35, 32, 29, 27, 25, 22, 20, 18, 16, 15,
         13, 12, 10, 9, 8, 7, 6, 6, 5, 5, 4, 4, 4,
     };
-    
+
     void intra_mode_angular_av1_z1_16bit_4x4_avx2(
         const uint32_t  size,
         uint16_t       *ref_samples,

@@ -14,8 +14,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <random>
-#include "BitstreamReaderMock.h"
 #include "EbCabacContextModel.h"
+#include "EbDecBitReader.h"
 #include "gtest/gtest.h"
 #include "random.h"
 /**
@@ -28,10 +28,10 @@
  *
  * Test strategy:
  * Verify by writing bits/values and reading bits/values in paris,
- * and compare the values read out and values writen.
+ * and compare the values read out and values written.
  *
  * Expected result:
- * The values read out should match with values writen.
+ * The values read out should match with values written.
  *
  * Test coverage:
  * To write the bits, probabilities are required to setup as context.
@@ -43,7 +43,7 @@
  * - mixed probability are
  * Meantime different bit pattern are generated, including:
  * - fixed pattern(0, 1)
- * - randome pattern
+ * - random pattern
  *
  */
 using svt_av1_test_tool::SVTRandom;
@@ -72,7 +72,7 @@ class BitstreamWriterTest : public ::testing::Test {
 
             for (int bit_gen_method = 0; bit_gen_method < 3; ++bit_gen_method) {
                 const int buffer_size = 10000;
-                aom_writer bw;
+                AomWriter bw;
                 uint8_t bw_buffer[buffer_size];
                 uint8_t test_bits[total_bits];
 
@@ -87,10 +87,10 @@ class BitstreamWriterTest : public ::testing::Test {
                 aom_stop_encode(&bw);
 
                 // read out the bits and verify
-                aom_reader br;
-                aom_reader_init(&br, bw_buffer, bw.pos);
+                SvtReader br;
+                svt_reader_init(&br, bw_buffer, bw.pos);
                 for (int i = 0; i < total_bits; ++i) {
-                    GTEST_ASSERT_EQ(aom_read(&br, probas[i], nullptr),
+                    GTEST_ASSERT_EQ(svt_read(&br, probas[i], nullptr),
                                     test_bits[i])
                         << "loop: " << loop << "pos: " << i << " / "
                         << total_bits << " bit_gen_method: " << bit_gen_method
@@ -179,23 +179,23 @@ TEST(Entropy_BitstreamWriter, write_literal_extreme_int) {
 
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
-    aom_writer bw;
+    AomWriter bw;
 
     aom_start_encode(&bw, stream_buffer);
     aom_write_literal(&bw, max_int, 32);
     aom_write_literal(&bw, min_int, 32);
     aom_stop_encode(&bw);
 
-    aom_reader br;
-    aom_reader_init(&br, stream_buffer, bw.pos);
-    EXPECT_EQ(aom_read_literal(&br, 32, nullptr), max_int)
+    SvtReader br;
+    svt_reader_init(&br, stream_buffer, bw.pos);
+    EXPECT_EQ(svt_read_literal(&br, 32, nullptr), max_int)
         << "read max_int fail";
-    EXPECT_EQ(aom_read_literal(&br, 32, nullptr), min_int)
+    EXPECT_EQ(svt_read_literal(&br, 32, nullptr), min_int)
         << "read min_int fail";
 }
 
 TEST(Entropy_BitstreamWriter, write_symbol_no_update) {
-    aom_writer bw = {0};
+    AomWriter bw = {0};
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
 
@@ -220,18 +220,18 @@ TEST(Entropy_BitstreamWriter, write_symbol_no_update) {
     rnd.reset();
     gen.seed(deterministic_seeds);
 
-    aom_reader br;
-    aom_reader_init(&br, stream_buffer, bw.pos);
+    SvtReader br;
+    svt_reader_init(&br, stream_buffer, bw.pos);
     for (int i = 0; i < 500; ++i) {
-        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+        ASSERT_EQ(svt_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
                   rnd(gen));
-        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+        ASSERT_EQ(svt_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
                   rnd(gen));
     }
 }
 
 TEST(Entropy_BitstreamWriter, write_symbol_with_update) {
-    aom_writer bw = {0};
+    AomWriter bw = {0};
     const int buffer_size = 1024;
     uint8_t stream_buffer[buffer_size];
     bw.allow_update_cdf = 1;
@@ -257,14 +257,14 @@ TEST(Entropy_BitstreamWriter, write_symbol_with_update) {
     rnd.reset();
     gen.seed(deterministic_seeds);
 
-    aom_reader br;
-    aom_reader_init(&br, stream_buffer, bw.pos);
+    SvtReader br;
+    svt_reader_init(&br, stream_buffer, bw.pos);
     br.allow_update_cdf = 1;
     av1_default_coef_probs(&fc, base_qindex);  // reset cdf
     for (int i = 0; i < 500; i++) {
-        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+        ASSERT_EQ(svt_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
                   rnd(gen));
-        ASSERT_EQ(aom_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
+        ASSERT_EQ(svt_read_symbol(&br, fc.txb_skip_cdf[0][0], 2, nullptr),
                   rnd(gen));
     }
 }

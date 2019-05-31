@@ -3,7 +3,7 @@
 * SPDX - License - Identifier: BSD - 2 - Clause - Patent
 */
 
-#include "EbDefinitions.h"
+#include "EbSvtAv1.h"
 #include "tmmintrin.h"
 #include "EbIntraPrediction_SSSE3.h"
 
@@ -584,4 +584,3 @@ extern void intra_mode_angular_horizontal_kernel_ssse3_intrin(
         }
     }
 }
-

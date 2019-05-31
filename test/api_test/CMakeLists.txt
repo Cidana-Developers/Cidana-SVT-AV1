@@ -17,10 +17,10 @@ include_directories(${PROJECT_SOURCE_DIR}/Source/API)
 # Define helper functions and macros used by Google Test.
 include(../../third_party/googletest/cmake/internal_utils.cmake)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+if(MSVC)
  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 -D_ALLOW_KEYWORD_MACROS")
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 -D_ALLOW_KEYWORD_MACROS")
-endif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+endif (MSVC)
 
 # When other libraries are using a shared version of runtime libraries,
 # Google Test also has to use one.
@@ -37,6 +37,12 @@ file(GLOB all_files
     "*.h"
     "*.cc")
 
+if(BUILD_SHARED_LIBS)
+    set (SvtAv1EncLib SvtAv1EncShared)
+else()
+    set (SvtAv1EncLib SvtAv1EncStatic)
+endif()
+
 if (UNIX)
         
   # App Source Files
@@ -45,7 +51,7 @@ if (UNIX)
 
     # Link the Encoder App
      target_link_libraries (SvtAv1ApiTests
-        SvtAv1Enc
+        ${SvtAv1EncLib}
         gtest_all 
         pthread
         m)
@@ -54,7 +60,7 @@ endif(UNIX)
 
 if (MSVC OR MSYS OR MINGW OR WIN32)
 
-    set (lib_list SvtAv1Enc gtest_all)
+    set (lib_list ${SvtAv1EncLib} gtest_all)
                         
     cxx_executable_with_flags(SvtAv1ApiTests "${cxx_default}"
       "${lib_list}" ${all_files})

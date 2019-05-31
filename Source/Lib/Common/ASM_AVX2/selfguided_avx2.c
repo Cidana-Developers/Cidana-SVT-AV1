@@ -72,12 +72,10 @@ static void *memset_zero_avx(void *dest, const __m256i *zero, size_t count) {
         _mm256_storeu_si256((__m256i *)((int32_t *)dest + i + 16), *zero);
         _mm256_storeu_si256((__m256i *)((int32_t *)dest + i + 24), *zero);
     }
-    for (; i < (count & 0xfffffff8); i += 8) {
+    for (; i < (count & 0xfffffff8); i += 8)
         _mm256_storeu_si256((__m256i *)((int32_t *)dest + i), *zero);
-    }
-    for (; i < count; i++) {
+    for (; i < count; i++)
         *(int32_t *)dest = 0;
-    }
     return dest;
 }
 
@@ -218,7 +216,7 @@ static __m256i compute_p(__m256i sum1, __m256i sum2, int32_t bit_depth, int32_t 
 static void calc_ab(int32_t *A, int32_t *B, const int32_t *C, const int32_t *D,
     int32_t width, int32_t height, int32_t buf_stride, int32_t bit_depth,
     int32_t sgr_params_idx, int32_t radius_idx) {
-    const sgr_params_type *const params = &sgr_params[sgr_params_idx];
+    const SgrParamsType *const params = &sgr_params[sgr_params_idx];
     const int32_t r = params->r[radius_idx];
     const int32_t n = (2 * r + 1) * (2 * r + 1);
     const __m256i s = _mm256_set1_epi32(params->s[radius_idx]);
@@ -355,7 +353,7 @@ static void calc_ab_fast(int32_t *A, int32_t *B, const int32_t *C,
     const int32_t *D, int32_t width, int32_t height,
     int32_t buf_stride, int32_t bit_depth, int32_t sgr_params_idx,
     int32_t radius_idx) {
-    const sgr_params_type *const params = &sgr_params[sgr_params_idx];
+    const SgrParamsType *const params = &sgr_params[sgr_params_idx];
     const int32_t r = params->r[radius_idx];
     const int32_t n = (2 * r + 1) * (2 * r + 1);
     const __m256i s = _mm256_set1_epi32(params->s[radius_idx]);
@@ -551,7 +549,6 @@ void av1_selfguided_restoration_avx2(const uint8_t *dgd8, int32_t width, int32_t
     int32_t *flt1, int32_t flt_stride,
     int32_t sgr_params_idx, int32_t bit_depth,
     int32_t highbd) {
-
     // The ALIGN_POWER_OF_TWO macro here ensures that column 1 of Atl, Btl,
     // Ctl and Dtl is 32-byte aligned.
     const int32_t buf_elts = ALIGN_POWER_OF_TWO(RESTORATION_PROC_UNIT_PELS, 3);
@@ -605,7 +602,7 @@ void av1_selfguided_restoration_avx2(const uint8_t *dgd8, int32_t width, int32_t
         integral_images(dgd0, dgd_stride, width_ext, height_ext, Ctl, Dtl,
             buf_stride);
 
-    const sgr_params_type *const params = &sgr_params[sgr_params_idx];
+    const SgrParamsType *const params = &sgr_params[sgr_params_idx];
     // Write to flt0 and flt1
     // If params->r == 0 we skip the corresponding filter. We only allow one of
     // the radii to be 0, as having both equal to 0 would be equivalent to
@@ -639,10 +636,9 @@ void apply_selfguided_restoration_avx2(const uint8_t *dat8, int32_t width,
     assert(width * height <= RESTORATION_UNITPELS_MAX);
     av1_selfguided_restoration_avx2(dat8, width, height, stride, flt0, flt1,
         width, eps, bit_depth, highbd);
-    const sgr_params_type *const params = &sgr_params[eps];
+    const SgrParamsType *const params = &sgr_params[eps];
     int32_t xq[2];
     decode_xq(xqd, xq, params);
-
 
     __m256i xq0 = _mm256_set1_epi32(xq[0]);
     __m256i xq1 = _mm256_set1_epi32(xq[1]);

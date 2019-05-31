@@ -6,7 +6,7 @@
 /******************************************************************************
  * @file FrameQueue.cc
  *
- * @brief Impelmentation of reconstruction frame queue
+ * @brief Impelmentation of reconstructed frame queue
  *
  ******************************************************************************/
 
@@ -120,7 +120,7 @@ class FrameQueueFile : public FrameQueue {
     }
 
   public:
-    FILE *recon_file_; /**< file handle to dave reconstruction video frames, set
+    FILE *recon_file_; /**< file handle to dave reconstructed video frames, set
                           it to public for accessable by create_frame_queue */
 
   protected:

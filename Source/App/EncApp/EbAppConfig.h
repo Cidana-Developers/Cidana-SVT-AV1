@@ -24,20 +24,11 @@ typedef __int64 off64_t;
 
 #endif
 
-#ifndef _RSIZE_T_DEFINED
-typedef size_t rsize_t;
-#define _RSIZE_T_DEFINED
-#endif  /* _RSIZE_T_DEFINED */
-
-#ifndef _ERRNO_T_DEFINED
-#define _ERRNO_T_DEFINED
-typedef int32_t errno_t;
-#endif  /* _ERRNO_T_DEFINED */
-
 /** The AppExitConditionType type is used to define the App main loop exit
 conditions.
 */
-typedef enum AppExitConditionType {
+typedef enum AppExitConditionType
+{
     APP_ExitConditionNone = 0,
     APP_ExitConditionFinished,
     APP_ExitConditionError
@@ -46,18 +37,11 @@ typedef enum AppExitConditionType {
 /** The AppPortActiveType type is used to define the state of output ports in
 the App.
 */
-typedef enum AppPortActiveType {
+typedef enum AppPortActiveType
+{
     APP_PortActive = 0,
     APP_PortInactive
 } AppPortActiveType;
-
-//typedef enum EbPtrType {
-//    EB_N_PTR = 0,                                   // malloc'd pointer
-//    EB_A_PTR = 1,                                   // malloc'd pointer aligned
-//    EB_MUTEX = 2,                                   // mutex
-//    EB_SEMAPHORE = 3,                                   // semaphore
-//    EB_THREAD = 4                                    // thread handle
-//}EbPtrType;
 
 /** The EbPtr type is intended to be used to pass pointers to and from the svt
 API.  This is a 32 bit pointer and is aligned on a 32 bit word boundary.
@@ -69,14 +53,14 @@ typedef void * EbPtr;
 #define EB_NULL ((void*) 0)
 
 // memory map to be removed and replaced by malloc / free
-typedef enum EbPtrType {
-    EB_N_PTR = 0,                                   // malloc'd pointer
-    EB_A_PTR = 1,                                   // malloc'd pointer aligned
-    EB_MUTEX = 2,                                   // mutex
+typedef enum EbPtrType
+{
+    EB_N_PTR     = 0,                                   // malloc'd pointer
+    EB_A_PTR     = 1,                                   // malloc'd pointer aligned
+    EB_MUTEX     = 2,                                   // mutex
     EB_SEMAPHORE = 3,                                   // semaphore
-    EB_THREAD = 4                                    // thread handle
+    EB_THREAD    = 4                                    // thread handle
 }EbPtrType;
-typedef void * EbPtr;
 typedef struct EbMemoryMapEntry
 {
     EbPtr                     ptr;                       // points to a memory pointer
@@ -135,27 +119,6 @@ extern    uint32_t                   app_malloc_count;
                 } \
     app_malloc_count++;
 
-/* string copy */
-extern errno_t strcpy_ss(char *dest, rsize_t dmax, const char *src);
-
-/* fitted string copy */
-extern errno_t strncpy_ss(char *dest, rsize_t dmax, const char *src, rsize_t slen);
-
-/* string length */
-extern rsize_t strnlen_ss(const char *s, rsize_t smax);
-
-#define EB_STRNCPY(dst, src, count) \
-    strncpy_ss(dst, sizeof(dst), src, count)
-
-#define EB_STRCPY(dst, size, src) \
-    strcpy_ss(dst, size, src)
-
-#define EB_STRCMP(target,token) \
-    strcmp(target,token)
-
-#define EB_STRLEN(target, max_size) \
-    strnlen_ss(target, max_size)
-
 #define EB_APP_MEMORY() \
     printf("Total Number of Mallocs in App: %d\n", app_malloc_count); \
     printf("Total App Memory: %.2lf KB\n\n",*total_app_memory/(double)1024);
@@ -169,9 +132,7 @@ extern rsize_t strnlen_ss(const char *s, rsize_t smax);
 #define FOPEN(f,s,m) f=fopen(s,m)
 #endif
 
-
 typedef struct EbPerformanceContext {
-
     /****************************************
      * Computational Performance Data
      ****************************************/
@@ -192,7 +153,6 @@ typedef struct EbPerformanceContext {
     double                    average_latency;
 
     uint64_t                  byte_count;
-
 }EbPerformanceContext;
 
 typedef struct EbConfig
@@ -251,7 +211,6 @@ typedef struct EbConfig
     uint32_t                 intra_refresh_type;
     uint32_t                 hierarchical_levels;
     uint32_t                 pred_structure;
-
 
     /****************************************
      * Quantization
@@ -317,7 +276,6 @@ typedef struct EbConfig
     int32_t                  tile_columns;
     int32_t                  tile_rows;
 
-
     /****************************************
      * Rate Control
      ****************************************/
@@ -333,6 +291,7 @@ typedef struct EbConfig
      ****************************************/
 
     EbBool                   improve_sharpness;
+    uint32_t                 screen_content_mode;
     uint32_t                 high_dynamic_range_input;
 
     /****************************************
@@ -364,7 +323,7 @@ typedef struct EbConfig
     uint32_t                active_channel_count;
     uint32_t                logical_processors;
     int32_t                 target_socket;
-    EbBool                 stop_encoder;         // to signal CTRL+C Event, need to stop encoding.
+    EbBool                  stop_encoder;         // to signal CTRL+C Event, need to stop encoding.
 
     uint64_t                processed_frame_count;
     uint64_t                processed_byte_count;
@@ -372,6 +331,15 @@ typedef struct EbConfig
     uint64_t                byte_count_since_ivf;
     uint64_t                ivf_count;
 
+    // --- start: ALTREF_FILTERING_SUPPORT
+    /****************************************
+     * ALT-REF related Parameters
+     ****************************************/
+    EbBool                  enable_altrefs;
+    uint8_t                 altref_strength;
+    uint8_t                 altref_nframes;
+    EbBool                  enable_overlays;
+    // --- end: ALTREF_FILTERING_SUPPORT
 } EbConfig;
 
 extern void eb_config_ctor(EbConfig *config_ptr);

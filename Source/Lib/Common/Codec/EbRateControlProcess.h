@@ -26,10 +26,12 @@
 #define CODED_FRAMES_STAT_QUEUE_MAX_DEPTH   10000
 #endif
 #define RC_PRINTS                   0
+#define ADAPTIVE_PERCENTAGE         1
+#define RC_UPDATE_TARGET_RATE       1
 
 #define RC_QPMOD_MAXQP             54
 
-static const uint32_t  rate_percentage_layer_array[EB_MAX_TEMPORAL_LAYERS][EB_MAX_TEMPORAL_LAYERS] = 
+static const uint32_t  rate_percentage_layer_array[EB_MAX_TEMPORAL_LAYERS][EB_MAX_TEMPORAL_LAYERS] =
 {
     {100,  0,  0,  0,  0,  0 },
     { 70, 30,  0,  0,  0,  0 },
@@ -41,7 +43,7 @@ static const uint32_t  rate_percentage_layer_array[EB_MAX_TEMPORAL_LAYERS][EB_MA
 
 // range from 0 to 51
 // precision is 16 bits
-static const uint64_t two_to_power_qp_over_three[] = 
+static const uint64_t two_to_power_qp_over_three[] =
 {
          0x10000,      0x1428A,     0x19660,     0x20000,
          0x28514,      0x32CC0,     0x40000,     0x50A29,
@@ -60,7 +62,7 @@ static const uint64_t two_to_power_qp_over_three[] =
 /**************************************
  * Input Port Types
  **************************************/
-typedef enum RateControlInputPortTypes 
+typedef enum RateControlInputPortTypes
 {
     RATE_CONTROL_INPUT_PORT_PICTURE_MANAGER = 0,
     RATE_CONTROL_INPUT_PORT_PACKETIZATION = 1,
@@ -72,7 +74,7 @@ typedef enum RateControlInputPortTypes
 /**************************************
  * Input Port Config
  **************************************/
-typedef struct RateControlPorts 
+typedef struct RateControlPorts
 {
     RateControlInputPortTypes    type;
     uint32_t                           count;
@@ -81,7 +83,7 @@ typedef struct RateControlPorts
 /**************************************
  * Coded Frames Stats
  **************************************/
-typedef struct CodedFramesStatsEntry 
+typedef struct CodedFramesStatsEntry
 {
     uint64_t               picture_number;
     int64_t               frame_total_bit_actual;
@@ -90,7 +92,6 @@ typedef struct CodedFramesStatsEntry
 /**************************************
  * Context
  **************************************/
-
 
 #if RC
 typedef struct RateControlLayerContext
@@ -141,7 +142,6 @@ typedef struct RateControlLayerContext
     uint32_t   temporal_index;
 
     uint64_t   alpha;
-
 } RateControlLayerContext;
 
 typedef struct RateControlIntervalParamContext
@@ -168,7 +168,6 @@ typedef struct RateControlIntervalParamContext
     EbBool                       scene_change_in_gop;
     EbBool                       min_target_rate_assigned;
     int64_t                      extra_ap_bit_ratio_i;
-
 } RateControlIntervalParamContext;
 
 typedef struct HighLevelRateControlContext
@@ -179,9 +178,11 @@ typedef struct HighLevelRateControlContext
     uint64_t channel_bit_rate_per_sw;
     uint64_t bit_constraint_per_sw;
     uint64_t pred_bits_ref_qpPerSw[MAX_REF_QP_NUM];
+#if RC_UPDATE_TARGET_RATE
     uint32_t prev_intra_selected_ref_qp;
     uint32_t prev_intra_org_selected_ref_qp;
     uint64_t previous_updated_bit_constraint_per_sw;
+#endif
 } HighLevelRateControlContext;
 
 typedef struct RateControlContext
@@ -221,7 +222,6 @@ typedef struct RateControlContext
 
 #endif
 
-
     uint64_t                           rate_average_periodin_frames;
     uint32_t                           base_layer_frames_avg_qp;
     uint32_t                           base_layer_intra_frames_avg_qp;
@@ -237,7 +237,6 @@ typedef struct RateControlContext
 
     uint32_t                           qp_scaling_map[EB_MAX_TEMPORAL_LAYERS][MAX_REF_QP_NUM];
     uint32_t                           qp_scaling_map_I_SLICE[MAX_REF_QP_NUM];
-
 } RateControlContext;
 #else
 typedef struct RateControlLayerContext
@@ -290,10 +289,9 @@ typedef struct RateControlLayerContext
     uint32_t                  temporalIndex;
 
     uint64_t                  alpha;
-
 } RateControlLayerContext;
 
-typedef struct RateControlIntervalParamContext_s
+typedef struct RateControlIntervalParamContext
 {
     uint64_t                       firstPoc;
     uint64_t                       lastPoc;
@@ -317,12 +315,10 @@ typedef struct RateControlIntervalParamContext_s
     EbBool                      scene_change_in_gop;
     EbBool                      min_target_rate_assigned;
     int64_t                       extraApBitRatioI;
-
 } RateControlIntervalParamContext;
 
-typedef struct HighLevelRateControlContext_s
+typedef struct HighLevelRateControlContext
 {
-
     uint64_t                       targetBitsPerSlidingWindow;
     uint64_t                       target_bit_rate;
     uint64_t                       frame_rate;
@@ -335,11 +331,9 @@ typedef struct HighLevelRateControlContext_s
     uint32_t                       prevIntraOrgSelectedRefQp;
     uint64_t                       previousUpdatedBitConstraintPerSw;
 #endif
-
-
 } HighLevelRateControlContext;
 
-typedef struct RateControlContext_s
+typedef struct RateControlContext
 {
     EbFifo                    *rate_control_input_tasks_fifo_ptr;
     EbFifo                    *rate_control_output_results_fifo_ptr;
@@ -374,7 +368,6 @@ typedef struct RateControlContext_s
 
 #endif
 
-
     uint64_t                       rateAveragePeriodinFrames;
     uint32_t                       baseLayerFramesAvgQp;
     uint32_t                       baseLayerIntraFramesAvgQp;
@@ -389,8 +382,6 @@ typedef struct RateControlContext_s
     int64_t                       extraBits;
     int64_t                       extraBitsGen;
     int16_t                      maxRateAdjustDeltaQP;
-
-
 } RateControlContext;
 #endif
 /**************************************

@@ -50,8 +50,8 @@ double get_scale_factor(Txfm2DFlipCfg &cfg, const int tx_width,
 void reference_txfm_2d(const double *in, double *out, TxType tx_type,
                        TxSize tx_size, double scale_factor) {
     // Get transform type and size of each dimension.
-    const TX_TYPE_1D column_type = vtx_tab[tx_type];
-    const TX_TYPE_1D row_type = htx_tab[tx_type];
+    const TxType1D column_type = vtx_tab[tx_type];
+    const TxType1D row_type = htx_tab[tx_type];
     const int tx_width = tx_size_wide[tx_size];
     const int tx_height = tx_size_high[tx_size];
     double *tmp_input = new double[tx_width * tx_height];
@@ -95,7 +95,7 @@ void reference_txfm_2d(const double *in, double *out, TxType tx_type,
         delete[] tmp_output;
 }
 
-void fadst4_ref(const tran_low_t *input, tran_low_t *output) {
+void fadst4_ref(const TranLow *input, TranLow *output) {
     //  16384 * sqrt(2) * sin(kPi/9) * 2 / 3
     const TranHigh sinpi_1_9 = 5283;
     const TranHigh sinpi_2_9 = 9929;
@@ -133,10 +133,10 @@ void fadst4_ref(const tran_low_t *input, tran_low_t *output) {
     s3 = x2 - x0 + x3;
 
     // 1-D transform scaling factor is sqrt(2).
-    output[0] = (tran_low_t)svt_av1_test_tool::round_shift(s0, 14);
-    output[1] = (tran_low_t)svt_av1_test_tool::round_shift(s1, 14);
-    output[2] = (tran_low_t)svt_av1_test_tool::round_shift(s2, 14);
-    output[3] = (tran_low_t)svt_av1_test_tool::round_shift(s3, 14);
+    output[0] = (TranLow)svt_av1_test_tool::round_shift(s0, 14);
+    output[1] = (TranLow)svt_av1_test_tool::round_shift(s1, 14);
+    output[2] = (TranLow)svt_av1_test_tool::round_shift(s2, 14);
+    output[3] = (TranLow)svt_av1_test_tool::round_shift(s3, 14);
 }
 
 void reference_idtx_1d(const double *in, double *out, int size) {
@@ -169,12 +169,12 @@ void reference_dct_1d(const double *in, double *out, int size) {
 
 void reference_adst_1d(const double *in, double *out, int size) {
     if (size == 4) {  // Special case.
-        tran_low_t int_input[4];
+        TranLow int_input[4];
         for (int i = 0; i < 4; ++i) {
-            int_input[i] = static_cast<tran_low_t>(round(in[i]));
+            int_input[i] = static_cast<TranLow>(round(in[i]));
         }
 
-        tran_low_t int_output[4];
+        TranLow int_output[4];
         fadst4_ref(int_input, int_output);
         for (int i = 0; i < 4; ++i) {
             out[i] = int_output[i];
@@ -189,7 +189,7 @@ void reference_adst_1d(const double *in, double *out, int size) {
     }
 }
 
-void reference_txfm_1d(TX_TYPE_1D type, const double *in, double *out,
+void reference_txfm_1d(TxType1D type, const double *in, double *out,
                        int size) {
     switch (type) {
     case DCT_1D: reference_dct_1d(in, out, size); break;
@@ -200,7 +200,7 @@ void reference_txfm_1d(TX_TYPE_1D type, const double *in, double *out,
     }
 }
 
-TX_TYPE_1D get_txfm1d_types(TxfmType txfm_type) {
+TxType1D get_txfm1d_types(TxfmType txfm_type) {
     switch (txfm_type) {
     case TXFM_TYPE_DCT4:
     case TXFM_TYPE_DCT8:
