@@ -87,6 +87,7 @@ class DummyVideoSource : public VideoSource {
     void close_source() override {
         deinit_frame_buffer();
     }
+
     /*!\brief Get next frame. */
     EbSvtIOFormat *get_next_frame() override {
         if (current_frame_index_ + 1 >= frame_count_)
@@ -95,6 +96,7 @@ class DummyVideoSource : public VideoSource {
         generate_frame(current_frame_index_ + init_pos_);
         return frame_buffer_;
     }
+
     /*!\brief Get frame by index. */
     EbSvtIOFormat *get_frame_by_index(const uint32_t index) override {
         if (index >= frame_count_)
@@ -131,6 +133,7 @@ class DummyVideoSource : public VideoSource {
             memcpy(p, src_p, width_with_padding_);
             p += width_with_padding_;
         }
+
         // cb
         src_p = frame_buffer_->cb;
         p = src_p + offset / 2;
@@ -144,6 +147,7 @@ class DummyVideoSource : public VideoSource {
             memcpy(p, src_p, width_with_padding_ / 2);
             p += width_with_padding_ / 2;
         }
+
         // cr
         src_p = frame_buffer_->cr;
         p = src_p + offset / 2;
