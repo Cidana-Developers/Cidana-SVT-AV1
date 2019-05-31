@@ -63,25 +63,11 @@ class CflPredTest {
     virtual ~CflPredTest() {
     }
 
-    void print_result(const char *message, Pixel *buf, const int c_w,
-                      const int c_h, const int c_stride) {
-        printf("%s %dx%d\n", message, c_w, c_h);
-        for (int i = 0; i < c_h; i++) {
-            for (int j = 0; j < c_w; j++) {
-                printf("%d ", buf[i * c_stride + j]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-
     void RunAllTest() {
         // for pred_buf, after sampling and subtracted from average
         SVTRandom pred_rnd(bd_ + 3 + 1, true);
         SVTRandom dst_rnd(4, false);
         for (int tx = TX_4X4; tx < TX_SIZES_ALL; ++tx) {
-            // loop the alpha_q3, [-16, 16]
-            // TODO(wenyao): support more color space
             const int c_w = tx_size_wide[tx] >> 1;
             const int c_h = tx_size_high[tx] >> 1;
             const int c_stride = CFL_BUF_LINE;

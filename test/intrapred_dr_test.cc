@@ -21,6 +21,7 @@
 
 namespace {
 using svt_av1_test_tool::SVTRandom;
+
 // copied from EbIntraPrediction.c
 const uint16_t dr_intra_derivative[90] = {
     // More evenly spread out angles and limited to 10-bit
@@ -187,13 +188,11 @@ class DrPredTest {
     }
 
     void clear_output_pixel() {
-        for (int i = 0; i < pred_buf_size; ++i) {
+        for (int i = 0; i < pred_buf_size; ++i)
             dst_ref_[i] = 0;
-        }
 
-        for (int i = 0; i < pred_buf_size; ++i) {
+        for (int i = 0; i < pred_buf_size; ++i)
             dst_tst_[i] = 0;
-        }
     }
 
     void RunTest() {
@@ -201,28 +200,22 @@ class DrPredTest {
         for (int cnt = 0; cnt < num_tests; ++cnt) {
             prepare_neighbor_pixel(rnd, cnt);
             for (int tx = 0; tx < TX_SIZES_ALL; ++tx) {
-                for (int c = 0; c < 4; ++c) {
-                    // TODO(wenyao): check why some test cases fails
-                    // when one of them is 1.
-                    upsample_above_ = 0;  // c & 0x1;
-                    upsample_left_ = 0;   // (c & 0x2) >> 1;
+                // clear the output for each tx
+                clear_output_pixel();
+                bw_ = tx_size_wide[tx];
+                bh_ = tx_size_high[tx];
 
-                    // clear the output for each tx
-                    clear_output_pixel();
-                    bw_ = tx_size_wide[tx];
-                    bh_ = tx_size_high[tx];
-                    Predict();
+                Predict();
 
-                    for (int r = 0; r < bh_; ++r) {
-                        for (int c = 0; c < bw_; ++c) {
-                            ASSERT_EQ(dst_ref_[r * dst_stride_ + c],
-                                      dst_tst_[r * dst_stride_ + c])
-                                << bw_ << "x" << bh_ << " r: " << r
-                                << " c: " << c << " dx: " << dx_
-                                << " dy: " << dy_
-                                << " upsample_above: " << upsample_above_
-                                << " upsample_left: " << upsample_left_;
-                        }
+                // check the result
+                for (int r = 0; r < bh_; ++r) {
+                    for (int c = 0; c < bw_; ++c) {
+                        ASSERT_EQ(dst_ref_[r * dst_stride_ + c],
+                                  dst_tst_[r * dst_stride_ + c])
+                            << bw_ << "x" << bh_ << " r: " << r << " c: " << c
+                            << " dx: " << dx_ << " dy: " << dy_
+                            << " upsample_above: " << upsample_above_
+                            << " upsample_left: " << upsample_left_;
                     }
                 }
             }

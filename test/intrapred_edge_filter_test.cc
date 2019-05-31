@@ -28,7 +28,8 @@ using svt_av1_test_tool::SVTRandom;
 using UPSAMPLE_LBD = void (*)(uint8_t *p, int size);
 
 /**
- * @brief Unit test for upsample in intra prediction:
+ * @brief Unit test for upsample in intra prediction specified in
+ * spec 7.11.2.11:
  * - av1_upsample_intra_edge_sse4_1
  *
  * Test strategy:
@@ -43,7 +44,8 @@ using UPSAMPLE_LBD = void (*)(uint8_t *p, int size);
  * Test coverage:
  * Test cases:
  * Neighbor pixel buffer: Fill with random values
- * Size: [4, 16]
+ * numPx: [4, 16] (w + (pAngle < 90 ? h : 0)) and and max blkWh is 16
+ * according to spec 7.11.2
  * BitDepth: 8bit
  */
 template <typename Pixel, typename Func>
@@ -63,12 +65,14 @@ class UpsampleTest {
         SVTRandom pix_rnd(0, (1 << bd_) - 1);
         for (int iter = 0; iter < num_tests; ++iter) {
             for (int i = 1; i < 5; ++i) {  // [1, 4]
-                size_ = 4 * i;
+                numPx_ = 4 * i;            // blkWh is increased with step 4.
                 prepare_data(pix_rnd);
 
                 run_upsample();
 
-                const int max_idx = (size_ - 1) * 2;
+                // When the process completes, entries -2 to 2*numPx-2
+                // are valid in buf;
+                const int max_idx = (numPx_ - 1) * 2;
                 for (int i = -2; i <= max_idx; ++i)
                     ASSERT_EQ(edge_ref_[i], edge_tst_[i]);
             }
@@ -86,15 +90,14 @@ class UpsampleTest {
     }
 
     void prepare_data(SVTRandom &pix_rnd) {
+        // When the process starts, entries -1 to numPx-1 are valid in buf
         int i = 0;
-        for (; i < start_offset + size_; ++i) {
+        for (; i < start_offset + numPx_; ++i)
             edge_ref_data_[i] = edge_tst_data_[i] = pix_rnd.random();
-        }
 
-        Pixel last = edge_ref_data_[start_offset + size_ - 1];
-        for (; i < edge_buf_size; ++i) {
+        Pixel last = edge_ref_data_[start_offset + numPx_ - 1];
+        for (; i < edge_buf_size; ++i)
             edge_ref_data_[i] = edge_tst_data_[i] = last;
-        }
     }
 
     virtual void run_upsample() {
@@ -108,7 +111,7 @@ class UpsampleTest {
 
     Func ref_func_;
     Func tst_func_;
-    int size_;
+    int numPx_;
     int bd_;
 };
 
@@ -123,8 +126,8 @@ class LowbdUpsampleTest : public UpsampleTest<uint8_t, UPSAMPLE_LBD> {
 
   protected:
     void run_upsample() override {
-        ref_func_(edge_ref_, size_);
-        tst_func_(edge_tst_, size_);
+        ref_func_(edge_ref_, numPx_);
+        tst_func_(edge_tst_, numPx_);
     }
 };
 
@@ -186,8 +189,8 @@ using FILTER_EDGE_HBD = void (*)(uint16_t *p, int size, int strength);
  * Test coverage:
  * Test cases:
  * Neighbor pixel buffer: Fill with random values
- * Strength: [0, 3]
- * Size: [5, 129]
+ * Strength: [0, 3] // spec 7.11.2.9 Intra edge filter strength selection
+ * numPx: [5, 129] // Min(w, (MaxX-x+1)) + (pAngle < 90 ? h : 0) + 1
  * BitDepth: 8bit and 10bit
  */
 template <typename Pixel, typename Func>
@@ -203,26 +206,26 @@ class FilterEdgeTest {
     }
 
     void RunTest() {
-        SVTRandom size_rnd(1, 32);     // range [1, 32]
+        SVTRandom numPx_rnd(1, 32);    // range [1, 32]
         SVTRandom strength_rnd(0, 3);  // range [0, 3]
         SVTRandom pix_rnd(0, (1 << bd_) - 1);
         for (int iter = 0; iter < num_tests; ++iter) {
             // random strength and size
             strength_ = strength_rnd.random();
-            size_ = 4 * size_rnd.random() + 1;
+            numPx_ = 4 * numPx_rnd.random() + 1;
 
             prepare_data(pix_rnd);
 
             run_filter_edge();
 
-            for (int i = 0; i < size_; ++i)
+            for (int i = 0; i < numPx_; ++i)
                 ASSERT_EQ(edge_ref_[i], edge_tst_[i]);
         }
     }
 
   protected:
     static const int num_tests = 1000000;
-    static const int edge_buf_size = 2 * 64 + 32;
+    static const int edge_buf_size = 2 * MAX_TX_SIZE + 32;
     static const int start_offset = 15;
 
     void common_init() {
@@ -232,14 +235,13 @@ class FilterEdgeTest {
 
     void prepare_data(SVTRandom &pix_rnd) {
         int i = 0;
-        for (; i < start_offset + size_; ++i) {
+        for (; i < start_offset + numPx_; ++i)
             edge_ref_data_[i] = edge_tst_data_[i] = pix_rnd.random();
-        }
     }
 
     void run_filter_edge() {
-        ref_func_(edge_ref_, size_, strength_);
-        tst_func_(edge_tst_, size_, strength_);
+        ref_func_(edge_ref_, numPx_, strength_);
+        tst_func_(edge_tst_, numPx_, strength_);
     }
 
     Pixel edge_ref_data_[edge_buf_size];
@@ -250,7 +252,7 @@ class FilterEdgeTest {
 
     Func ref_func_;
     Func tst_func_;
-    int size_;
+    int numPx_;
     int bd_;
     int strength_;
 };
