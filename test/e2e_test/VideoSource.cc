@@ -38,6 +38,7 @@ VideoSource::VideoSource(const VideoColorFormat format, const uint32_t width,
 VideoSource::~VideoSource() {
     deinit_frame_buffer();
 };
+
 bool VideoSource::is_10bit_mode() {
     if (image_format_ == IMG_FMT_420P10_PACKED ||
         image_format_ == IMG_FMT_422P10_PACKED ||
@@ -82,25 +83,28 @@ EbErrorType VideoSource::init_frame_buffer() {
     // Determine size of each plane
     uint32_t luma_size = width_with_padding_ * height_with_padding_;
     uint32_t chroma_size = 0;
-    uint32_t chroma_stride = width_with_padding_;
+    uint32_t chroma_stride = 0;
+    uint32_t luma_stride = width_with_padding_;
 
     switch (image_format_) {
     case IMG_FMT_420P10_PACKED:
     case IMG_FMT_420: {
         chroma_size = luma_size >> 2;
-        chroma_stride = chroma_stride >> 2;
+        chroma_stride = luma_stride >> 1;
     } break;
     case IMG_FMT_422P10_PACKED:
     case IMG_FMT_422: {
         chroma_size = luma_size >> 1;
-        chroma_stride = chroma_stride >> 1;
+        chroma_stride = luma_stride >> 1;
     } break;
     case IMG_FMT_444P10_PACKED:
     case IMG_FMT_444: {
         chroma_size = luma_size;
+        chroma_stride = luma_stride;
     } break;
     default: {
         chroma_size = luma_size >> 2;
+        chroma_stride = luma_stride;
     } break;
     }
 
@@ -119,7 +123,7 @@ EbErrorType VideoSource::init_frame_buffer() {
     frame_buffer_->origin_y = 0;
 
     // SVT-AV1 use pixel size as stride?
-    frame_buffer_->y_stride = width_with_padding_;
+    frame_buffer_->y_stride = luma_stride;
     frame_buffer_->cb_stride = chroma_stride;
     frame_buffer_->cr_stride = chroma_stride;
 
@@ -192,6 +196,7 @@ VideoFileSource::VideoFileSource(const std::string &file_name,
 
 VideoFileSource::~VideoFileSource() {
 }
+
 /**
  * @brief      Use this funcion to get vector path defined by envrionment
  * variable SVT_AV1_TEST_VECTOR_PATH, or it will return a default path.
