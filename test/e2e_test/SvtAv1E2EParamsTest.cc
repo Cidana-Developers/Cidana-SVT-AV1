@@ -28,9 +28,9 @@
  * @brief SVT-AV1 encoder parameter coverage E2E test
  *
  * Test strategy:
- * Setup SVT-AV1 encoder with individual parameter in vaild value and run the
- * conformance test progress. Check whether the result can match the output of
- * refence decoder.
+ * Config SVT-AV1 encoder with individual parameter, run the
+ * conformance test and analyse the bitstream to check if the params
+ * take effect.
  *
  * Expected result:
  * No error is reported in encoding progress. The reconstructed frame
@@ -46,9 +46,9 @@ using namespace svt_av1_e2e_test_vector;
 
 /** Max/Min QP
  *	function CopyApiFromApp() in EbEncHandle.c transfers "min_qp_allowed" to
- *1 when in non-rate-control mode, test vectors of
- *qp/min_qp_allowed/max_qp_allowed should stop test when value equals
- *MIN_QP_VALUE
+ *  1 when in non-rate-control mode, test vectors of
+ *  qp/min_qp_allowed/max_qp_allowed should stop test when value equals
+ *  MIN_QP_VALUE
  *
  * code piece:
  *	 sequence_control_set_ptr->static_config.max_qp_allowed
@@ -79,15 +79,17 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
     SvtAv1E2EParamFramework() {
         param_value_idx_ = 0;
         skip_vector_ = false;
-        with_parser_ = false;
+        enable_analyzer_ = false;
     }
+
     virtual ~SvtAv1E2EParamFramework() {
     }
-    /** initialization for test */
+
+    /** customize encoder param and setup conformance test */
     void init_test() override {
         skip_vector_ = false;
-        /** do pre-process work */
-        pre_process_param();
+        /** customize the encoder param */
+        config_enc_param();
 
         if (!skip_vector_) {
             /** create recon frame queue before setup parameter of encoder */
@@ -102,7 +104,7 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
                 av1enc_ctx_.enc_params.recon_enabled = 1;
 
             /** create reference decoder*/
-            refer_dec_ = create_reference_decoder(with_parser_);
+            refer_dec_ = create_reference_decoder(enable_analyzer_);
             ASSERT_NE(refer_dec_, nullptr)
                 << "can not create reference decoder!!";
             refer_dec_->set_resolution(video_src_->get_width_with_padding(),
@@ -111,16 +113,17 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
             SvtAv1E2ETestFramework::init_test();
         }
     }
-    /** close for test */
+
+    /** check the bitstream if the enc param take effects */
     void close_test() override {
-        post_process_param();
+        verify_enc_param();
         SvtAv1E2ETestFramework::close_test();
     }
 
   protected:
     /** setup some of the params with related params modified before set
      * to encoder */
-    void pre_process_param() {
+    void config_enc_param() {
         if (!param_name_str_.compare("film_grain_denoise_strength")) {
             av1enc_ctx_.enc_params.enable_denoise_flag = 1;
         } else if (!param_name_str_.compare("target_bit_rate")) {
@@ -204,9 +207,10 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
     static const std::map<std::string&, uint32_t> ignore_case_map;
 
     /** additional process after parameter test finish */
-    void post_process_param() {
-        if (with_parser_ && refer_dec_ && !is_ignored()) {
-            std::string result = refer_dec_->get_item(param_name_str_);
+    void verify_enc_param() {
+        if (enable_analyzer_ && refer_dec_ && !is_ignored()) {
+            std::string result =
+                refer_dec_->get_syntax_element(param_name_str_);
             if (!param_name_str_.compare("max_qp_allowed")) {
                 uint32_t value = std::stoul(param_value_str_);
                 uint32_t res = std::stoul(result);
@@ -221,7 +225,7 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
                 uint32_t frame_count = video_src_->get_frame_count();
                 for (uint32_t i = 1; i < frame_count; i++) {
                     uint32_t res = std::stoul(
-                        refer_dec_->get_item(param_name_str_, i - 1));
+                        refer_dec_->get_syntax_element(param_name_str_, i - 1));
                     EXPECT_EQ(video_src_->get_frame_qp(i), res)
                         << "e2e parameter " << param_name_str_
                         << " test failed at " << i;
@@ -235,11 +239,6 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
                         : av1enc_ctx_.enc_params.frame_rate;
                 ASSERT_GE(value, res * frame_rate)
                     << "e2e parameter " << param_name_str_ << " test failed";
-                uint32_t burst =
-                    std::stoul(refer_dec_->get_item("burst_bit_per_frame"));
-                // EXPECT_EQ(value, burst * frame_rate)
-                //                << "e2e parameter " << param_name_str_ << "
-                //                test failed";
             } else {
                 ASSERT_STREQ(param_value_str_.c_str(), result.c_str())
                     << "e2e parameter " << param_name_str_ << " test failed";
@@ -265,7 +264,7 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
     std::string param_value_str_; /**< value of parameter for test */
     size_t param_value_idx_;      /**< index of parameter value in vector */
     bool skip_vector_;            /**< flag of skip this test vector or not */
-    bool with_parser_;            /**< flag of with or without parser */
+    bool enable_analyzer_;        /**< flag of with or without parser */
 };
 
 /** Marcro defininition of batch processing check for default, valid, invalid
@@ -299,9 +298,9 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
       public:                                                                  \
         test_name() {                                                          \
             param_name_str_ = #param_name;                                     \
-            with_parser_ = wt_parser;                                          \
+            enable_analyzer_ = wt_parser;                                      \
         }                                                                      \
-        /** initialization for test */                                         \
+        /** setup target parameter name */                                     \
         void init_test() override {                                            \
             collect_ = new PerformanceCollect(typeid(this).name());            \
             EXPECT_NE(collect_, nullptr) << "performance tool create failed!"; \

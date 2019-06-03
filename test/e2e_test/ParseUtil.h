@@ -37,17 +37,17 @@
 
 namespace svt_av1_e2e_tools {
 
-/** SequenceParser is a class designed for parsing sequence header without
+/** SequenceHeaderParser is a class designed for parsing sequence header without
  * decode. It can recieve OBU data blocks and retrieve the parameter value by
  * name.
  */
-class SequenceParser {
+class SequenceHeaderParser {
   public:
-    SequenceParser() {
+    SequenceHeaderParser() {
         profile_ = 0;
         sb_size_ = 0;
     }
-    virtual ~SequenceParser() {
+    virtual ~SequenceHeaderParser() {
     }
 
   public:
@@ -61,7 +61,7 @@ class SequenceParser {
      * @return
      * std::string the value of the paramter in string format
      */
-    std::string get_item(const std::string& name);
+    std::string get_syntax_element(const std::string& name);
 
   private:
     uint32_t profile_; /**< profile paramter*/

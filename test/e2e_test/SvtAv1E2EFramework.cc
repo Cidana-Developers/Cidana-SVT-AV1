@@ -64,7 +64,7 @@ VideoSource *SvtAv1E2ETestFramework::prepare_video_src(
     return video_src;
 }
 
-void SvtAv1E2ETestFramework::trans_src_param(const VideoSource *source,
+void SvtAv1E2ETestFramework::setup_src_param(const VideoSource *source,
                                              EbSvtAv1EncConfiguration &config) {
     VideoColorFormat fmt = source->get_image_format();
     switch (fmt) {
@@ -96,7 +96,6 @@ SvtAv1E2ETestFramework::SvtAv1E2ETestFramework()
     use_ext_qp_ = false;
     start_pos_ = std::get<7>(GetParam());
     frames_to_test_ = std::get<8>(GetParam());
-    printf("start: %d, count: %d\n", start_pos_, frames_to_test_);
 }
 
 SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
@@ -121,7 +120,6 @@ SvtAv1E2ETestFramework::~SvtAv1E2ETestFramework() {
         collect_ = nullptr;
     }
     if (psnr_src_) {
-        psnr_src_->close_source();
         delete psnr_src_;
         psnr_src_ = nullptr;
     }
@@ -157,7 +155,7 @@ void SvtAv1E2ETestFramework::SetUp() {
         << "eb_init_handle return error:" << return_error;
     ASSERT_NE(av1enc_ctx_.enc_handle, nullptr)
         << "eb_init_handle return null handle.";
-    trans_src_param(video_src_, av1enc_ctx_.enc_params);
+    setup_src_param(video_src_, av1enc_ctx_.enc_params);
     av1enc_ctx_.enc_params.recon_enabled = 0;
 
     //
@@ -215,7 +213,9 @@ void SvtAv1E2ETestFramework::TearDown() {
     }
 
     ASSERT_NE(video_src_, nullptr);
+    ASSERT_NE(psnr_src_, nullptr);
     video_src_->close_source();
+    psnr_src_->close_source();
 }
 
 /** initialization for test */
@@ -270,13 +270,11 @@ void SvtAv1E2ETestFramework::run_encode_process() {
 
     uint32_t frame_count = video_src_->get_frame_count();
     ASSERT_GT(frame_count, 0) << "video srouce file does not contain frame!!";
-    if (recon_queue_) {
+    if (recon_queue_)
         recon_queue_->set_frame_count(frame_count);
-    }
 
-    if (output_file_) {
+    if (output_file_)
         write_output_header();
-    }
 
     uint8_t *frame = nullptr;
     bool src_file_eos = false;
@@ -284,10 +282,13 @@ void SvtAv1E2ETestFramework::run_encode_process() {
     bool rec_file_eos = recon_queue_ ? false : true;
     do {
         if (!src_file_eos) {
+            // read yuv frame
             {
                 TimeAutoCount counter(READ_SRC, collect_);
                 frame = (uint8_t *)video_src_->get_next_frame();
             }
+
+            // send yuv frame to encoder
             {
                 TimeAutoCount counter(ENCODING, collect_);
                 if (frame != nullptr && frame_count) {
@@ -304,9 +305,6 @@ void SvtAv1E2ETestFramework::run_encode_process() {
                         EB_AV1_INVALID_PICTURE;
                     av1enc_ctx_.input_picture_buffer->qp =
                         video_src_->get_frame_qp(video_src_->get_frame_index());
-                    // printf("QP[%u] in src: %u\n",
-                    // video_src_->get_frame_index(),
-                    //       av1enc_ctx_.input_picture_buffer->qp);
                     // Send the picture
                     EXPECT_EQ(EB_ErrorNone,
                               return_error = eb_svt_enc_send_picture(
@@ -315,8 +313,10 @@ void SvtAv1E2ETestFramework::run_encode_process() {
                         << "eb_svt_enc_send_picture error at: "
                         << av1enc_ctx_.input_picture_buffer->pts;
                 }
+
+                // send eos to encoder if this is last frame
                 if (frame_count == 0 || frame == nullptr) {
-                    src_file_eos = true;
+                    src_file_eos = true;  // send eos only once
                     EbBufferHeaderType headerPtrLast;
                     headerPtrLast.n_alloc_len = 0;
                     headerPtrLast.n_filled_len = 0;
@@ -334,7 +334,7 @@ void SvtAv1E2ETestFramework::run_encode_process() {
             }
         }
 
-        // recon
+        // get reconstructed frame
         if (recon_queue_ && !rec_file_eos) {
             TimeAutoCount counter(RECON, collect_);
             if (!rec_file_eos)
@@ -342,6 +342,8 @@ void SvtAv1E2ETestFramework::run_encode_process() {
         }
 
         if (!enc_file_eos) {
+            // try to get one encoded frame, flush the encoder
+            // if src_file_eos is true
             do {
                 // non-blocking call
                 EbBufferHeaderType *enc_out = nullptr;
@@ -367,19 +369,16 @@ void SvtAv1E2ETestFramework::run_encode_process() {
                 } else {
                     if (return_error != EB_NoErrorEmptyQueue) {
                         enc_file_eos = true;
-                        GTEST_FAIL() << "decoder return: " << return_error;
+                        GTEST_FAIL() << "encoder return: " << return_error;
                     }
                     break;
                 }
 
                 // Release the output buffer
-                if (enc_out != nullptr) {
+                if (enc_out != nullptr)
                     eb_svt_release_out_buffer(&enc_out);
-                    // EXPECT_EQ(enc_out, nullptr)
-                    //    << "enc_out buffer is not well released";
-                }
             } while (src_file_eos);
-        }
+        }  // if (!enc_file_eos)
     } while (!rec_file_eos || !src_file_eos || !enc_file_eos);
 
     /** complete the reference buffers in list comparison with recon */
@@ -565,9 +564,8 @@ void SvtAv1E2ETestFramework::process_compress_data(
     const EbBufferHeaderType *data) {
     ASSERT_NE(data, nullptr);
     if (refer_dec_ == nullptr) {
-        if (output_file_) {
+        if (output_file_)
             write_compress_data(data);
-        }
         return;
     }
 
@@ -588,7 +586,7 @@ void SvtAv1E2ETestFramework::decode_compress_data(const uint8_t *data,
     ASSERT_GT(size, 0);
 
     // input the compressed data into decoder
-    ASSERT_EQ(refer_dec_->process_data(data, size), RefDecoder::REF_CODEC_OK);
+    ASSERT_EQ(refer_dec_->decode(data, size), RefDecoder::REF_CODEC_OK);
 
     VideoFrame ref_frame;
     memset(&ref_frame, 0, sizeof(ref_frame));

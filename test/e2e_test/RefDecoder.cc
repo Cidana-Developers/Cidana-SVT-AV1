@@ -238,9 +238,9 @@ static uint32_t get_qp(const uint8_t qindex) {
 
 using namespace svt_av1_e2e_tools;
 
-RefDecoder* create_reference_decoder(bool parser /* = false*/) {
+RefDecoder* create_reference_decoder(bool enable_analyzer /* = false*/) {
     RefDecoder::RefDecoderErr ret = RefDecoder::REF_CODEC_OK;
-    RefDecoder* decoder = new RefDecoder(ret, parser);
+    RefDecoder* decoder = new RefDecoder(ret, enable_analyzer);
     if (decoder && ret != RefDecoder::REF_CODEC_OK) {
         // decoder object is create but init failed
         delete decoder;
@@ -249,10 +249,12 @@ RefDecoder* create_reference_decoder(bool parser /* = false*/) {
     return decoder;
 }
 
+// callback function to get frame data and mi data
 void RefDecoder::inspect_cb(void* pbi, void* data) {
     RefDecoder* pThis = (RefDecoder*)data;
     if (pThis == nullptr)
         return;
+
     if (!pThis->insp_frame_data_ && pThis->video_param_.width) {
         pThis->insp_frame_data_ = new insp_frame_data();
         if (pThis->insp_frame_data_) {
@@ -272,6 +274,7 @@ void RefDecoder::inspect_cb(void* pbi, void* data) {
     pThis->inspect_frame_parse();
 }
 
+// parse the inspect data and extract required syntax element
 void RefDecoder::inspect_frame_parse() {
     insp_frame_data* inspect_data = (insp_frame_data*)insp_frame_data_;
     ASSERT_NE(inspect_data, nullptr) << "inspection frame data is not ready";
@@ -315,7 +318,7 @@ static VideoColorFormat trans_video_format(aom_img_fmt_t fmt) {
     return IMG_FMT_422;
 }
 
-RefDecoder::RefDecoder(RefDecoder::RefDecoderErr& ret, bool parser) {
+RefDecoder::RefDecoder(RefDecoder::RefDecoderErr& ret, bool enable_analyzer) {
     dec_frame_cnt_ = 0;
     init_timestamp_ = 0;
     frame_interval_ = 1;
@@ -340,22 +343,21 @@ RefDecoder::RefDecoder(RefDecoder::RefDecoderErr& ret, bool parser) {
     }
     ret = (RefDecoderErr)(0 - err);
 
-    // setup for inspect frame
-    if (parser) {
-        /** create parser if test required*/
-        parser_ = new SequenceParser();
-        if (parser_ == nullptr) {
+    // setup parsers including sequence header parser and inspection
+    // callback.
+    if (enable_analyzer) {
+        parser_ = new SequenceHeaderParser();
+        if (parser_ == nullptr)
             printf("parser create failed!\n");
-        }
 
+        // setup inspection callback
         aom_inspect_init ii;
         ii.inspect_cb = inspect_cb;
         ii.inspect_ctx = this;
         err = aom_codec_control(
             (aom_codec_ctx_t*)codec_handle_, AV1_SET_INSPECTION_CALLBACK, &ii);
-        if (err != AOM_CODEC_OK) {
+        if (err != AOM_CODEC_OK)
             printf("inspection watch create failed!!\n");
-        }
     }
 }
 
@@ -366,7 +368,7 @@ RefDecoder::~RefDecoder() {
         insp_frame_data_ = nullptr;
     }
     if (parser_) {
-        delete (SequenceParser*)parser_;
+        delete (SequenceHeaderParser*)parser_;
         parser_ = nullptr;
     }
 
@@ -375,22 +377,13 @@ RefDecoder::~RefDecoder() {
     free(codec_handle_);
 }
 
-RefDecoder::RefDecoderErr RefDecoder::setup(const uint64_t init_ts,
-                                            const uint32_t interval) {
-    init_timestamp_ = init_ts;
-    frame_interval_ = interval;
-    return REF_CODEC_OK;
-}
-
-RefDecoder::RefDecoderErr RefDecoder::process_data(const uint8_t* data,
-                                                   const uint32_t size) {
+RefDecoder::RefDecoderErr RefDecoder::decode(const uint8_t* data,
+                                             const uint32_t size) {
     // send to parser
-    if (parser_) {
-        ((SequenceParser*)parser_)->input_obu_data(data, size);
-    }
+    if (parser_)
+        ((SequenceHeaderParser*)parser_)->input_obu_data(data, size);
 
     aom_codec_ctx_t* codec_ = (aom_codec_ctx_t*)codec_handle_;
-
     aom_codec_err_t err = aom_codec_decode(codec_, data, size, nullptr);
     if (err != AOM_CODEC_OK) {
         printf("decoder decode error: %d!", err);
@@ -406,21 +399,21 @@ RefDecoder::RefDecoderErr RefDecoder::get_frame(VideoFrame& frame) {
 
     aom_image_t* img =
         aom_codec_get_frame(codec_, (aom_codec_iter_t*)&frame.context);
-    if (img == nullptr) {
+    if (img == nullptr)
         return REF_CODEC_NEED_MORE_INPUT;
-    }
+
     trans_video_frame(img, frame);
     video_param_ = (VideoFrameParam)frame;
     dec_frame_cnt_++;
     return REF_CODEC_OK;
 }
 
-std::string RefDecoder::get_item(const std::string& name) {
+std::string RefDecoder::get_syntax_element(const std::string& name) {
     std::string item_value;
-    // get item value from parser first
-    if (parser_) {
-        item_value = ((SequenceParser*)parser_)->get_item(name);
-    }
+    // try to get item value from parser first, return directly if succeed.
+    if (parser_)
+        item_value = ((SequenceHeaderParser*)parser_)->get_syntax_element(name);
+
     if (item_value.size() > 0)
         return item_value;
 
@@ -452,8 +445,8 @@ std::string RefDecoder::get_item(const std::string& name) {
     return item_value;
 }
 
-std::string RefDecoder::get_item(const std::string& name,
-                                 const uint32_t index) {
+std::string RefDecoder::get_syntax_element(const std::string& name,
+                                           const uint32_t index) {
     std::string item_value;
 
     // get from inspection frame info by index

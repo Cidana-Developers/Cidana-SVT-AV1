@@ -1111,8 +1111,8 @@ TEST(SPSFeatureTest, sequence_header_test) {
 }
 #endif  // ENABLE_SELF_TEST
 
-void SequenceParser::input_obu_data(const uint8_t *obu_data,
-                                    const uint32_t size) {
+void SequenceHeaderParser::input_obu_data(const uint8_t *obu_data,
+                                          const uint32_t size) {
     const uint8_t *frame_buf = obu_data;
     uint32_t frame_sz = size;
     aom_codec_err_t err = AOM_CODEC_OK;
@@ -1165,7 +1165,7 @@ void SequenceParser::input_obu_data(const uint8_t *obu_data,
     } while (err == 0 && frame_sz > 0);
 }
 
-std::string SequenceParser::get_item(const std::string &name) {
+std::string SequenceHeaderParser::get_syntax_element(const std::string &name) {
     if (!name.compare("profile")) {
         return std::to_string(profile_);
     } else if (!name.compare("super_block_size")) {

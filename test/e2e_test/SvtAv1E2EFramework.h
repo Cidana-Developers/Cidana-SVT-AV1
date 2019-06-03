@@ -100,7 +100,7 @@ class SvtAv1E2ETestFramework
 
   public:
     static VideoSource *prepare_video_src(const TestVideoVector &vector);
-    static void trans_src_param(const VideoSource *source,
+    static void setup_src_param(const VideoSource *source,
                                 EbSvtAv1EncConfiguration &config);
     /** get reconstructed frame from encoder, it should call after send data
      * @param ctxt  context of encoder

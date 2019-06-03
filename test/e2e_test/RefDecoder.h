@@ -23,7 +23,7 @@
 /** RefDecoder is a class designed for a refenece tool of conformance
  * test. It provides decoding AV1 compressed data with OBU frames, its output is
  * the YUV frame in display order. User should call get_frame right after
- * process_data to avoid missing any video frame
+ * decode to avoid missing any video frame
  */
 class RefDecoder {
   public:
@@ -122,23 +122,15 @@ class RefDecoder {
     virtual ~RefDecoder();
 
   public:
-    /** Setup decoder
-     * @param init_ts  initial timestamp of input stream
-     * @param interval  the time interval in two frames
-     * @return
-     * REF_CODEC_OK -- no error found in processing
-     * others -- errors found in setup
-     */
-    RefDecoderErr setup(const uint64_t init_ts, const uint32_t interval);
-
-    /** Process compressed data
+    /** Decode raw data
      * @param data  the memory buffer of a frame of compressed data
      * @param size  the size of data
      * @return
      * REF_CODEC_OK -- no error found in processing
      * others -- errors found in process, refer to RefDecoderErr
      */
-    RefDecoderErr process_data(const uint8_t *data, const uint32_t size);
+    RefDecoderErr decode(const uint8_t *data, const uint32_t size);
+
     /** Get a video frame after data proceed
      * @param frame  the video frame with its attributes
      * @return
@@ -151,14 +143,15 @@ class RefDecoder {
      * @return
      * std::string the value of the paramter in string format
      */
-    std::string get_item(const std::string &name);
+    std::string get_syntax_element(const std::string &name);
     /** get parameter value by its name and index
      * @param name the name of paramter in string
      * @param index the index of paramter value in list
      * @return
      * std::string the value of the paramter in string format
      */
-    std::string get_item(const std::string &name, const uint32_t index);
+    std::string get_syntax_element(const std::string &name,
+                                   const uint32_t index);
 
     /** Setup resolution, for initialization for inspection frame before first
      * frame
@@ -193,11 +186,11 @@ class RefDecoder {
 };
 
 /** Interface of reference decoder creation
- * @param inspect  the flag of using inspection frame for parameter check
+ * @param enable_parser  the flag of using inspection frame for parameter check
  * @return
  * RefDecoder -- decoder handle created
  * nullptr -- creation failed
  */
-RefDecoder *create_reference_decoder(bool inspect = false);
+RefDecoder *create_reference_decoder(bool enable_analyzer = false);
 
 #endif  // !_REF_DECODER_H_
