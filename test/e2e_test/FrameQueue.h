@@ -6,7 +6,7 @@
 /******************************************************************************
  * @file FrameQueue.h
  *
- * @brief Defines a queue to collect reconstruction frames
+ * @brief Defines a queue to collect reconstructed frames
  *
  ******************************************************************************/
 
@@ -106,6 +106,13 @@ class FrameQueue {
      * false -- the queue is still available
      */
     virtual bool is_compelete() = 0;
+    /** Interface of compare with other frame queue
+     * @param other  other frame queue to compare
+     * @return
+     * true -- the queue is same
+     * false -- the queue is different
+     */
+    virtual bool compare(FrameQueue* other);
 
   protected:
     FrameQueueType queue_type_;   /**< type of queue*/
@@ -121,7 +128,7 @@ class ICompareQueue {
     virtual bool flush_video() = 0;
 };
 
-/** Interface of create a queue of reconstruction video frame with video
+/** Interface of create a queue of reconstructed video frame with video
  * parameters and the file path to store
  * @param param  the parameter of video frame
  * @param file_path  the file path to store the containers
@@ -132,7 +139,7 @@ class ICompareQueue {
 FrameQueue* create_frame_queue(const VideoFrameParam& param,
                                const char* file_path);
 
-/** Interface of create a queue of reconstruction video frame with video
+/** Interface of create a queue of reconstructed video frame with video
  * parameters
  * @param param  the parameter of video frame
  * @return

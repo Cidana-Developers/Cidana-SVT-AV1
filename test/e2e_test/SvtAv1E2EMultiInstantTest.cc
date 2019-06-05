@@ -90,7 +90,7 @@ class EncTestCtxt {
             << "eb_init_handle return error:" << return_error;
         ASSERT_NE(av1enc_ctx_.enc_handle, nullptr)
             << "eb_init_handle return null handle.";
-        SvtAv1E2ETestFramework::trans_src_param(video_src_,
+        SvtAv1E2ETestFramework::setup_src_param(video_src_,
                                                 av1enc_ctx_.enc_params);
         /** setup channel id for instant identify */
         av1enc_ctx_.enc_params.channel_id = channel_id_;
@@ -296,8 +296,7 @@ class EncTestCtxt {
         ASSERT_GT(size, 0);
 
         // input the compressed data into decoder
-        ASSERT_EQ(refer_dec_->process_data(data, size),
-                  RefDecoder::REF_CODEC_OK);
+        ASSERT_EQ(refer_dec_->decode(data, size), RefDecoder::REF_CODEC_OK);
 
         VideoFrame ref_frame;
         memset(&ref_frame, 0, sizeof(ref_frame));

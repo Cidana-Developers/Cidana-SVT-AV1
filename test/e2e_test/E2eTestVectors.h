@@ -141,6 +141,69 @@ static const TestVideoVector longtime_comformance_test_vectors[] = {
                     3000},
 };
 
+static const TestVideoVector profile_vectors[] = {
+    TestVideoVector{"jellyfish-420-180p.y4m",
+                    Y4M_VIDEO_FILE,
+                    IMG_FMT_420,
+                    320,
+                    180,
+                    8,
+                    false,
+                    0,
+                    0},
+    TestVideoVector{"jellyfish-422-180p.y4m",
+                    Y4M_VIDEO_FILE,
+                    IMG_FMT_422,
+                    320,
+                    180,
+                    8,
+                    false,
+                    0,
+                    0},
+    TestVideoVector{"jellyfish-444-180p.y4m",
+                    Y4M_VIDEO_FILE,
+                    IMG_FMT_444,
+                    320,
+                    180,
+                    8,
+                    false,
+                    0,
+                    0},
+};
+
+static const TestVideoVector qp_death_test_vectors[] = {
+    TestVideoVector{"Fruits_oranges,_jardin_japonais_2.y4m",
+                    Y4M_VIDEO_FILE,
+                    IMG_FMT_420,
+                    1296,
+                    864,
+                    8,
+                    false,
+                    0,
+                    0},
+};
+
+static const TestVideoVector src_resolution_death_test_vectors[] = {
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    952,
+                    512,
+                    8,
+                    false,
+                    0,
+                    100},
+    TestVideoVector{"kirland_640_480_30.yuv",
+                    YUV_VIDEO_FILE,
+                    IMG_FMT_420,
+                    952,
+                    704,
+                    8,
+                    false,
+                    0,
+                    100},
+};
+
 /** MultiInstVector */
 typedef std::tuple<TestVideoVector, /**< video source */
                    uint32_t>        /**< instance number for test */
@@ -157,7 +220,7 @@ static const MultiInstVector multi_inst_vectors[] = {
                                     0,
                                     0},
 
-                    3},
+                    2},
 };
 
 }  // namespace svt_av1_e2e_test_vector

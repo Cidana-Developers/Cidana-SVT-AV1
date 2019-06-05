@@ -14,9 +14,196 @@
  * PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
 
+/******************************************************************************
+ * @file ParseUtil.cc
+ *
+ * @brief Impelmentation of sequence header parser.
+ *
+ ******************************************************************************/
+
 #include "ParseUtil.h"
+#include "gtest/gtest.h"
+#include "EbDefinitions.h"
 
 namespace svt_av1_e2e_tools {
+
+typedef struct aom_timing {
+    uint32_t num_units_in_display_tick;
+    uint32_t time_scale;
+    int equal_picture_interval;
+    uint32_t num_ticks_per_picture;
+} aom_timing_info_t;
+
+typedef struct aom_dec_model_info {
+    uint32_t num_units_in_decoding_tick;
+    int encoder_decoder_buffer_delay_length;
+    int buffer_removal_delay_length;
+    int frame_presentation_delay_length;
+} aom_dec_model_info_t;
+
+typedef struct aom_dec_model_op_parameters {
+    int decoder_model_present_for_this_op;
+    int64_t bitrate;
+    int64_t buffer_size;
+    int decoder_buffer_delay;
+    int encoder_buffer_delay;
+    int low_delay_mode_flag;
+    int initial_display_delay_present_for_this_op;
+    int initial_display_delay;
+} aom_dec_model_op_parameters_t;
+
+typedef struct aom_op_timing_info_t {
+    int64_t buffer_removal_delay;
+} aom_op_timing_info_t;
+
+typedef struct SequenceHeader {
+    int error;  // indicate what kind of error on parsing the headers
+    int ready;  // 1 - valid sequence header;
+                // 0 - invalid sequence header
+
+    int still_picture;                 // Video is a single frame still picture
+    int reduced_still_picture_header;  // Use reduced header for still picture
+
+    /* timing info */
+    int timing_info_present_flag;
+    int decoder_model_info_present_flag;
+    aom_timing_info_t timing_info;
+    aom_dec_model_info_t buffer_model;
+
+    /* operating points */
+    aom_dec_model_op_parameters_t op_params[MAX_NUM_OPERATING_POINTS + 1];
+    aom_op_timing_info_t op_frame_timing[MAX_NUM_OPERATING_POINTS + 1];
+    int operating_points_cnt_minus_1;
+    int operating_point_idc[MAX_NUM_OPERATING_POINTS];
+    int initial_display_delay_present_flag;
+    uint8_t tier[MAX_NUM_OPERATING_POINTS];  // seq_tier in the spec. One bit: 0
+
+    /* profile and levels */
+    BITSTREAM_PROFILE profile;
+    uint8_t seq_level_idx;
+    unsigned int number_temporal_layers;
+    unsigned int number_spatial_layers;
+    BitstreamLevel level[MAX_NUM_OPERATING_POINTS];
+
+    /* resolution and superblock size */
+    int frame_width_bits;
+    int frame_height_bits;
+    int max_frame_width;
+    int max_frame_height;
+    block_size sb_size;  // Size of the superblock used for this frame
+    int mib_size;        // Size of the superblock in units of MI blocks
+    int mib_size_log2;   // Log 2 of above.
+
+    /* frame id */
+    int frame_id_numbers_present_flag;
+    int frame_id_length;
+    int delta_frame_id_length;
+
+    /* coding tools */
+    int order_hint_bits;
+    int force_screen_content_tools;  // 0 - force off
+                                     // 1 - force on
+                                     // 2 - adaptive
+    int force_integer_mv;          // 0 - Not to force. MV can be in 1/4 or 1/8
+                                   // 1 - force to integer
+                                   // 2 - adaptive
+    int enable_filter_intra;       // enables/disables filterintra
+    int enable_intra_edge_filter;  // enables/disables corner/edge/upsampling
+    int enable_interintra_compound;  // enables/disables interintra_compound
+    int enable_masked_compound;      // enables/disables masked compound
+    int enable_dual_filter;          // 0 - disable dual interpolation filter
+                                     // 1 - enable vert/horiz filter selection
+    int enable_order_hint;     // 0 - disable order hint, and related tools
+                               // jnt_comp, ref_frame_mvs, frame_sign_bias
+                               // if 0, enable_jnt_comp and
+                               // enable_ref_frame_mvs must be set zs 0.
+    int enable_jnt_comp;       // 0 - disable joint compound modes
+                               // 1 - enable it
+    int enable_ref_frame_mvs;  // 0 - disable ref frame mvs
+                               // 1 - enable it
+    int enable_warped_motion;  // 0 - disable warped motion for sequence
+                               // 1 - enable it for the sequence
+    int enable_superres;  // 0 - Disable superres for the sequence, and disable
+                          //     transmitting per-frame superres enabled flag.
+                          // 1 - Enable superres for the sequence, and also
+                          //     enable per-frame flag to denote if superres is
+                          //     enabled for that frame.
+    int enable_cdef;      // To turn on/off CDEF
+    int enable_restoration;  // To turn on/off loop restoration
+    int film_grain_params_present;
+
+    /* color config */
+    int monochrome;  // Monochorme video
+    int bit_depth;
+    int color_range;
+    int subsampling_x;
+    int subsampling_y;
+    int separate_uv_delta_q;
+    aom_color_primaries_t color_primaries;
+    aom_transfer_characteristics_t transfer_characteristics;
+    aom_matrix_coefficients_t matrix_coefficients;
+    aom_chroma_sample_position_t chroma_sample_position;
+} SequenceHeader;
+
+typedef void (*aom_rb_error_handler)(void *data);
+
+struct aom_read_bit_buffer {
+    const uint8_t *bit_buffer;
+    const uint8_t *bit_buffer_end;
+    uint32_t bit_offset;
+
+    void *error_handler_data;
+    aom_rb_error_handler error_handler;
+};
+
+// ivf reader
+#define IVF_FRAME_HDR_SZ (4 + 8) /* 4 byte size + 8 byte timestamp */
+#define IVF_FILE_HDR_SZ 32
+#define RAW_FRAME_HDR_SZ sizeof(uint32_t)
+
+struct AvxRational {
+    int numerator;
+    int denominator;
+};
+
+struct AvxInputContext {
+    const char *filename;
+    FILE *file;
+    uint32_t width;
+    uint32_t height;
+    uint32_t fourcc;
+    struct AvxRational framerate;
+};
+
+typedef int64_t aom_codec_pts_t;
+
+typedef enum ATTRIBUTE_PACKED {
+    OBU_SEQUENCE_HEADER = 1,
+    OBU_TEMPORAL_DELIMITER = 2,
+    OBU_FRAME_HEADER = 3,
+    OBU_TILE_GROUP = 4,
+    OBU_METADATA = 5,
+    OBU_FRAME = 6,
+    OBU_REDUNDANT_FRAME_HEADER = 7,
+    OBU_PADDING = 15,
+} obuType;
+
+/* obu reader */
+typedef struct {
+    size_t size;  // Size (1 or 2 bytes) of the OBU header (including the
+                  // optional OBU extension header) in the bitstream.
+    obuType type;
+    int has_size_field;
+    int has_extension;
+    // The following fields come from the OBU extension header and therefore are
+    // only used if has_extension is true.
+    int temporal_layer_id;
+    int spatial_layer_id;
+} ObuHeader;
+
+#define OBU_HEADER_SIZE 1
+#define OBU_EXTENSION_SIZE 1
+#define OBU_MAX_LENGTH_FIELD_SIZE 8
 
 // bit reader
 static size_t aom_rb_bytes_read(struct aom_read_bit_buffer *rb) {
@@ -843,4 +1030,148 @@ int parse_sequence_header_from_file(const char *ivf_file) {
     fclose(f);
     return 0;
 }
+
+/** @brief SPSFeatureTest targets to test for sequence parser
+ * SPSFeatureTest.sequence_header_test is a test case to verify the parser can
+ * get the sequence header correctly.
+ *
+ * Test strategy: <br>
+ * Input a encoded AV1 IVF file, and run parser to get the sequence header in
+ * frames.
+ *
+ * Expect result: <br>
+ * Parser can get sequence header correctly.
+ *
+ * Comments:
+ * Enabled only E2E Param Coverage test failed with parsing errors.
+ */
+#if ENABLE_SELF_TEST
+TEST(SPSFeatureTest, sequence_header_test) {
+    FILE *f = fopen("../../vectors/test.ivf", "rb");
+    ASSERT_NE(f, nullptr) << "IVF source file open failed!";
+    struct AvxInputContext input_ctx = {
+        "../../vectors/test.ivf", f, 0, 0, 0, {0, 0}};
+    ASSERT_TRUE(file_is_ivf(&input_ctx)) << "file is not IVF";
+
+    uint8_t *stream_buf = (uint8_t *)malloc(1024);
+    size_t buf_sz = 1024;
+    aom_codec_pts_t pts;
+    size_t frame_sz = 0;
+    int frame_cnt = 0;
+    while (ivf_read_frame(f, &stream_buf, &frame_sz, &buf_sz, &pts) == 0) {
+        // read one frame; process obu
+        printf("frame count: %d\n", frame_cnt++);
+        uint8_t *frame_buf = stream_buf;
+        aom_codec_err_t err;
+        do {
+            struct aom_read_bit_buffer rb = {
+                frame_buf, frame_buf + frame_sz, 0, NULL, NULL};
+            ObuHeader ou;
+            err = read_obu_header(&rb, 0, &ou);
+            if (ou.has_size_field) {
+                uint64_t u64_payload_length = 0;
+                int header_size = ou.has_extension ? 2 : 1;
+                int value_len = 0;
+
+                frame_buf += header_size;
+                frame_sz -= header_size;
+                for (int len = 0; len < OBU_MAX_LENGTH_FIELD_SIZE; ++len) {
+                    if ((frame_buf[len] >> 7) == 0) {
+                        ++len;
+                        value_len = len;
+                        break;
+                    }
+                }
+                aom_uleb_decode(
+                    frame_buf, value_len, &u64_payload_length, NULL);
+
+                frame_buf += value_len;
+                frame_sz -= value_len;
+                printf("OBU type: %d, payload length: %lld\n",
+                       ou.type,
+                       u64_payload_length);
+                if (ou.type == OBU_SEQUENCE_HEADER) {
+                    // check the ou type and parse sequence header
+                    struct aom_read_bit_buffer rb = {
+                        frame_buf, frame_buf + frame_sz, 0, NULL, NULL};
+                    SequenceHeader sqs_headers = {0};
+                    EXPECT_NE(read_sequence_header_obu(&sqs_headers, &rb), 0)
+                        << "read seqence header fail";
+                }
+
+                frame_buf += u64_payload_length;
+                frame_sz -= u64_payload_length;
+            }
+        } while (err == 0 && frame_sz > 0);
+    }
+
+    free(stream_buf);
+    fclose(f);
+    SUCCEED();
+}
+#endif  // ENABLE_SELF_TEST
+
+void SequenceHeaderParser::input_obu_data(const uint8_t *obu_data,
+                                          const uint32_t size) {
+    const uint8_t *frame_buf = obu_data;
+    uint32_t frame_sz = size;
+    aom_codec_err_t err = AOM_CODEC_OK;
+    do {
+        struct aom_read_bit_buffer rb = {
+            frame_buf, frame_buf + frame_sz, 0, NULL, NULL};
+        ObuHeader ou;
+        aom_codec_err_t err = read_obu_header(&rb, 0, &ou);
+        if (ou.has_size_field) {
+            uint64_t u64_payload_length = 0;
+            int header_size = ou.has_extension ? 2 : 1;
+            int value_len = 0;
+
+            frame_buf += header_size;
+            frame_sz -= header_size;
+            for (int len = 0; len < OBU_MAX_LENGTH_FIELD_SIZE; ++len) {
+                if ((frame_buf[len] >> 7) == 0) {
+                    ++len;
+                    value_len = len;
+                    break;
+                }
+            }
+            aom_uleb_decode(frame_buf, value_len, &u64_payload_length, NULL);
+
+            frame_buf += value_len;
+            frame_sz -= value_len;
+            if (ou.type == OBU_SEQUENCE_HEADER) {
+                // check the ou type and parse sequence header
+                struct aom_read_bit_buffer rb = {
+                    frame_buf, frame_buf + frame_sz, 0, NULL, NULL};
+                SequenceHeader sqs_headers = {0};
+                ASSERT_NE(read_sequence_header_obu(&sqs_headers, &rb), 0)
+                    << "read seqence header fail";
+                profile_ = sqs_headers.profile;
+                switch (sqs_headers.sb_size) {
+                case BLOCK_64X64: sb_size_ = 64; break;
+                case BLOCK_128X128: sb_size_ = 128; break;
+                default:
+                    ASSERT_TRUE(false)
+                        << "super block size is invalid in sequence header!";
+                    break;
+                }
+                printf("SPS header: profile(%u), sb_size(%u)\n",
+                       profile_,
+                       sb_size_);
+            }
+            frame_buf += u64_payload_length;
+            frame_sz -= u64_payload_length;
+        }
+    } while (err == 0 && frame_sz > 0);
+}
+
+std::string SequenceHeaderParser::get_syntax_element(const std::string &name) {
+    if (!name.compare("profile")) {
+        return std::to_string(profile_);
+    } else if (!name.compare("super_block_size")) {
+        return std::to_string(sb_size_);
+    }
+    return "";
+}
+
 }  // namespace svt_av1_e2e_tools

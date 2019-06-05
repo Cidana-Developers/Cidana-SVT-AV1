@@ -62,13 +62,18 @@ static const vector<uint8_t> default_enc_mode = {
     MAX_ENC_PRESET,
 };
 static const vector<uint8_t> valid_enc_mode = {
-    0,  // highest quality mode
-    3,  // highest density mode
+    ENC_M0, /**< highest quality mode */
+    ENC_M1,
+    ENC_M2,
+    ENC_M3, /**< highest density mode */
+    ENC_M4,
+    ENC_M5,
+    ENC_M6,
+    ENC_M7,
     MAX_ENC_PRESET,
 };
 static const vector<uint8_t> invalid_enc_mode = {
     MAX_ENC_PRESET + 1,
-    0xFF,
 };
 
 /* The intra period defines the interval of frames after which you insert an
@@ -139,27 +144,23 @@ static const vector<uint32_t> invalid_hierarchical_levels = {
  * reference picture list 0 and the reference picture list 1 will contain the
  * same reference picture.
  *
+ * Following values are supported and defined in EbDefinitions.h
+ * #define EB_PRED_LOW_DELAY_P     0
+ * #define EB_PRED_LOW_DELAY_B     1
+ * #define EB_PRED_RANDOM_ACCESS   2
+ * #define EB_PRED_TOTAL_COUNT     3
+
  * In Random Access structure, the B/b pictures can refer to reference pictures
  * from both directions (past and future).
  *
  * Default is 2. */
 static const vector<uint8_t> default_pred_structure = {
-    2,
+    EB_PRED_RANDOM_ACCESS,
 };
 static const vector<uint8_t> valid_pred_structure = {
-    0,
-    1,
-    2,
-    3,
-    4,
-    10,
-    32,
-    100,
-    255,
-};
+    EB_PRED_LOW_DELAY_P, EB_PRED_LOW_DELAY_B, EB_PRED_RANDOM_ACCESS};
 static const vector<uint8_t> invalid_pred_structure = {
-    // TODO: check for the invalid param ...
-};
+    EB_PRED_TOTAL_COUNT, EB_PRED_TOTAL_COUNT + 1, EB_PRED_INVALID};
 
 /* Decides whether to use B picture or P picture in the base layer.
  *
@@ -213,26 +214,26 @@ static const vector<uint32_t> invalid_source_height = {
  *
  * Default is 25. */
 static const vector<uint32_t> default_frame_rate = {
-    25,
+    25 << 16,
 };
 static const vector<uint32_t> valid_frame_rate = {
+    1,
     24,
     25,
     30,
     50,
     60,
-    120,
-    240,
+    1 << 16,
     24 << 16,
     25 << 16,
     30 << 16,
     50 << 16,
     60 << 16,
     120 << 16,
-    240 << 16,  // ...
+    240 << 16,
 };
 static const vector<uint32_t> invalid_frame_rate = {
-    // 0, 1, 2, 10, 15, 29, 241,  // ...
+    0, 61, 241 << 16, 0xFFFFFFFF  // ...
 };
 
 // TODO: follwoing two parameters should be a combination test
@@ -377,16 +378,12 @@ static const vector<uint32_t> invalid_sb_sz = {
 };
 
 /* Super block size
- *
+ * Only support 64 and 128
  * Default is 128. */
 static const vector<uint32_t> default_super_block_size = {
     128,
 };
 static const vector<uint32_t> valid_super_block_size = {
-    4,
-    8,
-    16,
-    32,
     64,
     MAX_SB_SIZE,
 };
@@ -414,6 +411,7 @@ static const vector<uint32_t> invalid_partition_depth = {
 };
 
 // Quantization
+
 /* Initial quantization parameter for the Intra pictures used under constant
  * qp rate control mode.
  *
@@ -435,6 +433,19 @@ static const vector<uint32_t> valid_qp = {
 };
 static const vector<uint32_t> invalid_qp = {
     (MAX_QP_VALUE + 1),
+};
+static const vector<uint32_t> death_qp = {
+    62,
+    62,
+    62,
+    62,
+    62,
+    62,
+    62,
+    62,
+    62,
+    62,
+    62,
 };
 
 /* force qp values for every picture that are passed in the header pointer
@@ -634,16 +645,9 @@ static const vector<EbBool> invalid_constrained_intra = {
  * 1 = Average BitRate.
  *
  * Default is 0. */
-static const vector<uint32_t> default_rate_control_mode = {
-    0,
-};
-static const vector<uint32_t> valid_rate_control_mode = {
-    0,
-    1,
-};
-static const vector<uint32_t> invalid_rate_control_mode = {
-    2,
-};
+static const vector<uint32_t> default_rate_control_mode = {0};
+static const vector<uint32_t> valid_rate_control_mode = {0, 1, 2, 3};
+static const vector<uint32_t> invalid_rate_control_mode = {4};
 
 /* Flag to enable the scene change detection algorithm.
  *
@@ -743,7 +747,6 @@ static const vector<uint32_t> valid_min_qp_allowed = {
     32,
     50,
     56,
-    62,
     MAX_QP_VALUE,
 };
 static const vector<uint32_t> invalid_min_qp_allowed = {
