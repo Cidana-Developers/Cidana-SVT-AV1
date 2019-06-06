@@ -22,8 +22,7 @@
 #include "EbSvtAv1Enc.h"
 
 namespace svt_av1_e2e_tools {
-static inline bool compare_image(const VideoFrame *recon,
-                                 const VideoFrame *ref_frame) {
+static inline bool compare_image(VideoFrame *recon, VideoFrame *ref_frame) {
     if (recon->width != ref_frame->width ||
         recon->height != ref_frame->height) {
         printf("compare failed for width(%u--%u) or height(%u--%u) different\n",
@@ -43,6 +42,13 @@ static inline bool compare_image(const VideoFrame *recon,
                recon->format,
                ref_frame->format);
         return false;
+    }
+
+    if (!recon->buffer) {
+        /** recon buffer is trimed, use checksum for comparison*/
+        ref_frame->trim_buffer();
+        return !memcmp(
+            recon->checksum, ref_frame->checksum, sizeof(recon->checksum));
     }
 
     uint32_t width = recon->width;
