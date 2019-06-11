@@ -1,11 +1,18 @@
-
-#include <string.h>
-#include <limits.h>
-#include <stdio.h>
-#include "gtest/gtest.h"
-#include "util.h"
+#include <math.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <new>
+// workaround to eliminate the compiling warning on linux
+// The macro will conflict with definition in gtest.h
+#ifdef __USE_GNU
+#undef __USE_GNU  // defined in EbThreads.h
+#endif
+#ifdef _GNU_SOURCE
+#undef _GNU_SOURCE  // defined in EbThreads.h
+#endif
 #include "EbComputeSAD.h"
 #include "random.h"
+#include "util.h"
 
 using svt_av1_test_tool::SVTRandom;  // to generate the random
 namespace {
@@ -45,7 +52,6 @@ class SADTestBase : public ::testing::Test {
   public:
     SADTestBase(const int width, const int height,
                 SadTestVectorParam vector_param) {
-        printf("SADTestBase\r\n");
         width_ = width;
         height_ = height;
         source_stride_ = ref_1_stride_ = ref_2_stride_ = width_ * 2;
@@ -191,14 +197,14 @@ class SADTestSubSample : public ::testing::WithParamInterface<SadTestParam>,
                                               source_stride_,
                                               ref_1_data_,
                                               ref_1_stride_,
-                                              width_,
-                                              height_);
+                                              height_,
+                                              width_);
         uint32_t avx2_sad = avx2_func(source_data_,
                                       source_stride_,
                                       ref_1_data_,
                                       ref_1_stride_,
-                                      width_,
-                                      height_);
+                                      height_,
+                                      width_);
 
         ASSERT_EQ(ref_sad, non_avx2_sad) << "Case 1 error";
         ASSERT_EQ(ref_sad, avx2_sad) << "Case 2 error";
@@ -275,14 +281,14 @@ class SADTest : public ::testing::WithParamInterface<SadTestParam>,
                                               source_stride_,
                                               ref_1_data_,
                                               ref_1_stride_,
-                                              width_,
-                                              height_);
+                                              height_,
+                                              width_);
         uint32_t avx2_sad = avx2_func(source_data_,
                                       source_stride_,
                                       ref_1_data_,
                                       ref_1_stride_,
-                                      width_,
-                                      height_);
+                                      height_,
+                                      width_);
 
         ASSERT_EQ(ref_sad, non_avx2_sad) << "Case 1 error";
         ASSERT_EQ(ref_sad, avx2_sad) << "Case 2 error";
@@ -361,16 +367,16 @@ class SADAvgTest : public ::testing::WithParamInterface<SadTestParam>,
                                               ref_1_stride_,
                                               ref_2_data_,
                                               ref_2_stride_,
-                                              width_,
-                                              height_);
+                                              height_,
+                                              width_);
         uint32_t avx2_sad = avx2_func(source_data_,
                                       source_stride_,
                                       ref_1_data_,
                                       ref_1_stride_,
                                       ref_2_data_,
                                       ref_2_stride_,
-                                      width_,
-                                      height_);
+                                      height_,
+                                      width_);
 
         ASSERT_EQ(ref_sad, non_avx2_sad) << "Case 1 error";
         ASSERT_EQ(ref_sad, avx2_sad) << "Case 2 error";
