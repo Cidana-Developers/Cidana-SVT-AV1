@@ -39,8 +39,9 @@ TEST_P(SvtAv1E2ESimpleTest, run_smoking_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleTest,
-                        ::testing::ValuesIn(video_src_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ESimpleTest,
+    ::testing::ValuesIn(generate_vector_from_config("video_src.cfg")));
 
 /**
  * @brief SVT-AV1 encoder simple E2E test with save compressed data in file
@@ -69,8 +70,9 @@ TEST_P(SvtAv1E2ESimpleFileTest, run_smoking_with_output_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ESimpleFileTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ESimpleFileTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
  * @brief SVT-AV1 encoder E2E test with save the reconstruction frames in
@@ -108,8 +110,9 @@ TEST_P(SvtAv1E2EReconFileTest, run_recon_collect_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconFileTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EReconFileTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
  * @brief SVT-AV1 encoder E2E test with save the reconstruction frames in
@@ -148,8 +151,9 @@ TEST_P(SvtAv1E2EReconBufferTest, run_recon_collect_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EReconBufferTest,
-                        ::testing::ValuesIn(smoking_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EReconBufferTest,
+    ::testing::ValuesIn(generate_vector_from_config("smoking_test.cfg")));
 
 /**
  * @brief SVT-AV1 encoder E2E test with comparing the reconstructed frame with
@@ -196,9 +200,9 @@ TEST_P(SvtAv1E2EConformanceTest, run_conformance_test) {
     run_encode_process();
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceTest,
-                        ::testing::ValuesIn(comformance_test_vectors));
-
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2EConformanceTest,
+    ::testing::ValuesIn(generate_vector_from_config("conformance_test.cfg")));
 /**
  * @brief SVT-AV1 encoder E2E test with comparing the reconstructed frames with
  * output frames from decoder buffer list in longtime (3000 frames)
@@ -229,7 +233,8 @@ TEST_P(SvtAv1E2ELongTimeConformanceTest, run_conformance_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ELongTimeConformanceTest,
-                        ::testing::ValuesIn(longtime_comformance_test_vectors));
+                        ::testing::ValuesIn(generate_vector_from_config(
+                            "longtime_comformance_test.cfg")));
 
 /* @brief SVT-AV1 encoder E2E test by comparing the reconstruction frames with
  * output frame from decoder buffer list, but found dead in linux
@@ -254,7 +259,8 @@ TEST_P(SvtAv1E2EConformanceDeathTest, run_conformance_test) {
 }
 
 INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2EConformanceDeathTest,
-                        ::testing::ValuesIn(src_resolution_death_test_vectors));
+                        ::testing::ValuesIn(generate_vector_from_config(
+                            "src_resolution_death_test.cfg")));
 
 class SvtAv1E2ERepeatConformanceTest : public SvtAv1E2EConformanceTest {
   protected:
@@ -304,5 +310,6 @@ TEST_P(SvtAv1E2ERepeatConformanceTest, repeat_encode_process) {
     repeat_encode_process(5);
 }
 
-INSTANTIATE_TEST_CASE_P(SVT_AV1, SvtAv1E2ERepeatConformanceTest,
-                        ::testing::ValuesIn(comformance_test_vectors));
+INSTANTIATE_TEST_CASE_P(
+    SVT_AV1, SvtAv1E2ERepeatConformanceTest,
+    ::testing::ValuesIn(generate_vector_from_config("comformance_test.cfg")));

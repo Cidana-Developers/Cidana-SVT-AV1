@@ -119,7 +119,7 @@ class VideoFileSource : public VideoSource {
      *
      * @return     The vectors path.
      */
-    static std::string get_vector_path();
+    static std::string get_vector_dir();
 
     /*!\brief Prepare stream. */
     EbErrorType open_source(const uint32_t init_pos,
