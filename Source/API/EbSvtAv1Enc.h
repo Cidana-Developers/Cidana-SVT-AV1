@@ -223,7 +223,7 @@ typedef struct EbSvtAv1EncConfiguration
 
     /* Flag to enable the use of non-swaure partitions
     *
-    * Default is 1. */
+    * Default is EB_FALSE. */
     EbBool                   ext_block_flag;
 
     /* Flag to enable the use of recon pictures for motion estimation
@@ -295,7 +295,7 @@ typedef struct EbSvtAv1EncConfiguration
      * 1 = Main, allows bit depth of 8.
      * 2 = Main 10, allows bit depth of 8 to 10.
      *
-     * Default is 2. */
+     * Default is 0. */
     uint32_t                 profile;
     /* Constraints for bitstream in terms of max bitrate and max buffer size.
      *

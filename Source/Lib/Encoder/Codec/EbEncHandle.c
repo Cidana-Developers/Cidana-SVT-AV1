@@ -2188,7 +2188,7 @@ void CopyApiFromApp(
 
     // Padding Offsets
     sequence_control_set_ptr->sb_sz = (uint8_t)((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->sb_sz;
-    sequence_control_set_ptr->max_sb_depth = (uint8_t)((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->partition_depth;
+    sequence_control_set_ptr->max_sb_depth = sequence_control_set_ptr->static_config.partition_depth = (uint8_t)((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->partition_depth;
 
     if (sequence_control_set_ptr->cropping_left_offset == -1 &&
         sequence_control_set_ptr->cropping_right_offset == -1 &&
@@ -2326,7 +2326,7 @@ void CopyApiFromApp(
     sequence_control_set_ptr->static_config.active_channel_count = ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->active_channel_count;
     sequence_control_set_ptr->static_config.logical_processors = ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->logical_processors;
     sequence_control_set_ptr->static_config.target_socket = ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->target_socket;
-    sequence_control_set_ptr->qp = ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->qp;
+    sequence_control_set_ptr->qp = sequence_control_set_ptr->static_config.qp = ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->qp;
     sequence_control_set_ptr->static_config.recon_enabled = ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->recon_enabled;
 
     // Extract frame rate from Numerator and Denominator if not 0
@@ -2456,6 +2456,10 @@ static EbErrorType VerifySettings(
         return_error = EB_ErrorBadParameter;
     }
 
+    if (config->partition_depth > EB_MAX_LCU_DEPTH) {
+        SVT_LOG("Error instance %u: partition_depth must be [0 - %d]\n", channelNumber + 1, EB_MAX_LCU_DEPTH);
+        return_error = EB_ErrorBadParameter;
+    }
     if (config->qp > MAX_QP_VALUE) {
         SVT_LOG("Error instance %u: QP must be [0 - %d]\n", channelNumber + 1, MAX_QP_VALUE);
         return_error = EB_ErrorBadParameter;
@@ -2567,6 +2571,14 @@ static EbErrorType VerifySettings(
     if (config->frame_rate > (240 << 16)) {
         SVT_LOG("Error Instance %u: The maximum allowed frame rate is 240 fps\n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
+    } else if (config->frame_rate < (1 << 16) && config->frame_rate > 60) {
+        SVT_LOG("Error Instance %u: The frame rate is an integer number between 1 "
+            "and 60 (fps) or maximum 240 fps in Q16 format\n",
+            channelNumber + 1);
+        return_error = EB_ErrorBadParameter;
+    } else if (config->frame_rate < 1000) {
+        // Transfor to Q16 format
+        config->frame_rate = config->frame_rate << 16;
     }
     // Check that the frame_rate is non-zero
     if (config->frame_rate <= 0) {
@@ -2684,6 +2696,16 @@ static EbErrorType VerifySettings(
         return_error = EB_ErrorBadParameter;
     }
 
+    if (config->active_channel_count == 0) {
+        SVT_LOG("Error Instance %u: The active channel count should be greater than 0 \n", channelNumber + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+	
+    if (config->tier > 1) {
+        SVT_LOG("Error Instance %u: Invalid Tier [0 - 1] \n", channelNumber + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
     return return_error;
 }
 
@@ -2700,7 +2722,7 @@ EbErrorType eb_svt_enc_init_parameter(
         return EB_ErrorBadParameter;
     }
 
-    config_ptr->frame_rate = 30 << 16;
+    config_ptr->frame_rate = 25 << 16;
     config_ptr->frame_rate_numerator = 0;
     config_ptr->frame_rate_denominator = 0;
     config_ptr->encoder_bit_depth = 8;
