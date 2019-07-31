@@ -480,4 +480,6 @@ void RefDecoder::trans_video_frame(const void* image_handle,
         frame.bits_per_sample = 10;
     frame.timestamp =
         init_timestamp_ + ((uint64_t)dec_frame_cnt_ * frame_interval_);
+    VideoFrame::calculate_plane_size(
+        frame, frame.plane_width, frame.plane_height);
 }
