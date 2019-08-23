@@ -6,7 +6,7 @@
 /******************************************************************************
  * @file SvtAv1E2EParamsTest.cc
  *
- * @brief Impelmentation of encoder parameter coverage test in E2E test
+ * @brief Implementation of encoder parameter coverage test in E2E test
  *
  * @author Cidana-Edmond
  *
@@ -29,7 +29,7 @@
  *
  * Test strategy:
  * Config SVT-AV1 encoder with individual parameter, run the
- * conformance test and analyse the bitstream to check if the params
+ * conformance test and analyze the bitstream to check if the params
  * take effect.
  *
  * Expected result:
@@ -43,6 +43,8 @@
 
 using namespace svt_av1_e2e_test;
 using namespace svt_av1_e2e_test_vector;
+using std::stoul;
+using std::to_string;
 
 /** Max/Min QP
  *	function CopyApiFromApp() in EbEncHandle.c transfers "min_qp_allowed" to
@@ -52,12 +54,13 @@ using namespace svt_av1_e2e_test_vector;
  *
  * code piece:
  *	 sequence_control_set_ptr->static_config.max_qp_allowed
- *=(sequence_control_set_ptr->static_config.rate_control_mode) ?
- *((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->max_qp_allowed: 63;
+ * =(sequence_control_set_ptr->static_config.rate_control_mode) ?
+ * ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->max_qp_allowed:
+ *63;
  *
  *	sequence_control_set_ptr->static_config.min_qp_allowed
- *=(sequence_control_set_ptr->static_config.rate_control_mode) ?
- *((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->min_qp_allowed: 1;
+ * =(sequence_control_set_ptr->static_config.rate_control_mode) ?
+ * ((EbSvtAv1EncConfiguration*)pComponentParameterStructure)->min_qp_allowed: 1;
  */
 static const std::multimap<const std::string, const std::string>
     IGNORE_CASE_MAP = {
@@ -78,7 +81,7 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
   public:
     SvtAv1E2EParamFramework() {
         param_value_idx_ = 0;
-        skip_vector_ = false;
+        skip_test_ = false;
         enable_analyzer_ = false;
     }
 
@@ -87,11 +90,11 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
 
     /** customize encoder param and setup conformance test */
     void init_test() override {
-        skip_vector_ = false;
-        /** customize the encoder param */
-        config_enc_param();
+        skip_test_ = false;
+        if (!is_valid_profile_setting() || is_ignored())
+            skip_test_ = true;
 
-        if (!skip_vector_) {
+        if (!skip_test_) {
             /** create recon frame queue before setup parameter of encoder */
             VideoFrameParam param;
             memset(&param, 0, sizeof(param));
@@ -110,24 +113,53 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
             refer_dec_->set_resolution(video_src_->get_width_with_padding(),
                                        video_src_->get_height_with_padding());
 
+            /** customize the encoder param */
+            config_enc_param();
             SvtAv1E2ETestFramework::init_test();
         }
     }
 
     /** check the bitstream if the enc param take effects */
     void close_test() override {
-        verify_enc_param();
-        SvtAv1E2ETestFramework::close_test();
+        if (!skip_test_) {
+            verify_enc_param();
+            SvtAv1E2ETestFramework::close_test();
+        }
     }
 
   protected:
+    bool is_valid_profile_setting() {
+        /** check the color format according to spec 6.4.1 */
+        if (av1enc_ctx_.enc_params.profile == 0) {
+            /** main profile requires YUV420 or YUV400 Annex A */
+            if (av1enc_ctx_.enc_params.encoder_bit_depth == 12)
+                return false;
+            if (av1enc_ctx_.enc_params.encoder_color_format != EB_YUV420 &&
+                av1enc_ctx_.enc_params.encoder_color_format != EB_YUV400) {
+                return false;
+            }
+        } else if (av1enc_ctx_.enc_params.profile == 1) {
+            /** high profile requires 8bit/10bit YUV444 */
+            if (av1enc_ctx_.enc_params.encoder_bit_depth == 12)
+                return false;
+            if (av1enc_ctx_.enc_params.encoder_color_format != EB_YUV444)
+                return false;
+        } else if (av1enc_ctx_.enc_params.profile == 2) {
+            /** professional profile requires 8-bit/10-bit YUV422 or 12-bit
+             *  YUV400, YUV420, YUV422 and YUV444
+             */
+            if (av1enc_ctx_.enc_params.encoder_bit_depth != 12 &&
+                av1enc_ctx_.enc_params.encoder_color_format != EB_YUV422) {
+                return false;
+            }
+        }
+        return true;
+    }
     /** setup some of the params with related params modified before set
      * to encoder */
     void config_enc_param() {
-        if (!param_name_str_.compare("film_grain_denoise_strength")) {
-            av1enc_ctx_.enc_params.enable_denoise_flag = 1;
-        } else if (!param_name_str_.compare("target_bit_rate")) {
-            av1enc_ctx_.enc_params.rate_control_mode = 1;
+        if (!param_name_str_.compare("target_bit_rate")) {
+            av1enc_ctx_.enc_params.rate_control_mode = 2;
             /** fixed frame-rate for calculation */
             if (av1enc_ctx_.enc_params.frame_rate > 1000)
                 av1enc_ctx_.enc_params.frame_rate = 10 << 16;
@@ -139,46 +171,46 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
             if (av1enc_ctx_.enc_params.profile == 0) {
                 /** profile(0) requires YUV420 */
                 if (av1enc_ctx_.enc_params.encoder_color_format != EB_YUV420) {
-                    skip_vector_ = true;
+                    skip_test_ = true;
                 }
             } else if (av1enc_ctx_.enc_params.profile == 1) {
                 /** profile(1) requires 8-bit YUV444 */
                 if (av1enc_ctx_.enc_params.encoder_bit_depth != 8 ||
                     av1enc_ctx_.enc_params.encoder_color_format != EB_YUV444) {
-                    skip_vector_ = true;
+                    skip_test_ = true;
                 }
             } else if (av1enc_ctx_.enc_params.profile == 2) {
                 /** profile(2) requires 8-bit/10-bit YUV422 */
                 if (av1enc_ctx_.enc_params.encoder_bit_depth < 8 ||
                     av1enc_ctx_.enc_params.encoder_bit_depth > 10 ||
                     av1enc_ctx_.enc_params.encoder_color_format != EB_YUV422) {
-                    skip_vector_ = true;
+                    skip_test_ = true;
                 }
             }
         } else if (!param_name_str_.compare("tile_columns")) {
             /** update tile setting to actual tile columns */
-            uint32_t value = std::stoul(param_value_str_);
-            uint32_t cols = 0;
+            uint32_t value = stoul(param_value_str_);
+            uint32_t mi_cols = 0;
             if (value == 0) {  // no tiling
-                cols = video_src_->get_width_with_padding() / 4;
+                mi_cols = video_src_->get_width_with_padding() / 4;
             } else {  // tiling
-                cols = (video_src_->get_width_with_padding() / 4) /
-                       std::pow(2, value);
-                cols = cols < 16 ? 16 : ((cols + 15) >> 4) << 4;
+                mi_cols = (video_src_->get_width_with_padding() / 4) /
+                          std::pow(2, value);
+                mi_cols = mi_cols < 16 ? 16 : ((mi_cols + 15) >> 4) << 4;
             }
-            param_value_str_ = std::to_string(cols);
+            param_value_str_ = to_string(mi_cols);
         } else if (!param_name_str_.compare("tile_rows")) {
             /** update tile setting to actual tile rows */
-            uint32_t value = std::stoul(param_value_str_);
-            uint32_t rows = 0;
+            uint32_t value = stoul(param_value_str_);
+            uint32_t mi_rows = 0;
             if (value == 0) {  // no tiling
-                rows = video_src_->get_height_with_padding() / 4;
+                mi_rows = video_src_->get_height_with_padding() / 4;
             } else {  // tiling
-                rows = (video_src_->get_height_with_padding() / 4) /
-                       std::pow(2, value);
-                rows = rows < 16 ? 16 : ((rows + 15) >> 4) << 4;
+                mi_rows = (video_src_->get_height_with_padding() / 4) /
+                          std::pow(2, value);
+                mi_rows = mi_rows < 16 ? 16 : ((mi_rows + 15) >> 4) << 4;
             }
-            param_value_str_ = std::to_string(rows);
+            param_value_str_ = to_string(mi_rows);
         } else if (!param_name_str_.compare("qp")) {
             av1enc_ctx_.enc_params.rate_control_mode = 0;
             av1enc_ctx_.enc_params.min_qp_allowed = MIN_QP_VALUE;
@@ -188,13 +220,13 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
             av1enc_ctx_.enc_params.min_qp_allowed = MIN_QP_VALUE;
             av1enc_ctx_.enc_params.max_qp_allowed = MAX_QP_VALUE;
         } else if (!param_name_str_.compare("max_qp_allowed")) {
-            uint32_t value = std::stoul(param_value_str_);
+            uint32_t value = stoul(param_value_str_);
             av1enc_ctx_.enc_params.rate_control_mode = 0;
             av1enc_ctx_.enc_params.min_qp_allowed = MIN_QP_VALUE;
             if (av1enc_ctx_.enc_params.qp > value)
                 av1enc_ctx_.enc_params.qp = value;
         } else if (!param_name_str_.compare("min_qp_allowed")) {
-            uint32_t value = std::stoul(param_value_str_);
+            uint32_t value = stoul(param_value_str_);
             av1enc_ctx_.enc_params.rate_control_mode = 0;
             av1enc_ctx_.enc_params.max_qp_allowed = MAX_QP_VALUE;
             if (av1enc_ctx_.enc_params.qp < value)
@@ -204,7 +236,7 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
         }
     }
 
-    static const std::map<std::string&, uint32_t> ignore_case_map;
+    static const std::map<std::string &, uint32_t> ignore_case_map;
 
     /** additional process after parameter test finish */
     void verify_enc_param() {
@@ -212,27 +244,27 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
             std::string result =
                 refer_dec_->get_syntax_element(param_name_str_);
             if (!param_name_str_.compare("max_qp_allowed")) {
-                uint32_t value = std::stoul(param_value_str_);
-                uint32_t res = std::stoul(result);
+                uint32_t value = stoul(param_value_str_);
+                uint32_t res = stoul(result);
                 ASSERT_GE(value, res)
                     << "e2e parameter " << param_name_str_ << " test failed";
             } else if (!param_name_str_.compare("min_qp_allowed")) {
-                uint32_t value = std::stoul(param_value_str_);
-                uint32_t res = std::stoul(result);
+                uint32_t value = stoul(param_value_str_);
+                uint32_t res = stoul(result);
                 ASSERT_LE(value, res)
                     << "e2e parameter " << param_name_str_ << " test failed";
             } else if (!param_name_str_.compare("use_qp_file")) {
                 uint32_t frame_count = video_src_->get_frame_count();
                 for (uint32_t i = 1; i < frame_count; i++) {
-                    uint32_t res = std::stoul(
+                    uint32_t res = stoul(
                         refer_dec_->get_syntax_element(param_name_str_, i - 1));
                     EXPECT_EQ(video_src_->get_frame_qp(i), res)
                         << "e2e parameter " << param_name_str_
                         << " test failed at " << i;
                 }
             } else if (!param_name_str_.compare("target_bit_rate")) {
-                uint32_t value = std::stoul(param_value_str_);
-                uint32_t res = std::stoul(result);
+                uint32_t value = stoul(param_value_str_);
+                uint32_t res = stoul(result);
                 uint32_t frame_rate =
                     av1enc_ctx_.enc_params.frame_rate > 1000
                         ? av1enc_ctx_.enc_params.frame_rate >> 16
@@ -263,35 +295,40 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
     std::string param_name_str_;  /**< name of parameter for test */
     std::string param_value_str_; /**< value of parameter for test */
     size_t param_value_idx_;      /**< index of parameter value in vector */
-    bool skip_vector_;            /**< flag of skip this test vector or not */
+    bool skip_test_;              /**< flag of skip this test vector or not */
     bool enable_analyzer_;        /**< flag of with or without parser */
 };
 
-/** Marcro defininition of batch processing check for default, valid, invalid
- * and special parameter check*/
+/** Marco definitions of batch processing check */
 #define PARAM_TEST_WITH_VECTOR(param_test, vectors)     \
     TEST_P(param_test, run_paramter_conformance_test) { \
         run_conformance_test();                         \
     }                                                   \
-    INSTANTIATE_TEST_CASE_P(SVT_AV1, param_test, ::testing::ValuesIn(vectors));
+    INSTANTIATE_TEST_CASE_P(                            \
+        SVT_AV1,                                        \
+        param_test,                                     \
+        ::testing::ValuesIn(generate_vector_from_config(vectors)));
 
 #define PARAM_TEST(param_test) \
-    PARAM_TEST_WITH_VECTOR(param_test, smoking_vectors)
+    PARAM_TEST_WITH_VECTOR(param_test, "smoking_test.cfg")
 
 #define PARAM_DEATHTEST_WITH_VECTOR(param_test, vectors) \
     TEST_P(param_test, run_paramter_conformance_test) {  \
         run_conformance_death_test();                    \
     }                                                    \
-    INSTANTIATE_TEST_CASE_P(SVT_AV1, param_test, ::testing::ValuesIn(vectors));
+    INSTANTIATE_TEST_CASE_P(                             \
+        SVT_AV1,                                         \
+        param_test,                                      \
+        ::testing::ValuesIn(generate_vector_from_config(vectors)));
 
 #define PARAM_DEATHTEST(param_test) \
-    PARAM_DEATHTEST_WITH_VECTOR(param_test, smoking_vectors)
+    PARAM_DEATHTEST_WITH_VECTOR(param_test, "smoking_test.cfg")
 
 #define GET_PARAM GET_VALID_PARAM
 #define SIZE_PARAM SIZE_VALID_PARAM
 
-/** @breif This class is a template based on EncParamTestBase to test each
- * parameter
+/** @brief This class is a template based on SvtAv1E2EParamFramework to test
+ * each parameter
  */
 #define DEFINE_PARAM_TEST_CLASS_WT_PARSER(test_name, param_name, wt_parser)    \
     class test_name : public SvtAv1E2EParamFramework {                         \
@@ -304,10 +341,10 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
         void init_test() override {                                            \
             collect_ = new PerformanceCollect(typeid(this).name());            \
             EXPECT_NE(collect_, nullptr) << "performance tool create failed!"; \
+            /* set target parameter and convert value to str */                \
             av1enc_ctx_.enc_params.param_name =                                \
                 GET_PARAM(param_name, param_value_idx_);                       \
-            param_value_str_ =                                                 \
-                std::to_string(av1enc_ctx_.enc_params.param_name);             \
+            param_value_str_ = to_string(av1enc_ctx_.enc_params.param_name);   \
             SvtAv1E2EParamFramework::init_test();                              \
         }                                                                      \
         /** close for test */                                                  \
@@ -318,13 +355,13 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
                 collect_ = nullptr;                                            \
             }                                                                  \
         }                                                                      \
-        /** run for the conformance test */                                    \
+        /** iterate all the valid values for target param and run the test */  \
         void run_conformance_test() {                                          \
             for (param_value_idx_ = 0;                                         \
                  param_value_idx_ < SIZE_PARAM(param_name);                    \
                  ++param_value_idx_) {                                         \
                 SvtAv1E2EParamFramework::SetUp();                              \
-                if (!skip_vector_)                                             \
+                if (!skip_test_)                                               \
                     run_encode_process();                                      \
                 else {                                                         \
                     printf("test %s(%s) skipped vector\n",                     \
@@ -341,7 +378,7 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
                  param_value_idx_ < SIZE_PARAM(param_name);                    \
                  ++param_value_idx_) {                                         \
                 SvtAv1E2EParamFramework::SetUp();                              \
-                if (!skip_vector_)                                             \
+                if (!skip_test_)                                               \
                     EXPECT_DEATH(run_encode_process(), "");                    \
                 else {                                                         \
                     printf("test %s(%s) skipped vector\n",                     \
@@ -361,11 +398,11 @@ class SvtAv1E2EParamFramework : public SvtAv1E2ETestFramework {
         }                                                                      \
     };
 
-/** class definiion for parameter test without parser */
+/** class definition for parameter test without parser */
 #define DEFINE_PARAM_TEST_CLASS(test_name, param_name) \
     DEFINE_PARAM_TEST_CLASS_WT_PARSER(test_name, param_name, false)
 
-/** class definiion for parameter test with parser */
+/** class definition for parameter test with parser */
 #define DEFINE_PARAM_TEST_CLASS_EX(test_name, param_name) \
     DEFINE_PARAM_TEST_CLASS_WT_PARSER(test_name, param_name, true)
 
@@ -539,7 +576,7 @@ PARAM_TEST(SvtAv1E2EParamHighDynamicRangeInputTest);
 
 /** Test case for profile*/
 DEFINE_PARAM_TEST_CLASS_EX(SvtAv1E2EParamProfileTest, profile);
-PARAM_TEST_WITH_VECTOR(SvtAv1E2EParamProfileTest, profile_vectors);
+PARAM_TEST_WITH_VECTOR(SvtAv1E2EParamProfileTest, "profile_param.cfg");
 
 /** Test case for tier*/
 DEFINE_PARAM_TEST_CLASS(SvtAv1E2EParamTierTest, tier);
@@ -600,7 +637,7 @@ PARAM_TEST(SvtAv1E2EParamTileRowsTest);
 #define SIZE_PARAM SIZE_DEATH_PARAM
 /** Death test for QP (63 with single frame), link to issue #263*/
 DEFINE_PARAM_TEST_CLASS_EX(SvtAv1E2EParamQPDeathTest, qp);
-PARAM_TEST_WITH_VECTOR(SvtAv1E2EParamQPDeathTest, qp_death_test_vectors);
+PARAM_TEST_WITH_VECTOR(SvtAv1E2EParamQPDeathTest, "qp_death_test.cfg");
 #undef GET_PARAM
 #undef SIZE_PARAM
 #define GET_PARAM GET_VALID_PARAM
