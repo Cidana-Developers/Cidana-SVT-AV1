@@ -54,7 +54,7 @@ do
     if [ $? -ne 1 ]; then 
         echo "$checkFile not match clang-format"
         let errorFileCount++
-#        exit 1
+##        exit 1
     fi
 done
 
