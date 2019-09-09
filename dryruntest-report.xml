@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="8" failures="0" disabled="0" errors="0" timestamp="2019-08-29T11:37:29" time="16.928" name="AllTests">
+  <testsuite name="TX/InvTxfm2dAsmTest" tests="8" failures="0" disabled="0" errors="0" time="16.928">
+    <testcase name="sqr_txfm_match_test/0" value_param="8" status="run" time="0.088" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="sqr_txfm_match_test/1" value_param="10" status="run" time="0.083" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="rect_type1_txfm_match_test/0" value_param="8" status="run" time="4.073" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="rect_type1_txfm_match_test/1" value_param="10" status="run" time="4.032" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="rect_type2_txfm_match_test/0" value_param="8" status="run" time="0.02" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="rect_type2_txfm_match_test/1" value_param="10" status="run" time="0.02" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="lowbd_txfm_match_test/0" value_param="8" status="run" time="8.612" classname="TX/InvTxfm2dAsmTest" />
+    <testcase name="lowbd_txfm_match_test/1" value_param="10" status="run" time="0" classname="TX/InvTxfm2dAsmTest" />
+  </testsuite>
+</testsuites>
